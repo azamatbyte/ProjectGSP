@@ -36,7 +36,8 @@ $prismaCli = Join-Path $AppRoot 'app/node_modules/.bin/prisma.cmd'
 $seedMarker = Join-Path $ProgramDataRoot '.seeded'
 $startLog = Join-Path $logsDir 'start_services.log'
 
-try { New-Item -ItemType Directory -Force -Path $logsDir,$pidDir | Out-Null } catch {}
+$uploadsDir = Join-Path $AppRoot 'app/uploads'
+try { New-Item -ItemType Directory -Force -Path $logsDir,$pidDir,$uploadsDir | Out-Null } catch {}
 
 # Redirect all script output to log file as well
 try { Start-Transcript -Path $startLog -Append -Force | Out-Null } catch {}

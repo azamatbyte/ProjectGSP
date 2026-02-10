@@ -137,6 +137,7 @@ out
 
 #file uploads
 uploads/*
+!uploads/.gitkeep
 
 # Nuxt.js build / generate output
 .nuxt
