@@ -1,0 +1,1003 @@
+-- FUNCTION: public.search_records_countv12(text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, text)
+
+-- DROP FUNCTION IF EXISTS public.search_records_countv12(text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, text);
+
+CREATE OR REPLACE FUNCTION public.search_records_countv12(
+	search_first_name text DEFAULT NULL::text,
+	search_first_name_status boolean DEFAULT false,
+	search_last_name text DEFAULT NULL::text,
+	search_last_name_status boolean DEFAULT false,
+	search_father_name text DEFAULT NULL::text,
+	search_father_name_status boolean DEFAULT false,
+	search_birth_place text DEFAULT NULL::text,
+	search_birth_place_status boolean DEFAULT false,
+	search_work_place text DEFAULT NULL::text,
+	search_work_place_status boolean DEFAULT false,
+	search_reg_number text DEFAULT NULL::text,
+	search_reg_number_status boolean DEFAULT false,
+	search_form_reg text DEFAULT NULL::text,
+	search_form_reg_status boolean DEFAULT false,
+	search_id text DEFAULT NULL::text,
+	search_id_status boolean DEFAULT false,
+	search_notes text DEFAULT NULL::text,
+	search_notes_status boolean DEFAULT false,
+	search_additional_notes text DEFAULT NULL::text,
+	search_additional_notes_status boolean DEFAULT false,
+	search_residence text DEFAULT NULL::text,
+	search_residence_status boolean DEFAULT false,
+	search_conclusion_reg_num text DEFAULT NULL::text,
+	search_conclusion_reg_num_status boolean DEFAULT false,
+	search_birth_place_search text DEFAULT NULL::text,
+	search_birth_place_search_status boolean DEFAULT false,
+	search_workplace_search text DEFAULT NULL::text,
+	search_workplace_search_status boolean DEFAULT false,
+	search_complete_status text DEFAULT NULL::text,
+	search_complete_status_status boolean DEFAULT false,
+	search_access_status text DEFAULT NULL::text,
+	search_access_status_status boolean DEFAULT false,
+	search_model text DEFAULT NULL::text,
+	search_model_status boolean DEFAULT false,
+	search_record_number text DEFAULT NULL::text,
+	search_record_number_status boolean DEFAULT false,
+	search_position text DEFAULT NULL::text,
+	search_position_status boolean DEFAULT false,
+	search_or_tab text DEFAULT NULL::text,
+	search_or_tab_status boolean DEFAULT false,
+	search_executor_id text DEFAULT NULL::text,
+	search_executor_id_status boolean DEFAULT false,
+	search_pinfl text DEFAULT NULL::text,
+	search_pinfl_status boolean DEFAULT false,
+	search_reg_date_start timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_reg_date_end timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_reg_date_status boolean DEFAULT false,
+	search_birth_date_start timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_birth_date_end timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_birth_date_status boolean DEFAULT false,
+	search_conclusion_date_start timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_conclusion_date_end timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_conclusion_date_status boolean DEFAULT false,
+	search_reg_end_date_start timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_reg_end_date_end timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_reg_end_date_status boolean DEFAULT false,
+	search_boolen text DEFAULT NULL::text)
+    RETURNS bigint
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+AS $BODY$
+DECLARE
+    total_count BIGINT;
+	birth_year_start INT;
+    birth_year_end INT;
+BEGIN
+	-- Extract year from search_birth_date_start and search_birth_date_end
+    birth_year_start := EXTRACT(YEAR FROM search_birth_date_start);
+    birth_year_end := EXTRACT(YEAR FROM search_birth_date_end);
+    
+    -- Calculate the total count of records matching the filters
+    SELECT COUNT(*)
+    INTO total_count
+    FROM (
+        SELECT r."id"
+        FROM "Registration" r
+        WHERE
+            -- For each text filter the logic is:
+            -- If the search parameter is null, ignore it;
+            -- Otherwise, if its associated _status flag is false include rows that match,
+            -- or if the flag is true exclude rows that match.
+            (search_first_name IS NULL OR 
+              ((search_first_name_status = false AND r."firstName" ILIKE '%' || search_first_name || '%')
+            OR   (search_first_name_status = true  AND NOT (r."firstName" ILIKE '%' || search_first_name || '%'))))
+        AND (search_last_name IS NULL OR 
+              ((search_last_name_status = false AND r."lastName" ILIKE '%' || search_last_name || '%')
+            OR   (search_last_name_status = true  AND NOT (r."lastName" ILIKE '%' || search_last_name || '%'))))
+        AND (search_father_name IS NULL OR 
+              ((search_father_name_status = false AND r."fatherName" ILIKE '%' || search_father_name || '%')
+            OR   (search_father_name_status = true  AND NOT (r."fatherName" ILIKE '%' || search_father_name || '%'))))
+        AND (search_birth_place IS NULL OR 
+              ((search_birth_place_status = false AND r."birthPlace" ILIKE '%' || search_birth_place || '%')
+            OR   (search_birth_place_status = true  AND NOT (r."birthPlace" ILIKE '%' || search_birth_place || '%'))))
+        AND (search_work_place IS NULL OR 
+              ((search_work_place_status = false AND r."workplace" ILIKE '%' || search_work_place || '%')
+            OR   (search_work_place_status = true  AND NOT (r."workplace" ILIKE '%' || search_work_place || '%'))))
+        AND (search_position IS NULL OR 
+              ((search_position_status = false AND r."position" ILIKE '%' || search_position || '%')
+            OR   (search_position_status = true  AND NOT (r."position" ILIKE '%' || search_position || '%'))))
+        AND (search_reg_number IS NULL OR 
+              ((search_reg_number_status = false AND r."regNumber" ILIKE '%' || search_reg_number || '%')
+            OR   (search_reg_number_status = true  AND NOT (r."regNumber" ILIKE '%' || search_reg_number || '%'))))
+        AND (search_form_reg IS NULL OR 
+              ((search_form_reg_status = false AND r."form_reg" ILIKE '%' || search_form_reg || '%')
+            OR   (search_form_reg_status = true  AND NOT (r."form_reg" ILIKE '%' || search_form_reg || '%'))))
+        AND (search_id IS NULL OR 
+              ((search_id_status = false AND r."id"::text ILIKE '%' || search_id || '%')
+            OR   (search_id_status = true  AND NOT (r."id"::text ILIKE '%' || search_id || '%'))))
+        AND (search_model IS NULL OR 
+              ((search_model_status = false AND lower(r."model") = lower(search_model))
+            OR   (search_model_status = true  AND NOT (lower(r."model") = lower(search_model)))))
+        AND (search_complete_status IS NULL OR 
+              ((search_complete_status_status = false AND r."completeStatus"::text ILIKE '%' || search_complete_status || '%')
+            OR   (search_complete_status_status = true  AND NOT (r."completeStatus"::text ILIKE '%' || search_complete_status || '%'))))
+        AND (search_access_status IS NULL OR 
+              ((search_access_status_status = false AND r."accessStatus"::text ILIKE '%' || search_access_status || '%')
+            OR   (search_access_status_status = true  AND NOT (r."accessStatus"::text ILIKE '%' || search_access_status || '%'))))
+        AND (search_or_tab IS NULL OR 
+              ((search_or_tab_status = false AND r."or_tab" ILIKE '%' || search_or_tab || '%')
+            OR   (search_or_tab_status = true  AND NOT (r."or_tab" ILIKE '%' || search_or_tab || '%'))))
+        AND (search_record_number IS NULL OR 
+              ((search_record_number_status = false AND r."recordNumber" ILIKE '%' || search_record_number || '%')
+            OR   (search_record_number_status = true  AND NOT (r."recordNumber" ILIKE '%' || search_record_number || '%'))))
+        AND (search_executor_id IS NULL OR 
+              ((search_executor_id_status = false AND r."executorId"::text ILIKE '%' || search_executor_id || '%')
+            OR   (search_executor_id_status = true  AND NOT (r."executorId"::text ILIKE '%' || search_executor_id || '%'))))
+        -- NEW: PINFL search filter
+        AND (search_pinfl IS NULL OR 
+              ((search_pinfl_status = false AND r."pinfl" ILIKE '%' || search_pinfl || '%')
+            OR   (search_pinfl_status = true  AND NOT (r."pinfl" ILIKE '%' || search_pinfl || '%'))))
+        AND (search_notes IS NULL OR 
+              ((search_notes_status = false AND (r."notes" ILIKE '%' || search_notes || '%' OR r."additionalNotes" ILIKE '%' || search_notes || '%'))
+            OR   (search_notes_status = true  AND NOT (r."notes" ILIKE '%' || search_notes || '%' OR r."additionalNotes" ILIKE '%' || search_notes || '%'))))
+        AND (search_additional_notes IS NULL OR 
+              ((search_additional_notes_status = false AND r."additionalNotes" ILIKE '%' || search_additional_notes || '%')
+            OR   (search_additional_notes_status = true  AND NOT (r."additionalNotes" ILIKE '%' || search_additional_notes || '%'))))
+        AND (search_residence IS NULL OR 
+              ((search_residence_status = false AND r."residence" ILIKE '%' || search_residence || '%')
+            OR   (search_residence_status = true  AND NOT (r."residence" ILIKE '%' || search_residence || '%'))))
+        AND (search_conclusion_reg_num IS NULL OR 
+              ((search_conclusion_reg_num_status = false AND r."conclusionRegNum" ILIKE '%' || search_conclusion_reg_num || '%')
+            OR   (search_conclusion_reg_num_status = true  AND NOT (r."conclusionRegNum" ILIKE '%' || search_conclusion_reg_num || '%'))))
+        --
+     -- Date-range filters are handled similarly. For example, for regDate:
+        AND (
+            (search_reg_date_start IS NULL AND search_reg_date_end IS NULL)
+            OR (
+                (search_reg_date_status = false AND 
+                    (
+                      (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NULL AND r."regDate" >= search_reg_date_start)
+          OR (search_reg_date_start IS NULL AND search_reg_date_end IS NOT NULL AND (
+            (date_trunc('day', search_reg_date_end) = search_reg_date_end AND r."regDate" < search_reg_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_reg_date_end) <> search_reg_date_end AND r."regDate" <= search_reg_date_end)
+          ))
+          OR (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NOT NULL 
+            AND (
+              (date_trunc('day', search_reg_date_end) = search_reg_date_end AND r."regDate" >= search_reg_date_start AND r."regDate" < search_reg_date_end + INTERVAL '1 day')
+           OR (date_trunc('day', search_reg_date_end) <> search_reg_date_end AND r."regDate" BETWEEN search_reg_date_start AND search_reg_date_end)
+            )
+          )
+                    )
+                )
+              OR (search_reg_date_status = true AND 
+                    (
+                      (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NULL AND r."regDate" < search_reg_date_start)
+          OR (search_reg_date_start IS NULL AND search_reg_date_end IS NOT NULL AND (
+            (date_trunc('day', search_reg_date_end) = search_reg_date_end AND r."regDate" >= search_reg_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_reg_date_end) <> search_reg_date_end AND r."regDate" > search_reg_date_end)
+          ))
+          OR (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NOT NULL 
+            AND (
+              r."regDate" < search_reg_date_start 
+           OR (
+             (date_trunc('day', search_reg_date_end) = search_reg_date_end AND r."regDate" >= search_reg_date_end + INTERVAL '1 day')
+             OR (date_trunc('day', search_reg_date_end) <> search_reg_date_end AND r."regDate" > search_reg_date_end)
+           )
+            )
+          )
+                    )
+                )
+            )
+        )
+        --
+        -- The birth date filter (which also uses the birthYear value)
+        AND (
+            (search_birth_date_start IS NULL AND search_birth_date_end IS NULL)
+            OR (
+                (search_birth_date_status = false AND 
+                    (
+                      (r."birthDate" IS NOT NULL AND (
+                           (date_trunc('day', search_birth_date_end) = search_birth_date_end AND r."birthDate" >= search_birth_date_start AND r."birthDate" < search_birth_date_end + INTERVAL '1 day')
+                        OR (date_trunc('day', search_birth_date_end) <> search_birth_date_end AND r."birthDate" BETWEEN search_birth_date_start AND search_birth_date_end)
+                      ))
+                   OR (r."birthYear" IS NOT NULL AND r."birthYear" BETWEEN birth_year_start AND birth_year_end)
+                    )
+                )
+              OR (search_birth_date_status = true AND 
+                    NOT (
+                      (r."birthDate" IS NOT NULL AND (
+                           (date_trunc('day', search_birth_date_end) = search_birth_date_end AND r."birthDate" >= search_birth_date_start AND r."birthDate" < search_birth_date_end + INTERVAL '1 day')
+                        OR (date_trunc('day', search_birth_date_end) <> search_birth_date_end AND r."birthDate" BETWEEN search_birth_date_start AND search_birth_date_end)
+                      ))
+                   OR (r."birthYear" IS NOT NULL AND r."birthYear" BETWEEN birth_year_start AND birth_year_end)
+                    )
+                )
+            )
+        )
+        --
+        -- For conclusionDate
+     AND (
+            (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NULL)
+            OR (
+                (search_conclusion_date_status = false AND 
+                    (
+                      (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NULL AND r."conclusionDate" >= search_conclusion_date_start)
+          OR (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NOT NULL AND (
+            (date_trunc('day', search_conclusion_date_end) = search_conclusion_date_end AND r."conclusionDate" < search_conclusion_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_conclusion_date_end) <> search_conclusion_date_end AND r."conclusionDate" <= search_conclusion_date_end)
+          ))
+          OR (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NOT NULL 
+            AND (
+              (date_trunc('day', search_conclusion_date_end) = search_conclusion_date_end AND r."conclusionDate" >= search_conclusion_date_start AND r."conclusionDate" < search_conclusion_date_end + INTERVAL '1 day')
+           OR (date_trunc('day', search_conclusion_date_end) <> search_conclusion_date_end AND r."conclusionDate" BETWEEN search_conclusion_date_start AND search_conclusion_date_end)
+            )
+          )
+                    )
+                )
+              OR (search_conclusion_date_status = true AND 
+                    (
+                      (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NULL AND r."conclusionDate" < search_conclusion_date_start)
+          OR (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NOT NULL AND (
+            (date_trunc('day', search_conclusion_date_end) = search_conclusion_date_end AND r."conclusionDate" >= search_conclusion_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_conclusion_date_end) <> search_conclusion_date_end AND r."conclusionDate" > search_conclusion_date_end)
+          ))
+          OR (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NOT NULL 
+            AND (
+              r."conclusionDate" < search_conclusion_date_start 
+           OR (
+             (date_trunc('day', search_conclusion_date_end) = search_conclusion_date_end AND r."conclusionDate" >= search_conclusion_date_end + INTERVAL '1 day')
+             OR (date_trunc('day', search_conclusion_date_end) <> search_conclusion_date_end AND r."conclusionDate" > search_conclusion_date_end)
+           )
+            )
+          )
+                    )
+                )
+            )
+        )
+        --
+        -- For regEndDate:
+     AND (
+            (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NULL)
+            OR (
+                (search_reg_end_date_status = false AND 
+                    (
+                      (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NULL AND r."regEndDate" >= search_reg_end_date_start)
+          OR (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NOT NULL AND (
+            (date_trunc('day', search_reg_end_date_end) = search_reg_end_date_end AND r."regEndDate" < search_reg_end_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_reg_end_date_end) <> search_reg_end_date_end AND r."regEndDate" <= search_reg_end_date_end)
+          ))
+          OR (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NOT NULL 
+            AND (
+              (date_trunc('day', search_reg_end_date_end) = search_reg_end_date_end AND r."regEndDate" >= search_reg_end_date_start AND r."regEndDate" < search_reg_end_date_end + INTERVAL '1 day')
+           OR (date_trunc('day', search_reg_end_date_end) <> search_reg_end_date_end AND r."regEndDate" BETWEEN search_reg_end_date_start AND search_reg_end_date_end)
+            )
+          )
+                    )
+                )
+              OR (search_reg_end_date_status = true AND 
+                    (
+                      (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NULL AND r."regEndDate" < search_reg_end_date_start)
+          OR (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NOT NULL AND (
+            (date_trunc('day', search_reg_end_date_end) = search_reg_end_date_end AND r."regEndDate" >= search_reg_end_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_reg_end_date_end) <> search_reg_end_date_end AND r."regEndDate" > search_reg_end_date_end)
+          ))
+          OR (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NOT NULL 
+            AND (
+              r."regEndDate" < search_reg_end_date_start 
+           OR (
+             (date_trunc('day', search_reg_end_date_end) = search_reg_end_date_end AND r."regEndDate" >= search_reg_end_date_end + INTERVAL '1 day')
+             OR (date_trunc('day', search_reg_end_date_end) <> search_reg_end_date_end AND r."regEndDate" > search_reg_end_date_end)
+           )
+            )
+          )
+                    )
+                )
+            )
+        )
+        
+        UNION ALL
+        
+        SELECT rel."id"
+        FROM
+            "Relatives" rel
+        INNER JOIN "Registration" regg ON rel."registrationId" = regg."id"
+        WHERE
+            (search_first_name IS NULL OR 
+              ((search_first_name_status = false AND rel."firstName" ILIKE '%' || search_first_name || '%')
+            OR   (search_first_name_status = true  AND NOT (rel."firstName" ILIKE '%' || search_first_name || '%'))))
+        AND (search_last_name IS NULL OR 
+              ((search_last_name_status = false AND rel."lastName" ILIKE '%' || search_last_name || '%')
+            OR   (search_last_name_status = true  AND NOT (rel."lastName" ILIKE '%' || search_last_name || '%'))))
+        AND (search_father_name IS NULL OR 
+              ((search_father_name_status = false AND rel."fatherName" ILIKE '%' || search_father_name || '%')
+            OR   (search_father_name_status = true  AND NOT (rel."fatherName" ILIKE '%' || search_father_name || '%'))))
+        AND (search_birth_place IS NULL OR 
+              ((search_birth_place_status = false AND rel."birthPlace" ILIKE '%' || search_birth_place || '%')
+            OR   (search_birth_place_status = true  AND NOT (rel."birthPlace" ILIKE '%' || search_birth_place || '%'))))
+        AND (search_work_place IS NULL OR 
+              ((search_work_place_status = false AND rel."workplace" ILIKE '%' || search_work_place || '%')
+            OR   (search_work_place_status = true  AND NOT (rel."workplace" ILIKE '%' || search_work_place || '%'))))
+        AND (search_position IS NULL OR 
+              ((search_position_status = false AND rel."position" ILIKE '%' || search_position || '%')
+            OR   (search_position_status = true  AND NOT (rel."position" ILIKE '%' || search_position || '%'))))
+        AND (search_reg_number IS NULL OR 
+              ((search_reg_number_status = false AND rel."regNumber" ILIKE '%' || search_reg_number || '%')
+            OR   (search_reg_number_status = true  AND NOT (rel."regNumber" ILIKE '%' || search_reg_number || '%'))))
+        AND (search_form_reg IS NULL OR 
+              ((search_form_reg_status = false AND regg."form_reg" ILIKE '%' || search_form_reg || '%')
+            OR   (search_form_reg_status = true  AND NOT (regg."form_reg" ILIKE '%' || search_form_reg || '%'))))
+        AND (search_id IS NULL OR 
+              ((search_id_status = false AND rel."id"::text ILIKE '%' || search_id || '%')
+            OR   (search_id_status = true  AND NOT (rel."id"::text ILIKE '%' || search_id || '%'))))
+        AND (search_model IS NULL OR 
+              ((search_model_status = false AND lower(rel."model") = lower(search_model))
+            OR   (search_model_status = true  AND NOT (lower(rel."model") = lower(search_model)))))
+        AND (search_complete_status IS NULL OR 
+              ((search_complete_status_status = false AND regg."completeStatus"::text ILIKE '%' || search_complete_status || '%')
+            OR   (search_complete_status_status = true  AND NOT (regg."completeStatus"::text ILIKE '%' || search_complete_status || '%'))))
+        AND (search_access_status IS NULL OR 
+              ((search_access_status_status = false AND regg."accessStatus"::text ILIKE '%' || search_access_status || '%')
+            OR   (search_access_status_status = true  AND NOT (regg."accessStatus"::text ILIKE '%' || search_access_status || '%'))))
+        AND (search_or_tab IS NULL OR 
+              ((search_or_tab_status = false AND rel."or_tab" ILIKE '%' || search_or_tab || '%')
+            OR   (search_or_tab_status = true  AND NOT (rel."or_tab" ILIKE '%' || search_or_tab || '%'))))
+        AND (search_executor_id IS NULL OR 
+              ((search_executor_id_status = false AND rel."executorId"::text ILIKE '%' || search_executor_id || '%')
+            OR   (search_executor_id_status = true  AND NOT (rel."executorId"::text ILIKE '%' || search_executor_id || '%'))))
+        AND (search_record_number IS NULL OR 
+              ((search_record_number_status = false AND regg."recordNumber" ILIKE '%' || search_record_number || '%')
+            OR   (search_record_number_status = true  AND NOT (regg."recordNumber" ILIKE '%' || search_record_number || '%'))))
+        -- NEW: PINFL search filter for Relatives
+        AND (search_pinfl IS NULL OR 
+              ((search_pinfl_status = false AND rel."pinfl" ILIKE '%' || search_pinfl || '%')
+            OR   (search_pinfl_status = true  AND NOT (rel."pinfl" ILIKE '%' || search_pinfl || '%'))))
+        AND (search_notes IS NULL OR 
+              ((search_notes_status = false AND (rel."notes" ILIKE '%' || search_notes || '%' OR rel."additionalNotes" ILIKE '%' || search_notes || '%'))
+            OR   (search_notes_status = true  AND NOT (rel."notes" ILIKE '%' || search_notes || '%' OR rel."additionalNotes" ILIKE '%' || search_notes || '%'))))
+        AND (search_additional_notes IS NULL OR 
+              ((search_additional_notes_status = false AND rel."additionalNotes" ILIKE '%' || search_additional_notes || '%')
+            OR   (search_additional_notes_status = true  AND NOT (rel."additionalNotes" ILIKE '%' || search_additional_notes || '%'))))
+        AND (search_residence IS NULL OR 
+              ((search_residence_status = false AND rel."residence" ILIKE '%' || search_residence || '%')
+            OR   (search_residence_status = true  AND NOT (rel."residence" ILIKE '%' || search_residence || '%'))))
+        AND (search_conclusion_reg_num IS NULL OR 
+              ((search_conclusion_reg_num_status = false AND regg."conclusionRegNum" ILIKE '%' || search_conclusion_reg_num || '%')
+            OR   (search_conclusion_reg_num_status = true  AND NOT (regg."conclusionRegNum" ILIKE '%' || search_conclusion_reg_num || '%'))))
+        --
+     -- Date-range filters for the Relatives part.
+        AND (
+            (search_reg_date_start IS NULL AND search_reg_date_end IS NULL)
+            OR (
+                (search_reg_date_status = false AND 
+                    (
+                      (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NULL AND regg."regDate" >= search_reg_date_start)
+          OR (search_reg_date_start IS NULL AND search_reg_date_end IS NOT NULL AND (
+            (date_trunc('day', search_reg_date_end) = search_reg_date_end AND regg."regDate" < search_reg_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_reg_date_end) <> search_reg_date_end AND regg."regDate" <= search_reg_date_end)
+          ))
+          OR (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NOT NULL 
+            AND (
+              (date_trunc('day', search_reg_date_end) = search_reg_date_end AND regg."regDate" >= search_reg_date_start AND regg."regDate" < search_reg_date_end + INTERVAL '1 day')
+           OR (date_trunc('day', search_reg_date_end) <> search_reg_date_end AND regg."regDate" BETWEEN search_reg_date_start AND search_reg_date_end)
+            )
+          )
+                    )
+                )
+              OR (search_reg_date_status = true AND 
+                    (
+                      (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NULL AND regg."regDate" < search_reg_date_start)
+          OR (search_reg_date_start IS NULL AND search_reg_date_end IS NOT NULL AND (
+            (date_trunc('day', search_reg_date_end) = search_reg_date_end AND regg."regDate" >= search_reg_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_reg_date_end) <> search_reg_date_end AND regg."regDate" > search_reg_date_end)
+          ))
+          OR (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NOT NULL 
+            AND (
+              regg."regDate" < search_reg_date_start 
+           OR (
+             (date_trunc('day', search_reg_date_end) = search_reg_date_end AND regg."regDate" >= search_reg_date_end + INTERVAL '1 day')
+             OR (date_trunc('day', search_reg_date_end) <> search_reg_date_end AND regg."regDate" > search_reg_date_end)
+           )
+            )
+          )
+                    )
+                )
+            )
+        )
+        AND (
+            (search_birth_date_start IS NULL AND search_birth_date_end IS NULL)
+            OR (
+                (search_birth_date_status = false AND 
+                    (
+                      (rel."birthDate" IS NOT NULL AND (
+                           (date_trunc('day', search_birth_date_end) = search_birth_date_end AND rel."birthDate" >= search_birth_date_start AND rel."birthDate" < search_birth_date_end + INTERVAL '1 day')
+                        OR (date_trunc('day', search_birth_date_end) <> search_birth_date_end AND rel."birthDate" BETWEEN search_birth_date_start AND search_birth_date_end)
+                      ))
+                   OR (rel."birthYear" IS NOT NULL AND rel."birthYear" BETWEEN birth_year_start AND birth_year_end)
+                    )
+                )
+              OR (search_birth_date_status = true AND 
+                    NOT (
+                      (rel."birthDate" IS NOT NULL AND (
+                           (date_trunc('day', search_birth_date_end) = search_birth_date_end AND rel."birthDate" >= search_birth_date_start AND rel."birthDate" < search_birth_date_end + INTERVAL '1 day')
+                        OR (date_trunc('day', search_birth_date_end) <> search_birth_date_end AND rel."birthDate" BETWEEN search_birth_date_start AND search_birth_date_end)
+                      ))
+                   OR (rel."birthYear" IS NOT NULL AND rel."birthYear" BETWEEN birth_year_start AND birth_year_end)
+                    )
+                )
+            )
+        )
+     AND (
+            (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NULL)
+            OR (
+                (search_conclusion_date_status = false AND 
+                    (
+                      (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NULL AND regg."conclusionDate" >= search_conclusion_date_start)
+          OR (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NOT NULL AND (
+            (date_trunc('day', search_conclusion_date_end) = search_conclusion_date_end AND regg."conclusionDate" < search_conclusion_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_conclusion_date_end) <> search_conclusion_date_end AND regg."conclusionDate" <= search_conclusion_date_end)
+          ))
+          OR (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NOT NULL 
+            AND (
+              (date_trunc('day', search_conclusion_date_end) = search_conclusion_date_end AND regg."conclusionDate" >= search_conclusion_date_start AND regg."conclusionDate" < search_conclusion_date_end + INTERVAL '1 day')
+           OR (date_trunc('day', search_conclusion_date_end) <> search_conclusion_date_end AND regg."conclusionDate" BETWEEN search_conclusion_date_start AND search_conclusion_date_end)
+            )
+          )
+                    )
+                )
+              OR (search_conclusion_date_status = true AND 
+                    (
+                      (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NULL AND regg."conclusionDate" < search_conclusion_date_start)
+          OR (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NOT NULL AND (
+            (date_trunc('day', search_conclusion_date_end) = search_conclusion_date_end AND regg."conclusionDate" >= search_conclusion_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_conclusion_date_end) <> search_conclusion_date_end AND regg."conclusionDate" > search_conclusion_date_end)
+          ))
+          OR (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NOT NULL 
+            AND (
+              regg."conclusionDate" < search_conclusion_date_start 
+           OR (
+             (date_trunc('day', search_conclusion_date_end) = search_conclusion_date_end AND regg."conclusionDate" >= search_conclusion_date_end + INTERVAL '1 day')
+             OR (date_trunc('day', search_conclusion_date_end) <> search_conclusion_date_end AND regg."conclusionDate" > search_conclusion_date_end)
+           )
+            )
+          )
+                    )
+                )
+            )
+        )
+     AND (
+            (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NULL)
+            OR (
+                (search_reg_end_date_status = false AND 
+                    (
+                      (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NULL AND regg."regEndDate" >= search_reg_end_date_start)
+          OR (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NOT NULL AND (
+            (date_trunc('day', search_reg_end_date_end) = search_reg_end_date_end AND regg."regEndDate" < search_reg_end_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_reg_end_date_end) <> search_reg_end_date_end AND regg."regEndDate" <= search_reg_end_date_end)
+          ))
+          OR (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NOT NULL 
+            AND (
+              (date_trunc('day', search_reg_end_date_end) = search_reg_end_date_end AND regg."regEndDate" >= search_reg_end_date_start AND regg."regEndDate" < search_reg_end_date_end + INTERVAL '1 day')
+           OR (date_trunc('day', search_reg_end_date_end) <> search_reg_end_date_end AND regg."regEndDate" BETWEEN search_reg_end_date_start AND search_reg_end_date_end)
+            )
+          )
+                    )
+                )
+              OR (search_reg_end_date_status = true AND 
+                    (
+                      (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NULL AND regg."regEndDate" < search_reg_end_date_start)
+          OR (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NOT NULL AND (
+            (date_trunc('day', search_reg_end_date_end) = search_reg_end_date_end AND regg."regEndDate" >= search_reg_end_date_end + INTERVAL '1 day')
+         OR (date_trunc('day', search_reg_end_date_end) <> search_reg_end_date_end AND regg."regEndDate" > search_reg_end_date_end)
+          ))
+          OR (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NOT NULL 
+            AND (
+              regg."regEndDate" < search_reg_end_date_start 
+           OR (
+             (date_trunc('day', search_reg_end_date_end) = search_reg_end_date_end AND regg."regEndDate" >= search_reg_end_date_end + INTERVAL '1 day')
+             OR (date_trunc('day', search_reg_end_date_end) <> search_reg_end_date_end AND regg."regEndDate" > search_reg_end_date_end)
+           )
+            )
+          )
+                    )
+                )
+            )
+        )
+    ) combined_results;
+
+    -- Return the total count
+    RETURN total_count;
+END;
+$BODY$;
+
+ALTER FUNCTION public.search_records_countv12(text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, text)
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.search_recordsv25(text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, integer, integer)
+
+-- DROP FUNCTION IF EXISTS public.search_recordsv25(text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, integer, integer);
+
+CREATE OR REPLACE FUNCTION public.search_recordsv25(
+	search_first_name text DEFAULT NULL::text,
+	search_first_name_status boolean DEFAULT false,
+	search_last_name text DEFAULT NULL::text,
+	search_last_name_status boolean DEFAULT false,
+	search_father_name text DEFAULT NULL::text,
+	search_father_name_status boolean DEFAULT false,
+	search_birth_place text DEFAULT NULL::text,
+	search_birth_place_status boolean DEFAULT false,
+	search_work_place text DEFAULT NULL::text,
+	search_work_place_status boolean DEFAULT false,
+	search_reg_number text DEFAULT NULL::text,
+	search_reg_number_status boolean DEFAULT false,
+	search_form_reg text DEFAULT NULL::text,
+	search_form_reg_status boolean DEFAULT false,
+	search_id text DEFAULT NULL::text,
+	search_id_status boolean DEFAULT false,
+	search_notes text DEFAULT NULL::text,
+	search_notes_status boolean DEFAULT false,
+	search_additional_notes text DEFAULT NULL::text,
+	search_additional_notes_status boolean DEFAULT false,
+	search_residence text DEFAULT NULL::text,
+	search_residence_status boolean DEFAULT false,
+	search_conclusion_reg_num text DEFAULT NULL::text,
+	search_conclusion_reg_num_status boolean DEFAULT false,
+	search_birth_place_search text DEFAULT NULL::text,
+	search_birth_place_search_status boolean DEFAULT false,
+	search_workplace_search text DEFAULT NULL::text,
+	search_workplace_search_status boolean DEFAULT false,
+	search_complete_status text DEFAULT NULL::text,
+	search_complete_status_status boolean DEFAULT false,
+	search_access_status text DEFAULT NULL::text,
+	search_access_status_status boolean DEFAULT false,
+	search_model text DEFAULT NULL::text,
+	search_model_status boolean DEFAULT false,
+	search_record_number text DEFAULT NULL::text,
+	search_record_number_status boolean DEFAULT false,
+	search_position text DEFAULT NULL::text,
+	search_position_status boolean DEFAULT false,
+	search_or_tab text DEFAULT NULL::text,
+	search_or_tab_status boolean DEFAULT false,
+	search_executor_id text DEFAULT NULL::text,
+	search_executor_id_status boolean DEFAULT false,
+	search_pinfl text DEFAULT NULL::text,
+	search_pinfl_status boolean DEFAULT false,
+	search_reg_date_start timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_reg_date_end timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_reg_date_status boolean DEFAULT false,
+	search_birth_date_start timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_birth_date_end timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_birth_date_status boolean DEFAULT false,
+	search_conclusion_date_start timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_conclusion_date_end timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_conclusion_date_status boolean DEFAULT false,
+	search_reg_end_date_start timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_reg_end_date_end timestamp without time zone DEFAULT NULL::timestamp without time zone,
+	search_reg_end_date_status boolean DEFAULT false,
+	page_number integer DEFAULT 1,
+	page_size integer DEFAULT 10)
+    RETURNS TABLE(id uuid, model_name text, relationdegree text, form_reg text, form_reg_log text, reg_number text, reg_date timestamp without time zone, reg_end_date timestamp without time zone, full_name text, first_name text, nationality text, last_name text, father_name text, pinfl text, birth_date timestamp without time zone, birth_year integer, conclusion_date timestamp without time zone, conclusion_reg_num text, workplace text, positionv1 text, birth_place text, residence text, notes text, additional_notes text, access_status text, expired timestamp without time zone, complete_status text, expired_date timestamp without time zone, record_number text, or_tab text, initiator_first_name text, initiator_last_name text, executor_first_name text, executor_last_name text, updatedat timestamp without time zone, createdat timestamp without time zone) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+DECLARE
+    birth_year_start INT;
+    birth_year_end   INT;
+BEGIN
+    -- For the birthDate filter we also extract the year boundaries:
+    birth_year_start := EXTRACT(YEAR FROM search_birth_date_start);
+    birth_year_end   := EXTRACT(YEAR FROM search_birth_date_end);
+
+    RETURN QUERY
+    SELECT * FROM (
+        ---------------
+        -- Query from Registration table
+        ---------------
+        SELECT
+            r."id"::UUID,
+            r."model" AS model_name,
+            NULL AS relationDegree,
+            r."form_reg",
+            r."form_reg_log",
+            r."regNumber" AS reg_number,
+            r."regDate"::timestamp AS reg_date,
+            r."regEndDate"::timestamp AS reg_end_date,
+            r."fullName" AS full_name,
+            r."firstName" AS first_name,
+            r."lastName" AS last_name,
+            r.nationality,
+            r."fatherName" AS father_name,
+            r."pinfl",
+            r."birthDate"::timestamp AS birth_date,
+            r."birthYear" AS birth_year,
+            r."conclusionDate"::timestamp AS conclusion_date,
+            r."conclusionRegNum" AS conclusion_reg_num,
+            r."workplace",
+            r."position" AS positionv1,
+            r."birthPlace" AS birth_place,
+            r."residence",
+            r."notes",
+            r."additionalNotes" AS additional_notes,
+            r."accessStatus" AS access_status,
+            r."expired"::timestamp AS expired,
+            r."completeStatus"::text AS complete_status,
+            r."expiredDate"::timestamp AS expired_date,
+            r."recordNumber" AS record_number,
+            r."or_tab",
+            ini."first_name" AS initiator_first_name,
+            ini."last_name" AS initiator_last_name,
+            adm."first_name" AS executor_first_name,
+            adm."last_name" AS executor_last_name,
+            r."updatedAt" AS updatedAt,
+            r."createdAt" AS createdAt
+        FROM
+            "Registration" r
+        LEFT JOIN "Initiator" ini ON r."or_tab" = ini."id"
+        LEFT JOIN "Admin" adm ON r."executorId" = adm."id"
+        WHERE
+            -- For each text filter the logic is:
+            -- If the search parameter is null, ignore it;
+            -- Otherwise, if its associated _status flag is false include rows that match,
+            -- or if the flag is true exclude rows that match.
+            (search_first_name IS NULL OR 
+              ((search_first_name_status = false AND r."firstName" ILIKE '%' || search_first_name || '%')
+            OR   (search_first_name_status = true  AND NOT (r."firstName" ILIKE '%' || search_first_name || '%'))))
+        AND (search_last_name IS NULL OR 
+              ((search_last_name_status = false AND r."lastName" ILIKE '%' || search_last_name || '%')
+            OR   (search_last_name_status = true  AND NOT (r."lastName" ILIKE '%' || search_last_name || '%'))))
+        AND (search_father_name IS NULL OR 
+              ((search_father_name_status = false AND r."fatherName" ILIKE '%' || search_father_name || '%')
+            OR   (search_father_name_status = true  AND NOT (r."fatherName" ILIKE '%' || search_father_name || '%'))))
+        AND (search_birth_place IS NULL OR 
+              ((search_birth_place_status = false AND r."birthPlace" ILIKE '%' || search_birth_place || '%')
+            OR   (search_birth_place_status = true  AND NOT (r."birthPlace" ILIKE '%' || search_birth_place || '%'))))
+        AND (search_work_place IS NULL OR 
+              ((search_work_place_status = false AND r."workplace" ILIKE '%' || search_work_place || '%')
+            OR   (search_work_place_status = true  AND NOT (r."workplace" ILIKE '%' || search_work_place || '%'))))
+        AND (search_position IS NULL OR 
+              ((search_position_status = false AND r."position" ILIKE '%' || search_position || '%')
+            OR   (search_position_status = true  AND NOT (r."position" ILIKE '%' || search_position || '%'))))
+        AND (search_reg_number IS NULL OR 
+              ((search_reg_number_status = false AND r."regNumber" ILIKE '%' || search_reg_number || '%')
+            OR   (search_reg_number_status = true  AND NOT (r."regNumber" ILIKE '%' || search_reg_number || '%'))))
+        AND (search_form_reg IS NULL OR 
+              ((search_form_reg_status = false AND r."form_reg" ILIKE '%' || search_form_reg || '%')
+            OR   (search_form_reg_status = true  AND NOT (r."form_reg" ILIKE '%' || search_form_reg || '%'))))
+        AND (search_id IS NULL OR 
+              ((search_id_status = false AND r."id"::text ILIKE '%' || search_id || '%')
+            OR   (search_id_status = true  AND NOT (r."id"::text ILIKE '%' || search_id || '%'))))
+        AND (search_model IS NULL OR 
+              ((search_model_status = false AND lower(r."model") = lower(search_model))
+            OR   (search_model_status = true  AND NOT (lower(r."model") = lower(search_model)))))
+        AND (search_complete_status IS NULL OR 
+              ((search_complete_status_status = false AND r."completeStatus"::text ILIKE '%' || search_complete_status || '%')
+            OR   (search_complete_status_status = true  AND NOT (r."completeStatus"::text ILIKE '%' || search_complete_status || '%'))))
+        AND (search_access_status IS NULL OR 
+              ((search_access_status_status = false AND r."accessStatus"::text ILIKE '%' || search_access_status || '%')
+            OR   (search_access_status_status = true  AND NOT (r."accessStatus"::text ILIKE '%' || search_access_status || '%'))))
+        AND (search_or_tab IS NULL OR 
+              ((search_or_tab_status = false AND r."or_tab" ILIKE '%' || search_or_tab || '%')
+            OR   (search_or_tab_status = true  AND NOT (r."or_tab" ILIKE '%' || search_or_tab || '%'))))
+        AND (search_record_number IS NULL OR 
+              ((search_record_number_status = false AND r."recordNumber" ILIKE '%' || search_record_number || '%')
+            OR   (search_record_number_status = true  AND NOT (r."recordNumber" ILIKE '%' || search_record_number || '%'))))
+        AND (search_executor_id IS NULL OR 
+              ((search_executor_id_status = false AND r."executorId"::text ILIKE '%' || search_executor_id || '%')
+            OR   (search_executor_id_status = true  AND NOT (r."executorId"::text ILIKE '%' || search_executor_id || '%'))))
+        -- NEW: PINFL search filter
+        AND (search_pinfl IS NULL OR 
+              ((search_pinfl_status = false AND r."pinfl" ILIKE '%' || search_pinfl || '%')
+            OR   (search_pinfl_status = true  AND NOT (r."pinfl" ILIKE '%' || search_pinfl || '%'))))
+        AND (search_notes IS NULL OR 
+              ((search_notes_status = false AND (r."notes" ILIKE '%' || search_notes || '%' OR r."additionalNotes" ILIKE '%' || search_notes || '%'))
+            OR   (search_notes_status = true  AND NOT (r."notes" ILIKE '%' || search_notes || '%' OR r."additionalNotes" ILIKE '%' || search_notes || '%'))))
+        AND (search_additional_notes IS NULL OR 
+              ((search_additional_notes_status = false AND r."additionalNotes" ILIKE '%' || search_additional_notes || '%')
+            OR   (search_additional_notes_status = true  AND NOT (r."additionalNotes" ILIKE '%' || search_additional_notes || '%'))))
+        AND (search_residence IS NULL OR 
+              ((search_residence_status = false AND r."residence" ILIKE '%' || search_residence || '%')
+            OR   (search_residence_status = true  AND NOT (r."residence" ILIKE '%' || search_residence || '%'))))
+        AND (search_conclusion_reg_num IS NULL OR 
+              ((search_conclusion_reg_num_status = false AND r."conclusionRegNum" ILIKE '%' || search_conclusion_reg_num || '%')
+            OR   (search_conclusion_reg_num_status = true  AND NOT (r."conclusionRegNum" ILIKE '%' || search_conclusion_reg_num || '%'))))
+        --
+        -- Date-range filters are handled similarly. For example, for regDate:
+        AND (
+            (search_reg_date_start IS NULL AND search_reg_date_end IS NULL)
+            OR (
+                (search_reg_date_status = false AND 
+                    (
+                      (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NULL AND r."regDate" >= search_reg_date_start)
+                   OR (search_reg_date_start IS NULL AND search_reg_date_end IS NOT NULL AND r."regDate" <= search_reg_date_end)
+                   OR (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NOT NULL 
+                        AND r."regDate" BETWEEN search_reg_date_start AND search_reg_date_end)
+                    )
+                )
+              OR (search_reg_date_status = true AND 
+                    (
+                      (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NULL AND r."regDate" < search_reg_date_start)
+                   OR (search_reg_date_start IS NULL AND search_reg_date_end IS NOT NULL AND r."regDate" > search_reg_date_end)
+                   OR (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NOT NULL 
+                        AND (r."regDate" < search_reg_date_start OR r."regDate" > search_reg_date_end))
+                    )
+                )
+            )
+        )
+        --
+        -- The birth date filter (which also uses the birthYear value)
+        AND (
+            (search_birth_date_start IS NULL AND search_birth_date_end IS NULL)
+            OR (
+                (search_birth_date_status = false AND 
+                    (
+                      (r."birthDate" IS NOT NULL AND r."birthDate" >= search_birth_date_start 
+                        AND r."birthDate" <= search_birth_date_end)
+                   OR (r."birthYear" IS NOT NULL AND r."birthYear" BETWEEN birth_year_start AND birth_year_end)
+                    )
+                )
+              OR (search_birth_date_status = true AND 
+                    NOT (
+                      (r."birthDate" IS NOT NULL AND r."birthDate" >= search_birth_date_start 
+                        AND r."birthDate" <= search_birth_date_end)
+                   OR (r."birthYear" IS NOT NULL AND r."birthYear" BETWEEN birth_year_start AND birth_year_end)
+                    )
+                )
+            )
+        )
+        --
+        -- For conclusionDate (which wasn't filtered in the original but is added here)
+        AND (
+            (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NULL)
+            OR (
+                (search_conclusion_date_status = false AND 
+                    (
+                      (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NULL AND r."conclusionDate" >= search_conclusion_date_start)
+                   OR (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NOT NULL AND r."conclusionDate" <= search_conclusion_date_end)
+                   OR (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NOT NULL 
+                        AND r."conclusionDate" BETWEEN search_conclusion_date_start AND search_conclusion_date_end)
+                    )
+                )
+              OR (search_conclusion_date_status = true AND 
+                    (
+                      (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NULL AND r."conclusionDate" < search_conclusion_date_start)
+                   OR (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NOT NULL AND r."conclusionDate" > search_conclusion_date_end)
+                   OR (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NOT NULL 
+                        AND (r."conclusionDate" < search_conclusion_date_start OR r."conclusionDate" > search_conclusion_date_end))
+                    )
+                )
+            )
+        )
+        --
+        -- For regEndDate:
+        AND (
+            (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NULL)
+            OR (
+                (search_reg_end_date_status = false AND 
+                    (
+                      (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NULL AND r."regEndDate" >= search_reg_end_date_start)
+                   OR (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NOT NULL AND r."regEndDate" <= search_reg_end_date_end)
+                   OR (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NOT NULL 
+                        AND r."regEndDate" BETWEEN search_reg_end_date_start AND search_reg_end_date_end)
+                    )
+                )
+              OR (search_reg_end_date_status = true AND 
+                    (
+                      (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NULL AND r."regEndDate" < search_reg_end_date_start)
+                   OR (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NOT NULL AND r."regEndDate" > search_reg_end_date_end)
+                   OR (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NOT NULL 
+                        AND (r."regEndDate" < search_reg_end_date_start OR r."regEndDate" > search_reg_end_date_end))
+                    )
+                )
+            )
+        )
+        ---------------
+        UNION ALL
+        ---------------
+        -- Query from Relatives joined with Registration (alias regg)
+        SELECT
+            rel."id"::UUID,
+            rel."model" AS model_name,
+            rel."relationDegree" AS relationDegree,
+            regg."form_reg" AS form_reg,
+            regg."form_reg_log" AS form_reg_log,
+            rel."regNumber" AS reg_number,
+            regg."regDate"::timestamp AS reg_date,
+            regg."regEndDate"::timestamp AS reg_end_date,
+            rel."fullName" AS full_name,
+            rel."firstName" AS first_name,
+            rel."lastName" AS last_name,
+            rel."fatherName" AS father_name,
+            rel.nationality,
+            rel."pinfl",
+            rel."birthDate"::timestamp AS birth_date,
+            rel."birthYear" AS birth_year,
+            regg."conclusionDate"::timestamp AS conclusion_date,
+            regg."conclusionRegNum" AS conclusion_reg_num,
+            rel."workplace",
+            rel."position" AS positionv1,
+            rel."birthPlace" AS birth_place,
+            rel."residence",
+            rel."notes",
+            rel."additionalNotes" AS additional_notes,
+            regg."accessStatus" AS access_status,
+            regg."expired"::timestamp AS expired,
+            regg."completeStatus"::text AS complete_status,
+            regg."expiredDate"::timestamp AS expired_date,
+            regg."recordNumber" AS record_number,
+            rel."or_tab",
+            ini."first_name" AS initiator_first_name,
+            ini."last_name" AS initiator_last_name,
+            adm."first_name" AS executor_first_name,
+            adm."last_name" AS executor_last_name,
+            rel."updatedAt" AS updatedAt,
+            rel."createdAt" AS createdAt
+        FROM
+            "Relatives" rel
+        LEFT JOIN "Initiator" ini ON rel."or_tab" = ini."id"
+        LEFT JOIN "Admin" adm ON rel."executorId" = adm."id"
+        INNER JOIN "Registration" regg ON rel."registrationId" = regg."id"
+        WHERE
+            (search_first_name IS NULL OR 
+              ((search_first_name_status = false AND rel."firstName" ILIKE '%' || search_first_name || '%')
+            OR   (search_first_name_status = true  AND NOT (rel."firstName" ILIKE '%' || search_first_name || '%'))))
+        AND (search_last_name IS NULL OR 
+              ((search_last_name_status = false AND rel."lastName" ILIKE '%' || search_last_name || '%')
+            OR   (search_last_name_status = true  AND NOT (rel."lastName" ILIKE '%' || search_last_name || '%'))))
+        AND (search_father_name IS NULL OR 
+              ((search_father_name_status = false AND rel."fatherName" ILIKE '%' || search_father_name || '%')
+            OR   (search_father_name_status = true  AND NOT (rel."fatherName" ILIKE '%' || search_father_name || '%'))))
+        AND (search_birth_place IS NULL OR 
+              ((search_birth_place_status = false AND rel."birthPlace" ILIKE '%' || search_birth_place || '%')
+            OR   (search_birth_place_status = true  AND NOT (rel."birthPlace" ILIKE '%' || search_birth_place || '%'))))
+        AND (search_work_place IS NULL OR 
+              ((search_work_place_status = false AND rel."workplace" ILIKE '%' || search_work_place || '%')
+            OR   (search_work_place_status = true  AND NOT (rel."workplace" ILIKE '%' || search_work_place || '%'))))
+        AND (search_position IS NULL OR 
+              ((search_position_status = false AND rel."position" ILIKE '%' || search_position || '%')
+            OR   (search_position_status = true  AND NOT (rel."position" ILIKE '%' || search_position || '%'))))
+        AND (search_reg_number IS NULL OR 
+              ((search_reg_number_status = false AND rel."regNumber" ILIKE '%' || search_reg_number || '%')
+            OR   (search_reg_number_status = true  AND NOT (rel."regNumber" ILIKE '%' || search_reg_number || '%'))))
+        AND (search_form_reg IS NULL OR 
+              ((search_form_reg_status = false AND regg."form_reg" ILIKE '%' || search_form_reg || '%')
+            OR   (search_form_reg_status = true  AND NOT (regg."form_reg" ILIKE '%' || search_form_reg || '%'))))
+        AND (search_id IS NULL OR 
+              ((search_id_status = false AND rel."id"::text ILIKE '%' || search_id || '%')
+            OR   (search_id_status = true  AND NOT (rel."id"::text ILIKE '%' || search_id || '%'))))
+        AND (search_model IS NULL OR 
+              ((search_model_status = false AND lower(rel."model") = lower(search_model))
+            OR   (search_model_status = true  AND NOT (lower(rel."model") = lower(search_model)))))
+        AND (search_complete_status IS NULL OR 
+              ((search_complete_status_status = false AND regg."completeStatus"::text ILIKE '%' || search_complete_status || '%')
+            OR   (search_complete_status_status = true  AND NOT (regg."completeStatus"::text ILIKE '%' || search_complete_status || '%'))))
+        AND (search_access_status IS NULL OR 
+              ((search_access_status_status = false AND regg."accessStatus"::text ILIKE '%' || search_access_status || '%')
+            OR   (search_access_status_status = true  AND NOT (regg."accessStatus"::text ILIKE '%' || search_access_status || '%'))))
+        AND (search_or_tab IS NULL OR 
+              ((search_or_tab_status = false AND rel."or_tab" ILIKE '%' || search_or_tab || '%')
+            OR   (search_or_tab_status = true  AND NOT (rel."or_tab" ILIKE '%' || search_or_tab || '%'))))
+        AND (search_executor_id IS NULL OR 
+              ((search_executor_id_status = false AND rel."executorId"::text ILIKE '%' || search_executor_id || '%')
+            OR   (search_executor_id_status = true  AND NOT (rel."executorId"::text ILIKE '%' || search_executor_id || '%'))))
+        AND (search_record_number IS NULL OR 
+              ((search_record_number_status = false AND regg."recordNumber" ILIKE '%' || search_record_number || '%')
+            OR   (search_record_number_status = true  AND NOT (regg."recordNumber" ILIKE '%' || search_record_number || '%'))))
+        -- NEW: PINFL search filter for Relatives
+        AND (search_pinfl IS NULL OR 
+              ((search_pinfl_status = false AND rel."pinfl" ILIKE '%' || search_pinfl || '%')
+            OR   (search_pinfl_status = true  AND NOT (rel."pinfl" ILIKE '%' || search_pinfl || '%'))))
+        AND (search_notes IS NULL OR 
+              ((search_notes_status = false AND (rel."notes" ILIKE '%' || search_notes || '%' OR rel."additionalNotes" ILIKE '%' || search_notes || '%'))
+            OR   (search_notes_status = true  AND NOT (rel."notes" ILIKE '%' || search_notes || '%' OR rel."additionalNotes" ILIKE '%' || search_notes || '%'))))
+        AND (search_additional_notes IS NULL OR 
+              ((search_additional_notes_status = false AND rel."additionalNotes" ILIKE '%' || search_additional_notes || '%')
+            OR   (search_additional_notes_status = true  AND NOT (rel."additionalNotes" ILIKE '%' || search_additional_notes || '%'))))
+        --
+        -- Date-range filters for the Relatives part.
+        AND (
+            (search_reg_date_start IS NULL AND search_reg_date_end IS NULL)
+            OR (
+                (search_reg_date_status = false AND 
+                    (
+                      (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NULL AND regg."regDate" >= search_reg_date_start)
+                   OR (search_reg_date_start IS NULL AND search_reg_date_end IS NOT NULL AND regg."regDate" <= search_reg_date_end)
+                   OR (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NOT NULL 
+                        AND regg."regDate" BETWEEN search_reg_date_start AND search_reg_date_end)
+                    )
+                )
+              OR (search_reg_date_status = true AND 
+                    (
+                      (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NULL AND regg."regDate" < search_reg_date_start)
+                   OR (search_reg_date_start IS NULL AND search_reg_date_end IS NOT NULL AND regg."regDate" > search_reg_date_end)
+                   OR (search_reg_date_start IS NOT NULL AND search_reg_date_end IS NOT NULL 
+                        AND (regg."regDate" < search_reg_date_start OR regg."regDate" > search_reg_date_end))
+                    )
+                )
+            )
+        )
+        AND (
+            (search_birth_date_start IS NULL AND search_birth_date_end IS NULL)
+            OR (
+                (search_birth_date_status = false AND 
+                    (
+                      (rel."birthDate" IS NOT NULL AND rel."birthDate" >= search_birth_date_start 
+                           AND rel."birthDate" <= search_birth_date_end)
+                   OR (rel."birthYear" IS NOT NULL AND rel."birthYear" BETWEEN birth_year_start AND birth_year_end)
+                    )
+                )
+              OR (search_birth_date_status = true AND 
+                    NOT (
+                      (rel."birthDate" IS NOT NULL AND rel."birthDate" >= search_birth_date_start 
+                           AND rel."birthDate" <= search_birth_date_end)
+                   OR (rel."birthYear" IS NOT NULL AND rel."birthYear" BETWEEN birth_year_start AND birth_year_end)
+                    )
+                )
+            )
+        )
+        AND (
+            (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NULL)
+            OR (
+                (search_conclusion_date_status = false AND 
+                    (
+                      (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NULL AND regg."conclusionDate" >= search_conclusion_date_start)
+                   OR (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NOT NULL AND regg."conclusionDate" <= search_conclusion_date_end)
+                   OR (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NOT NULL 
+                        AND regg."conclusionDate" BETWEEN search_conclusion_date_start AND search_conclusion_date_end)
+                    )
+                )
+              OR (search_conclusion_date_status = true AND 
+                    (
+                      (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NULL AND regg."conclusionDate" < search_conclusion_date_start)
+                   OR (search_conclusion_date_start IS NULL AND search_conclusion_date_end IS NOT NULL AND regg."conclusionDate" > search_conclusion_date_end)
+                   OR (search_conclusion_date_start IS NOT NULL AND search_conclusion_date_end IS NOT NULL 
+                        AND (regg."conclusionDate" < search_conclusion_date_start OR regg."conclusionDate" > search_conclusion_date_end))
+                    )
+                )
+            )
+        )
+        AND (
+            (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NULL)
+            OR (
+                (search_reg_end_date_status = false AND 
+                    (
+                      (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NULL AND regg."regEndDate" >= search_reg_end_date_start)
+                   OR (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NOT NULL AND regg."regEndDate" <= search_reg_end_date_end)
+                   OR (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NOT NULL 
+                        AND regg."regEndDate" BETWEEN search_reg_end_date_start AND search_reg_end_date_end)
+                    )
+                )
+              OR (search_reg_end_date_status = true AND 
+                    (
+                      (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NULL AND regg."regEndDate" < search_reg_end_date_start)
+                   OR (search_reg_end_date_start IS NULL AND search_reg_end_date_end IS NOT NULL AND regg."regEndDate" > search_reg_end_date_end)
+                   OR (search_reg_end_date_start IS NOT NULL AND search_reg_end_date_end IS NOT NULL 
+                        AND (regg."regEndDate" < search_reg_end_date_start OR regg."regEndDate" > search_reg_end_date_end))
+                    )
+                )
+            )
+        )
+    ) combined_results
+    ORDER BY model_name,createdAt DESC
+    LIMIT page_size OFFSET (page_number - 1) * page_size;
+END;
+$BODY$;
+
+ALTER FUNCTION public.search_recordsv25(text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, text, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, timestamp without time zone, timestamp without time zone, boolean, integer, integer)
+    OWNER TO postgres;
+
+
+
+CREATE OR REPLACE FUNCTION public.levenshtein(
+	text,
+	text)
+    RETURNS integer
+    LANGUAGE 'c'
+    COST 1
+    IMMUTABLE STRICT PARALLEL SAFE 
+AS '$libdir/fuzzystrmatch', 'levenshtein'
+;
+
+ALTER FUNCTION public.levenshtein(text, text)
+    OWNER TO postgres;
+
+

@@ -1,0 +1,26 @@
+{
+    "name": "access-to-postgres-full-migration",
+    "version": "1.0.0",
+    "description": "Full migration from Access (.accdb) to PostgreSQL with data transformation",
+    "main": "index.js",
+    "scripts": {
+        "docker:up": "docker-compose up -d",
+        "docker:down": "docker-compose down",
+        "docker:logs": "docker-compose logs -f",
+        "prisma:generate": "prisma generate",
+        "prisma:push": "prisma db push",
+        "prisma:studio": "prisma studio",
+        "migrate": "node index.js",
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "@prisma/client": "^6.4.0",
+        "csv-parse": "^5.6.0",
+        "dayjs": "^1.11.13",
+        "dotenv": "^16.4.5",
+        "pg": "^8.13.1"
+    },
+    "devDependencies": {
+        "prisma": "^6.4.0"
+    }
+}

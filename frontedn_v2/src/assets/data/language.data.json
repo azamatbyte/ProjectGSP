@@ -1,0 +1,20 @@
+[
+	{
+        "langName": "English",
+        "langId": "en",
+        "icon": "us",
+        "lang": "En"
+    },
+    {
+        "langName": "Uzbek",
+        "langId": "uz",
+        "icon": "uz",
+        "lang": "Uz"
+    },
+    {
+        "langName": "Russian",
+        "langId": "ru",
+        "icon": "ru",
+        "lang": "Ru"
+    }
+]

@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "target": "es6",
+        "allowSyntheticDefaultImports": false,
+        "baseUrl": "./",
+        "paths": {
+            "@/*": [
+                "./*"
+            ],
+            "@controllers/*": [
+                "api/controllers/*"
+            ],
+            "@models/*": [
+                "db/models/*"
+            ]
+        }
+    },
+    "exclude": [
+        "node_modules",
+        "dist",
+        "docs",
+        "build",
+        "node",
+        "pg",
+        "uploads",
+        "installer",
+        "Output",
+        "logs",
+        "db/migrations",
+        "prisma/migrations",
+        "*.zip"
+    ]
+}

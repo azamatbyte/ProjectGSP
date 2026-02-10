@@ -1,0 +1,6 @@
+.screen-protector-root { pointer-events: none; position: fixed; inset: 0; z-index: 2147483646; }
+.screen-protector-overlay { position: absolute; inset: 0; backdrop-filter: blur(0px); transition: background .15s, backdrop-filter .15s; }
+.screen-protector-overlay.visible { background: rgba(255,255,255,0.88); backdrop-filter: blur(2px); }
+.screen-protector-watermarks { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; gap: 0; opacity: 0.18; }
+.screen-protector-watermark { display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 600; color: #000; mix-blend-mode: multiply; transform: rotate(-25deg); user-select: none; white-space: nowrap; }
+@media (max-width: 800px) { .screen-protector-watermark { font-size: 1.3rem; } }

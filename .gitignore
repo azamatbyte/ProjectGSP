@@ -1,0 +1,23 @@
+# Executables
+*.exe
+
+# Archives (Node/PG downloads)
+*.zip
+
+# IDE
+.idea/
+.vscode/
+*.sublime*
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+nul
+
+# Temp/scratch
+tmp/
+
+# Build scripts at root (legacy)

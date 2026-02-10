@@ -1,0 +1,471 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CompleteStatus {
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+}
+
+model Admin {
+  id          String    @id @default(uuid())
+  username    String    @unique
+  password    String?   @default("")
+  birthDate   DateTime? @db.Date
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  father_name String?   @default("")
+  first_name  String
+  last_name   String?   @default("")
+  nationality String?   @default("")
+  rank        String?   @default("")
+  gender      String?   @default("male")
+  workplace   String?   @default("")
+  phone       String?   @unique
+  photo       String?   @default("")
+  salt        String?   @default("")
+  role        String    @default("admin")
+  status      String    @default("inactive")
+
+  AdminServiceAccess AdminServiceAccess[]
+  grantedAccess      AdminServiceAccess[] @relation("GrantedAccess")
+  RefreshToken       RefreshToken[]
+  registrations      Registration[]
+  relatives          Relatives[]          @relation("RelativesWhoAdded")
+  seans              Seans[]
+  accessStatus       AccessStatus[]
+  logs               Log[]
+  RegistrationLog    RegistrationLog[]
+  raport             Raport[]
+  archive            Archive[]
+  raportTypes        RaportTypes[]
+  temporaryData      TemporaryData[]
+
+  @@index([username])
+  @@index([id])
+}
+
+model AdminServiceAccess {
+  id             String   @id @default(uuid())
+  adminId        String?
+  serviceId      String?
+  grantedBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  admin          Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  grantedByAdmin Admin?   @relation("GrantedAccess", fields: [grantedBy], references: [id], onDelete: SetNull)
+  service        Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@index([adminId])
+}
+
+model Service {
+  id          String               @id @default(uuid())
+  name        String               @unique
+  description String?              @default("")
+  code        Int?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  access      AdminServiceAccess[]
+
+  @@index([id])
+}
+
+model Form {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @default("")
+  length      Int?
+  month       Int?
+  type        String?  @default("registration")
+  status      Boolean? @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+
+model Seans {
+  id          String   @id @default(uuid())
+  adminId     String
+  resource    String?  @default("")
+  ip_address  String?
+  user_agent  String?
+  auth_method String   @default("Login va parol")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  admin       Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+}
+
+model AccessStatus {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  adminId   String?
+  status    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([name])
+}
+
+model Registration {
+  id               String    @id @default(uuid())
+  form_reg         String?   @default("")
+  form_reg_log     String?   @default("")
+  regNumber        String?   @default("")
+  regDate          DateTime? @db.Date
+  regEndDate       DateTime? @db.Date
+  fullName         String
+  firstName        String?   @default("")
+  lastName         String?   @default("")
+  fatherName       String?   @default("")
+  nationality      String?   @default("")
+  pinfl            String?   @default("")
+  birthDate        DateTime? @db.Date
+  birthYear        Int?
+  conclusionDate   DateTime? @db.Date
+  conclusionRegNum String?   @default("")
+  workplace        String?   @default("")
+  position         String?   @default("")
+  birthPlace       String?   @default("")
+  residence        String?   @default("")
+  model            String?   @default("registration")
+
+  notes           String? @default("")
+  additionalNotes String? @default("")
+  conclusion_compr String? @default("")
+  externalNotes   String? @default("")
+
+  accessStatus   String?         @default("")
+  expired        DateTime?       @db.Date
+  completeStatus CompleteStatus? @default(WAITING)
+  expiredDate    DateTime?       @db.Date
+  recordNumber   String?         @default("")
+
+  or_tab     String?
+  executorId String?
+  whoAdd     String?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  status  String?   @default("proccess")
+  endDate DateTime? @db.Date
+
+  executor        Admin?            @relation(fields: [executorId], references: [id], onDelete: SetNull)
+  Initiator       Initiator?        @relation(fields: [or_tab], references: [id], onDelete: SetNull)
+  RegistrationLog RegistrationLog[]
+  Relatives       Relatives[]
+  raportLinks     RaportLink[]
+
+  @@index([id])
+}
+
+model WorkPlace {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+model RegistrationLog {
+  id             String       @id @default(uuid())
+  registrationId String
+  fieldName      String
+  oldValue       String?
+  newValue       String?
+  executorId     String?
+  createdAt      DateTime     @default(now())
+  executor       Admin?       @relation(fields: [executorId], references: [id], onDelete: Cascade)
+  updatedAt      DateTime     @updatedAt
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([registrationId])
+}
+
+model Relatives {
+  id             String    @id @default(uuid())
+  registrationId String?
+  regNumber      String
+  relationDegree String
+  fullName       String
+  firstName      String
+  lastName       String
+  fatherName     String?   @default("")
+  nationality    String?   @default("")
+  pinfl          String?   @default("")
+  birthYear      Int?
+  birthDate      DateTime? @db.Date
+  birthStatus    Boolean?
+  birthPlace     String?   @default("")
+  residence      String?   @default("")
+  workplace      String?   @default("")
+  position       String?   @default("")
+  familyStatus   String?   @default("single")
+  model          String?   @default("relative")
+
+  notes           String? @default("")
+  additionalNotes String? @default("")
+  externalNotes   String? @default("")
+
+  accessStatus    String?
+  status_analysis Boolean @default(true)
+
+  or_tab     String?
+  executorId String?
+  whoAdd     String?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  executor     Admin?        @relation("RelativesWhoAdded", fields: [executorId], references: [id], onDelete: SetNull)
+  Initiator    Initiator?    @relation("InitiatorRelatives", fields: [or_tab], references: [id], onDelete: SetNull)
+  registration Registration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+
+  @@index([registrationId])
+  @@index([regNumber])
+}
+
+model Initiator {
+  id            String          @id @default(uuid())
+  first_name    String
+  last_name     String?         @default("")
+  father_name   String?         @default("")
+  rank          String?         @default("")
+  notes         String?         @default("")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  Registration  Registration[]
+  relatives     Relatives[]     @relation("InitiatorRelatives")
+  temporaryData TemporaryData[]
+
+  @@index([id])
+}
+
+model RelationDegree {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  adminId   String?
+  expiredAt DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([token])
+}
+
+model Upload {
+  id         String   @id @default(uuid())
+  file_link  String   @unique
+  uploadedBy String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([file_link])
+}
+
+model Log {
+  id         String   @id @default(uuid())
+  recordId   String
+  tableName  String
+  fieldName  String
+  oldValue   String?  @default("")
+  newValue   String?  @default("")
+  executorId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  executor   Admin?   @relation(fields: [executorId], references: [id], onDelete: SetNull)
+
+  @@index([recordId])
+}
+
+model Raport {
+  id         String       @id @default(uuid())
+  name       String
+  executorId String?
+  link       String?
+  notes      String?      @default("")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  executor   Admin?       @relation(fields: [executorId], references: [id], onDelete: SetNull)
+  links      RaportLink[]
+
+  @@index([createdAt])
+}
+
+model SignList {
+  id          String    @id @default(uuid())
+  lastName    String?   @default("")
+  firstName   String
+  fatherName  String?   @default("")
+  workplace   String?   @default("")
+  position    String?   @default("")
+  rank        String?   @default("")
+  notes       String?   @default("")
+  birthDate   DateTime? @db.Date
+  nationality String?   @default("")
+  gender      String?   @default("male")
+  phone       String?   @unique
+  photo       String?   @default("")
+  status      String    @default("inactive")
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([firstName])
+  @@index([lastName])
+  @@index([fatherName])
+  @@index([id])
+}
+
+model RaportLink {
+  id            String         @id @default(uuid())
+  raportId      String?        @default("")
+  regNumber     String?        @default("")
+  code          String         @default("")
+  delete        Boolean        @default(false)
+  display       Boolean        @default(true)
+  adminCheck    Boolean        @default(false)
+  discussCheck  Boolean        @default(false)
+  operator      Boolean        @default(false)
+  notes         String?        @default("")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  raport        Raport?        @relation(fields: [raportId], references: [id], onDelete: SetNull)
+  registrations Registration[]
+}
+
+model Archive {
+  id         String   @id @default(uuid())
+  name       String?  @default("")
+  data       Json?
+  executorId String?
+  executor   Admin?   @relation(fields: [executorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model RaportTypes {
+  id                     String  @id @default(uuid())
+  name                   String  @default("")
+  code                   String
+  code_ru                String
+  code_uz                String
+  organization           String
+  requested_organization String
+  signed_fio             String? @default("")
+  signed_position        String? @default("")
+  link                   String? @default("")
+  notes                  String? @default("")
+  executorId             String?
+  data                   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  executor Admin? @relation(fields: [executorId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+model TemporaryData {
+  id           String   @id @default(uuid())
+  order        Int?
+  form_reg     String
+  regNumber    String
+  regDate      DateTime @db.Date
+  firstName    String
+  lastName     String
+  fatherName   String
+  fullName     String
+  birthYear    Int?
+  birthPlace   String
+  workplace    String
+  position     String
+  model        String
+  residence    String
+  initiatorId  String?
+  executorId   String?
+  accessStatus String?
+  data         Json?
+  recordNumber String?
+  pinfl        String?
+
+  found_status  Boolean? @default(false)
+  action_status String?
+
+  registration                 String?
+  registrationSimilarity       Json?
+  registration_four            String?
+  registration_four_similarity Json?
+  relatives                    String?
+
+  migration_status Boolean? @default(false)
+
+  status String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  executor  Admin?     @relation(fields: [executorId], references: [id], onDelete: SetNull)
+  Initiator Initiator? @relation(fields: [initiatorId], references: [id], onDelete: SetNull)
+
+  @@index([executorId])
+}
+
+enum SessionType {
+  SESSION
+  RESERVE
+  RAPORT
+}
+
+model Session {
+  id             String    @id @default(uuid())
+  registrationId String?
+  regNumber      String?
+  fullName       String?
+  firstName      String?
+  lastName       String?
+  fatherName     String?
+  birthYear      Int?
+  birthDate      DateTime? @db.Date
+  birthPlace     String?
+  workplace      String?
+  position       String?
+  residence      String?
+  model          String?   @default("registration")
+
+  notes           String?
+  additionalNotes String?
+  externalNotes   String?
+
+  adminId String
+  type    SessionType
+  order   Int
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([adminId, id])
+}

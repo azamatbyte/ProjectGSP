@@ -1,0 +1,7 @@
+/* styles.css yoki tegishli style faylingizga */
+@media (max-width: 767px) {
+    .clear-button-container {
+      display: flex !important;
+      justify-content: flex-end !important;
+    }
+  }

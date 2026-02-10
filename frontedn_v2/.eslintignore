@@ -1,0 +1,7 @@
+# Ignore build and generated folders
+build/
+public/
+electron/
+static/
+assets/
+**/*.min.js
