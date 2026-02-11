@@ -504,10 +504,15 @@
     "all_operator": "Оператор",
     "conclusion_compr": "Заключение",
     "discuss": "Переговорить",
-    "all_discuss":"Переговорить",
-    "compr_info_raport" : "Заключение",
-    "relative_raport" : "Компрматериалы родственников",
+    "all_discuss": "Переговорить",
+    "compr_info_raport": "Заключение",
+    "relative_raport": "Компрматериалы родственников",
     "citezenship": "Гражданство",
     "upload_backup": "Загрузить резервную копию",
-    "select_file": "Выберите файл"
+    "select_file": "Выберите файл",
+    "status_backend": "Сервер",
+    "status_database": "База данных",
+    "status_working": "Работает",
+    "status_not_working": "Не работает",
+    "status_checking": "Проверяется…"
 }

@@ -37,7 +37,11 @@ $seedMarker = Join-Path $ProgramDataRoot '.seeded'
 $startLog = Join-Path $logsDir 'start_services.log'
 
 $uploadsDir = Join-Path $AppRoot 'app/uploads'
-try { New-Item -ItemType Directory -Force -Path $logsDir,$pidDir,$uploadsDir | Out-Null } catch {}
+try {
+	New-Item -ItemType Directory -Force -Path $logsDir,$pidDir,$uploadsDir | Out-Null
+	# Uploads dir is under Program Files - grant write access so Node can save generated files
+	icacls $uploadsDir /grant 'Users:(OI)(CI)F' /Q 2>&1 | Out-Null
+} catch {}
 
 # Redirect all script output to log file as well
 try { Start-Transcript -Path $startLog -Append -Force | Out-Null } catch {}
@@ -270,9 +274,45 @@ try {
 	LogErr "Stack trace: $($_.ScriptStackTrace)"
 }
 
+# -- Database creation (if needed) --------------------------------------------
+# init_db.ps1 only runs initdb; we create the actual database here once PG is running
+Log "========== DATABASE CREATION CHECK =========="
+try {
+	$psqlExe = Join-Path $pgBin 'psql.exe'
+	$createdbExe = Join-Path $pgBin 'createdb.exe'
+	$dbName = if ($env:DB_NAME) { $env:DB_NAME } else { 'appdb' }
+	$dbUser = if ($env:DB_USER) { $env:DB_USER } else { 'appuser' }
+
+	LogDebug "Checking if database '$dbName' exists..."
+	if (Test-Path $psqlExe) {
+		$dbCheck = & $psqlExe -h 127.0.0.1 -p $pgPort -U $dbUser -tAc "SELECT 1 FROM pg_database WHERE datname='$dbName'" 2>&1
+		if ("$dbCheck".Trim() -eq '1') {
+			Log "Database '$dbName' already exists."
+		} else {
+			Log "Database '$dbName' not found - creating..."
+			for ($i = 0; $i -lt 3; $i++) {
+				$createResult = & $createdbExe -h 127.0.0.1 -p $pgPort -U $dbUser $dbName 2>&1
+				if ($LASTEXITCODE -eq 0) {
+					Log "Database '$dbName' created successfully."
+					break
+				} else {
+					LogErr "createdb attempt $($i+1) failed: $createResult"
+					if ($i -lt 2) { Start-Sleep -Seconds 2 }
+				}
+			}
+		}
+	} else {
+		LogErr "psql.exe not found at $psqlExe - cannot verify database"
+	}
+} catch {
+	LogErr "Database creation check failed: $_"
+}
+
 # -- Prisma schema push -------------------------------------------------------
 # Must run BEFORE Node server starts, so database schema exists
 Log "========== PRISMA SCHEMA PUSH =========="
+$prismaLog = Join-Path $logsDir 'prisma.log'
+$prismaOk = $false
 try {
 	LogDebug "Prisma CLI path: $prismaCli (exists: $(Test-Path $prismaCli))"
 	if (Test-Path $prismaCli) {
@@ -280,19 +320,26 @@ try {
 		LogDebug "Schema path: $schemaPath (exists: $(Test-Path $schemaPath))"
 		LogDebug "DATABASE_URL is set: $(if ($env:DATABASE_URL) { 'YES' } else { 'NO' })"
 
+		"[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] prisma db push started" | Out-File $prismaLog -Encoding utf8
+		"DATABASE_URL=$(if ($env:DATABASE_URL) { $env:DATABASE_URL -replace ':([^:@]+)@', ':***@' } else { 'NOT SET' })" | Out-File $prismaLog -Append -Encoding utf8
+
 		for ($i=0; $i -lt 3; $i++) {
 			try {
 				Log "Running prisma db push (attempt $($i+1)/3)..."
-				LogDebug "Command: $prismaCli db push --schema `"$schemaPath`" --accept-data-loss"
+				"[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Attempt $($i+1)/3" | Out-File $prismaLog -Append -Encoding utf8
 
 				$prismaOutput = & $prismaCli db push --schema $schemaPath --accept-data-loss 2>&1
 				$prismaExitCode = $LASTEXITCODE
+
+				$prismaOutput | Out-File $prismaLog -Append -Encoding utf8
+				"Exit code: $prismaExitCode" | Out-File $prismaLog -Append -Encoding utf8
 
 				LogDebug "Prisma exit code: $prismaExitCode"
 				$prismaOutput | ForEach-Object { LogDebug "  $_" }
 
 				if ($prismaExitCode -eq 0) {
 					Log "Prisma push succeeded."
+					$prismaOk = $true
 					break
 				} else {
 					LogErr "Prisma push failed with exit code: $prismaExitCode"
@@ -304,21 +351,26 @@ try {
 			}
 			catch {
 				LogErr "prisma db push attempt $($i+1) exception: $_"
+				"EXCEPTION: $_" | Out-File $prismaLog -Append -Encoding utf8
 				if ($i -lt 2) { Start-Sleep -Seconds 3 }
 			}
 		}
 	} else {
 		LogErr "Prisma CLI not found at $prismaCli - skipping schema push"
 		LogErr "This means database schema will not be created!"
+		"ERROR: Prisma CLI not found at $prismaCli" | Out-File $prismaLog -Encoding utf8
 	}
 } catch {
 	LogErr "Prisma push failed with exception: $_"
 	LogErr "Exception details: $($_.Exception.Message)"
+	"EXCEPTION: $_ -- $($_.Exception.Message)" | Out-File $prismaLog -Append -Encoding utf8
 }
+Log "Prisma log: $prismaLog"
 
 # -- Seed database (once, on first run) ---------------------------------------
 # Must run BEFORE Node server starts, so admin accounts exist
 Log "========== DATABASE SEEDING =========="
+$seedLog = Join-Path $logsDir 'seed.log'
 try {
 	LogDebug "Seed marker path: $seedMarker (exists: $(Test-Path $seedMarker))"
 	if (-not (Test-Path $seedMarker)) {
@@ -329,21 +381,38 @@ try {
 			Log "Seeding database (first run)..."
 			LogDebug "Command: $nodeExe `"$seedJs`""
 
-			$seedOutput = & $nodeExe $seedJs 2>&1
-			$seedExitCode = $LASTEXITCODE
+			"[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Seed started" | Out-File $seedLog -Encoding utf8
+			"Command: $nodeExe `"$seedJs`"" | Out-File $seedLog -Append -Encoding utf8
+			"DATABASE_URL=$(if ($env:DATABASE_URL) { $env:DATABASE_URL -replace ':([^:@]+)@', ':***@' } else { 'NOT SET' })" | Out-File $seedLog -Append -Encoding utf8
+			"Prisma push succeeded: $prismaOk" | Out-File $seedLog -Append -Encoding utf8
 
-			LogDebug "Seed exit code: $seedExitCode"
-			$seedOutput | ForEach-Object { Write-Host "  $_" }
-
-			if ($seedExitCode -eq 0) {
-				'seeded' | Out-File $seedMarker -Encoding ascii
-				Log "Database seeded successfully."
+			if (-not $prismaOk) {
+				LogErr "Skipping seed - prisma db push did not succeed (schema may not exist)"
+				"SKIPPED: prisma db push did not succeed" | Out-File $seedLog -Append -Encoding utf8
 			} else {
-				LogErr "Seed failed (exit code $seedExitCode)"
-				LogErr "You can re-run manually: $nodeExe `"$seedJs`""
+				$seedOutput = & $nodeExe $seedJs 2>&1
+				$seedExitCode = $LASTEXITCODE
+
+				"Exit code: $seedExitCode" | Out-File $seedLog -Append -Encoding utf8
+				$seedOutput | Out-File $seedLog -Append -Encoding utf8
+
+				LogDebug "Seed exit code: $seedExitCode"
+				$seedOutput | ForEach-Object { Write-Host "  $_" }
+
+				if ($seedExitCode -eq 0) {
+					'seeded' | Out-File $seedMarker -Encoding ascii
+					Log "Database seeded successfully."
+					"SUCCESS" | Out-File $seedLog -Append -Encoding utf8
+				} else {
+					LogErr "Seed failed (exit code $seedExitCode)"
+					LogErr "Check log: $seedLog"
+					LogErr "You can re-run manually: $nodeExe `"$seedJs`""
+					"FAILED" | Out-File $seedLog -Append -Encoding utf8
+				}
 			}
 		} else {
 			LogErr "Seed script not found: $seedJs"
+			"ERROR: seed.js not found at $seedJs" | Out-File $seedLog -Encoding utf8
 		}
 	} else {
 		Log "Database already seeded (marker file exists)"
@@ -351,7 +420,9 @@ try {
 } catch {
 	LogErr "Seed failed with exception: $_"
 	LogErr "Exception details: $($_.Exception.Message)"
+	"EXCEPTION: $_ -- $($_.Exception.Message)" | Out-File $seedLog -Append -Encoding utf8
 }
+Log "Seed log: $seedLog"
 
 # -- Node server --------------------------------------------------------------
 # Start Node AFTER database is ready with schema and seed data
@@ -453,4 +524,6 @@ Log "========== START_SERVICES COMPLETED =========="
 Log "Check logs at: $logsDir"
 Log "  - start_services.log (this script)"
 Log "  - postgres.log (PostgreSQL)"
+Log "  - prisma.log (Prisma schema push)"
+Log "  - seed.log (Database seeding)"
 Log "  - app.log (Node.js)"

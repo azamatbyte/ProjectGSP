@@ -1,5 +1,6 @@
 import React from "react";
 import LoginForm from "../../components/LoginForm";
+import StatusIndicators from "../../components/StatusIndicators";
 import { Card, Row, Col } from "antd";
 import { useSelector } from "react-redux";
 
@@ -21,7 +22,7 @@ const LoginOne = props => {
 						<Card>
 							<div className="my-4">
 								<div className="text-center">
-									<img className="img-fluid w-50 h-50" src={`/img/${theme === "light" ? "gsbp_white.png": "gsbp.png"}`} alt="" />
+									<img className="img-fluid w-50 h-50" src={`/img/${theme === "light" ? "gsbp_white.png" : "gsbp.png"}`} alt="" />
 									{/* <p>Don't have an account yet? <a href="/auth/register-1">Sign Up</a></p> */}
 								</div>
 								<Row justify="center">
@@ -31,6 +32,7 @@ const LoginOne = props => {
 								</Row>
 							</div>
 						</Card>
+						<StatusIndicators />
 					</Col>
 				</Row>
 			</div>

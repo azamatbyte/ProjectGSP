@@ -20,6 +20,7 @@ const sessions = require('./sessions');
 const router = express.Router();
 const conclusion = require('./conclusion');
 const migration = require('./migration');
+const health = require('./health');
 
 router.use('/auth', auth);
 router.use('/services', service);
@@ -39,6 +40,7 @@ router.use('/session', sessions);
 router.use('/upload', verifyToken, file_uploads);
 router.use('/conclusion', conclusion);
 router.use('/migration', migration);
+router.use('/health', health);
 
 module.exports = router;
 
