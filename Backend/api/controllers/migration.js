@@ -12,6 +12,7 @@ const fs = require("fs");
 const path = require("path");
 
 const prisma = new PrismaClient();
+const isWindows = process.platform === 'win32';
 
 // ============================================================
 // Configuration
@@ -19,9 +20,18 @@ const prisma = new PrismaClient();
 const OLEDB_PROVIDER = process.env.OLEDB_PROVIDER || "Microsoft.ACE.OLEDB.12.0";
 const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || "2000", 10);
 
-// PowerShell helper scripts
+// PowerShell helper scripts (Windows only)
 const SCHEMA_SCRIPT = path.join(__dirname, "../../scripts/_ps_schema.ps1");
 const STREAM_SCRIPT = path.join(__dirname, "../../scripts/_ps_stream.ps1");
+
+// MDB type name to ADO type mapping (for mdb-tools on Linux)
+const MDB_TO_ADO = {
+    'Long Integer': 3, 'Integer': 2, 'Byte': 17,
+    'Single': 4, 'Double': 5, 'Currency': 6,
+    'DateTime': 7, 'Boolean': 11, 'Numeric': 131,
+    'Text': 202, 'Memo/Hyperlink': 201, 'Memo': 201,
+    'OLE Object': 205, 'Replication ID': 72,
+};
 
 // Temp database config (same PostgreSQL server, different database)
 const getTempPgConfig = () => {
@@ -384,6 +394,186 @@ function parseSchema(output) {
     return tables;
 }
 
+// ============================================================
+// Platform-specific: mdb-tools (Linux/macOS)
+// ============================================================
+
+function runCommand(cmd, args) {
+    return new Promise((resolve, reject) => {
+        const proc = spawn(cmd, args);
+        let stdout = "";
+        let stderr = "";
+        proc.stdout.setEncoding("utf8");
+        proc.stderr.setEncoding("utf8");
+        proc.stdout.on("data", (d) => (stdout += d));
+        proc.stderr.on("data", (d) => (stderr += d));
+        proc.on("close", (code) => {
+            if (code !== 0) reject(new Error(`${cmd} exit ${code}: ${stderr}`));
+            else resolve(stdout);
+        });
+        proc.on("error", reject);
+    });
+}
+
+function parseMdbSchemaOutput(schemaStr) {
+    const columns = [];
+    for (const line of schemaStr.split("\n")) {
+        const match = line.match(/\[([^\]]+)\]\s+([A-Za-z/][\w\s/]*?)(?:\s+\((\d+)\))?\s*[,)]\s*$/);
+        if (!match) continue;
+        const name = match[1];
+        const mdbType = match[2].trim();
+        const maxLen = match[3] ? parseInt(match[3], 10) : 0;
+        const adoType = MDB_TO_ADO[mdbType] || 202;
+        columns.push({ name, adoType, maxLen, pgType: getPgType(adoType, maxLen) });
+    }
+    return columns;
+}
+
+async function getMdbSchema(accessPath) {
+    const tablesOutput = await runCommand("mdb-tables", ["-1", accessPath]);
+    const tableNames = tablesOutput.split("\n")
+        .map((t) => t.trim())
+        .filter((t) => t && !t.startsWith("MSys") && !t.startsWith("~"));
+
+    const tables = [];
+    for (const name of tableNames) {
+        const countOutput = await runCommand("mdb-count", [accessPath, name]);
+        const rows = parseInt(countOutput.trim(), 10) || 0;
+        const schemaOutput = await runCommand("mdb-schema", [accessPath, "-T", name]);
+        const columns = parseMdbSchemaOutput(schemaOutput);
+        tables.push({ name, rows, columns, primaryKeys: [] });
+    }
+    return tables;
+}
+
+function parseCsvLine(line) {
+    const values = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+            if (ch === '"') {
+                if (i + 1 < line.length && line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                current += ch;
+            }
+        } else {
+            if (ch === '"') {
+                inQuotes = true;
+            } else if (ch === ',') {
+                values.push(current);
+                current = "";
+            } else {
+                current += ch;
+            }
+        }
+    }
+    values.push(current);
+    return { values, complete: !inQuotes };
+}
+
+function csvValueToTyped(rawVal, adoType) {
+    if (rawVal === "") return null;
+    switch (adoType) {
+        case 11: return rawVal === "1" || rawVal.toLowerCase() === "true";
+        case 2: case 3: case 17: { const v = parseInt(rawVal, 10); return isNaN(v) ? null : v; }
+        case 4: case 5: case 6: case 131: { const v = parseFloat(rawVal); return isNaN(v) ? null : v; }
+        case 128: case 204: case 205: return null;
+        default: return rawVal;
+    }
+}
+
+async function streamAndInsertFromMdbTools(pg, table, accessPath) {
+    return new Promise((resolve, reject) => {
+        const proc = spawn("mdb-export", ["-D", "%Y-%m-%dT%H:%M:%S", "-b", "strip", accessPath, table.name]);
+        proc.stdout.setEncoding("utf8");
+        proc.stderr.setEncoding("utf8");
+        const rl = createInterface({ input: proc.stdout });
+        let headers = null;
+        let buffer = [];
+        let inserted = 0;
+        let error = null;
+        let lineNum = 0;
+        let pendingLine = null;
+        let flushing = false;
+        let closed = false;
+
+        async function flushBuffer() {
+            if (buffer.length === 0) return;
+            const batch = buffer;
+            buffer = [];
+            flushing = true;
+            try {
+                await insertBatch(pg, table.name, table.columns, batch);
+                inserted += batch.length;
+                printProgress(inserted, table.rows);
+            } catch (err) {
+                error = err;
+                proc.kill();
+            }
+            flushing = false;
+        }
+
+        rl.on("line", (line) => {
+            if (error) return;
+
+            let result;
+            if (pendingLine !== null) {
+                pendingLine += "\n" + line;
+                result = parseCsvLine(pendingLine);
+                if (!result.complete) return;
+                pendingLine = null;
+            } else {
+                lineNum++;
+                if (lineNum === 1) {
+                    headers = parseCsvLine(line).values;
+                    return;
+                }
+                result = parseCsvLine(line);
+                if (!result.complete) {
+                    pendingLine = line;
+                    return;
+                }
+            }
+
+            try {
+                const record = {};
+                for (let i = 0; i < headers.length && i < result.values.length; i++) {
+                    const col = table.columns.find((c) => c.name === headers[i]);
+                    record[headers[i]] = csvValueToTyped(result.values[i], col ? col.adoType : 202);
+                }
+                buffer.push(record);
+            } catch (e) { return; }
+
+            if (buffer.length >= BATCH_SIZE) {
+                rl.pause();
+                flushBuffer().then(() => { if (!error && !closed) rl.resume(); }).catch((err) => { error = err; proc.kill(); });
+            }
+        });
+
+        let stderr = "";
+        proc.stderr.on("data", (d) => (stderr += d));
+        proc.on("close", async (code) => {
+            closed = true;
+            try {
+                while (flushing) await sleep(50);
+                if (!error) await flushBuffer();
+            } catch (err) { error = err; }
+            if (error) return reject(error);
+            if (code !== 0 && inserted === 0) return reject(new Error(`mdb-export exit ${code}: ${stderr}`));
+            console.log("");
+            resolve(inserted);
+        });
+        proc.on("error", reject);
+    });
+}
+
 async function connectTempPgWithRetry(maxRetries = 30) {
     const TEMP_PG_CONFIG = getTempPgConfig();
 
@@ -520,18 +710,24 @@ async function streamAndInsertFromPowerShell(pg, table, connStr) {
 async function migrateAccessToTempDb(accessPath) {
     console.log("\n[Phase 1] Migrating Access to Temporary PostgreSQL...\n");
 
-    const CONN_STR = `Provider=${OLEDB_PROVIDER};Data Source=${accessPath};`;
-
     if (!fs.existsSync(accessPath)) {
         throw new Error(`Access file not found: ${accessPath}`);
     }
-    if (!fs.existsSync(SCHEMA_SCRIPT) || !fs.existsSync(STREAM_SCRIPT)) {
-        throw new Error("PowerShell helper scripts not found (_ps_schema.ps1, _ps_stream.ps1)");
+
+    let tables;
+    if (isWindows) {
+        const CONN_STR = `Provider=${OLEDB_PROVIDER};Data Source=${accessPath};`;
+        if (!fs.existsSync(SCHEMA_SCRIPT) || !fs.existsSync(STREAM_SCRIPT)) {
+            throw new Error("PowerShell helper scripts not found (_ps_schema.ps1, _ps_stream.ps1)");
+        }
+        console.log("[1/4] Discovering Access schema (PowerShell + OleDb)...");
+        const schemaOutput = await runPowerShell(SCHEMA_SCRIPT, ["-ConnStr", CONN_STR]);
+        tables = parseSchema(schemaOutput);
+    } else {
+        console.log("[1/4] Discovering Access schema (mdb-tools)...");
+        tables = await getMdbSchema(accessPath);
     }
 
-    console.log("[1/4] Discovering Access schema...");
-    const schemaOutput = await runPowerShell(SCHEMA_SCRIPT, ["-ConnStr", CONN_STR]);
-    const tables = parseSchema(schemaOutput);
     console.log(`  Found ${tables.length} tables\n`);
     for (const t of tables) {
         console.log(`  ${t.name} : ${t.rows.toLocaleString()} rows, ${t.columns.length} cols`);
@@ -558,7 +754,12 @@ async function migrateAccessToTempDb(accessPath) {
             continue;
         }
         try {
-            await streamAndInsertFromPowerShell(pg, table, CONN_STR);
+            if (isWindows) {
+                const CONN_STR = `Provider=${OLEDB_PROVIDER};Data Source=${accessPath};`;
+                await streamAndInsertFromPowerShell(pg, table, CONN_STR);
+            } else {
+                await streamAndInsertFromMdbTools(pg, table, accessPath);
+            }
         } catch (err) {
             console.log(`  ERROR: ${err.message}`);
         }

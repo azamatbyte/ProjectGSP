@@ -113,9 +113,9 @@ Ensure-Line 'DB_USER' $pgUser
 Ensure-Line 'DB_PORT' $pgPort
 Ensure-Line 'DB_PASSWORD' $pgPass
 Ensure-Line 'DB_NAME' $dbName
-Ensure-Line 'DB_HOST' 'localhost'
+Ensure-Line 'DB_HOST' '127.0.0.1'
 if (-not (Select-String -Path $envFile -Pattern '^DATABASE_URL=' -Quiet)) {
-	$dbUrl = "postgresql://${pgUser}:${pgPass}@localhost:${pgPort}/${dbName}"
+	$dbUrl = "postgresql://${pgUser}:${pgPass}@127.0.0.1:${pgPort}/${dbName}"
 	Add-Content -Path $envFile -Value "DATABASE_URL=$dbUrl"
 	Write-Debug "Added DATABASE_URL to env file"
 }
@@ -152,7 +152,8 @@ $pgHba        = Join-Path $dataDir 'pg_hba.conf'
 Add-Content -Path $postgresConf -Value "# --- Custom overrides ---"
 Add-Content -Path $postgresConf -Value "listen_addresses = '127.0.0.1'"
 Add-Content -Path $postgresConf -Value "port = $pgPort"
-Write-Debug "  Set listen_addresses = '127.0.0.1', port = $pgPort"
+Add-Content -Path $postgresConf -Value "client_encoding = 'UTF8'"
+Write-Debug "  Set listen_addresses = '127.0.0.1', port = $pgPort, client_encoding = UTF8"
 
 if (-not (Select-String -Path $pgHba -Pattern '127.0.0.1/32' -Quiet)) {
 	Add-Content -Path $pgHba -Value "host all all 127.0.0.1/32 scram-sha-256"

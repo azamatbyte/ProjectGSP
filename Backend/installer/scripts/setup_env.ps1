@@ -80,7 +80,7 @@ if ((Test-Path $EnvFile) -and -not $Force) {
 
     # Ensure DB_* keys exist (init_db.ps1 reads these)
     if ($content -notmatch 'DB_HOST\s*=') {
-        Add-Content -Path $EnvFile -Value "DB_HOST=localhost"
+        Add-Content -Path $EnvFile -Value "DB_HOST=127.0.0.1"
         Log "Added DB_HOST"
         $needsUpdate = $true
     }
@@ -107,7 +107,7 @@ if ((Test-Path $EnvFile) -and -not $Force) {
 
     # Check for DATABASE_URL
     if ($content -notmatch 'DATABASE_URL\s*=\s*\S+') {
-        $dbUrl = "postgresql://${user}:${pass}@localhost:${port}/${dbName}?schema=public"
+        $dbUrl = "postgresql://${user}:${pass}@127.0.0.1:${port}/${dbName}?schema=public"
         Add-Content -Path $EnvFile -Value "DATABASE_URL=$dbUrl"
         Log "Generated DATABASE_URL"
         $needsUpdate = $true
@@ -155,8 +155,8 @@ $jwtKey = New-SecureString -Length 48
     "JWT_SECRET_KEY=$jwtKey",
     '',
     '# Database Connection',
-    "DATABASE_URL=postgresql://appuser:${pgPass}@localhost:5433/appdb?schema=public",
-    "DB_HOST=localhost",
+    "DATABASE_URL=postgresql://appuser:${pgPass}@127.0.0.1:5433/appdb?schema=public",
+    "DB_HOST=127.0.0.1",
     "DB_PORT=5433",
     "DB_USER=appuser",
     "DB_PASSWORD=$pgPass",

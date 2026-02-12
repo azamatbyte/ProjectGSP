@@ -97,6 +97,13 @@ if (Test-Path $envFile) {
 }
 $pgPort = if ($env:DB_PORT) { $env:DB_PORT } else { '5433' }
 
+# Patch DATABASE_URL: replace localhost with 127.0.0.1 to avoid IPv6 resolution issues
+# On Windows 10/11, localhost can resolve to ::1 (IPv6) but PG only listens on 127.0.0.1
+if ($env:DATABASE_URL -and $env:DATABASE_URL -match '@localhost:') {
+	$env:DATABASE_URL = $env:DATABASE_URL -replace '@localhost:', '@127.0.0.1:'
+	LogDebug "Patched DATABASE_URL: replaced @localhost: with @127.0.0.1:"
+}
+
 Log "Configuration:"
 Log "  AppRoot: $AppRoot"
 Log "  ProgramDataRoot: $ProgramDataRoot"
@@ -105,6 +112,19 @@ Log "  DATABASE_URL: $(if ($env:DATABASE_URL) { $env:DATABASE_URL -replace ':([^
 
 # -- PostgreSQL ---------------------------------------------------------------
 Log "========== POSTGRESQL STARTUP =========="
+
+# Create missing timezonesets directory (antivirus may block extraction from installer)
+# Without this, autovacuum workers crash every minute with FATAL error
+$tzDir = Join-Path $AppRoot 'pg/share/timezonesets'
+if (-not (Test-Path $tzDir)) {
+	try {
+		New-Item -ItemType Directory -Force -Path $tzDir | Out-Null
+		Log "Created missing timezonesets directory: $tzDir"
+	} catch {
+		LogDebug "Could not create timezonesets directory: $_"
+	}
+}
+
 try {
 	# Auto-init if pgdata is missing (init_db.ps1 may have failed during install)
 	if (-not (Test-Path $dataDir)) {
@@ -135,6 +155,12 @@ try {
 		if (Test-Path $pgConf) {
 			$portLine = Get-Content $pgConf | Select-String -Pattern '^port\s*=' | Select-Object -First 1
 			LogDebug "postgresql.conf port setting: $portLine"
+
+			# Ensure client_encoding = UTF8 (prevents WIN1252 encoding errors with Cyrillic data)
+			if (-not (Select-String -Path $pgConf -Pattern "client_encoding\s*=" -Quiet)) {
+				Add-Content -Path $pgConf -Value "client_encoding = 'UTF8'"
+				Log "Added client_encoding = 'UTF8' to postgresql.conf"
+			}
 		}
 
 		# Start Postgres if needed
@@ -215,7 +241,7 @@ try {
 
 				while ((Get-Date) -lt $deadline) {
 					$attempts++
-					$isReadyOutput = & $pgIsReady -h localhost -p $pgPort 2>&1
+					$isReadyOutput = & $pgIsReady -h 127.0.0.1 -p $pgPort 2>&1
 					$isReadyExitCode = $LASTEXITCODE
 
 					if ($isReadyExitCode -eq 0) {
@@ -274,6 +300,78 @@ try {
 	LogErr "Stack trace: $($_.ScriptStackTrace)"
 }
 
+# -- Password health check ----------------------------------------------------
+# If .env was regenerated but pgdata kept old password, fix it via pg_hba.conf trust
+Log "========== PASSWORD HEALTH CHECK =========="
+try {
+	$psqlExe = Join-Path $pgBin 'psql.exe'
+	$pgHbaConf = Join-Path $dataDir 'pg_hba.conf'
+	$dbUser = if ($env:DB_USER) { $env:DB_USER } else { 'appuser' }
+	$dbPass = if ($env:DB_PASSWORD) { $env:DB_PASSWORD } else { $env:PGPASSWORD }
+
+	if ((Test-Path $psqlExe) -and (Test-Path $pgHbaConf)) {
+		# Ensure PGPASSWORD env var matches DB_PASSWORD (psql/createdb use PGPASSWORD)
+		if ($dbPass -and (-not $env:PGPASSWORD -or $env:PGPASSWORD -ne $dbPass)) {
+			$env:PGPASSWORD = $dbPass
+			LogDebug "Synced PGPASSWORD env var from DB_PASSWORD"
+		}
+
+		# Test authentication with current password
+		$testResult = & $psqlExe -h 127.0.0.1 -p $pgPort -U $dbUser -tAc "SELECT 1" postgres 2>&1
+		if ($LASTEXITCODE -eq 0) {
+			Log "Password authentication OK."
+		} else {
+			$testStr = "$testResult"
+			if ($testStr -match 'password authentication failed') {
+				Log "Password mismatch detected - resetting password via pg_hba.conf trust..."
+
+				# Backup pg_hba.conf
+				$pgHbaBackup = "$pgHbaConf.bak"
+				Copy-Item $pgHbaConf $pgHbaBackup -Force
+
+				# Temporarily set trust auth for 127.0.0.1
+				$hbaContent = Get-Content $pgHbaConf
+				$hbaNew = $hbaContent -replace 'host\s+all\s+all\s+127\.0\.0\.1/32\s+scram-sha-256', 'host all all 127.0.0.1/32 trust'
+				$hbaNew | Set-Content $pgHbaConf -Encoding ascii
+
+				# Reload PG config (no restart needed)
+				& $pgCtl -D $dataDir reload 2>&1 | Out-Null
+				Start-Sleep -Seconds 2
+
+				# Reset password
+				$escapedPass = $dbPass -replace "'", "''"
+				$alterResult = & $psqlExe -h 127.0.0.1 -p $pgPort -U $dbUser -c "ALTER USER `"$dbUser`" WITH PASSWORD '$escapedPass'" postgres 2>&1
+				if ($LASTEXITCODE -eq 0) {
+					Log "Password reset successfully."
+					$env:PGPASSWORD = $dbPass
+				} else {
+					LogErr "Password reset failed: $alterResult"
+				}
+
+				# Restore pg_hba.conf
+				Copy-Item $pgHbaBackup $pgHbaConf -Force
+				Remove-Item $pgHbaBackup -Force -ErrorAction SilentlyContinue
+
+				# Reload config again
+				& $pgCtl -D $dataDir reload 2>&1 | Out-Null
+				Start-Sleep -Seconds 2
+
+				# Verify
+				$verifyResult = & $psqlExe -h 127.0.0.1 -p $pgPort -U $dbUser -tAc "SELECT 1" postgres 2>&1
+				if ($LASTEXITCODE -eq 0) {
+					Log "Password verification OK after reset."
+				} else {
+					LogErr "Password still failing after reset: $verifyResult"
+				}
+			} else {
+				LogDebug "psql test returned non-auth error: $testStr"
+			}
+		}
+	}
+} catch {
+	LogErr "Password health check failed: $_"
+}
+
 # -- Database creation (if needed) --------------------------------------------
 # init_db.ps1 only runs initdb; we create the actual database here once PG is running
 Log "========== DATABASE CREATION CHECK =========="
@@ -285,7 +383,7 @@ try {
 
 	LogDebug "Checking if database '$dbName' exists..."
 	if (Test-Path $psqlExe) {
-		$dbCheck = & $psqlExe -h 127.0.0.1 -p $pgPort -U $dbUser -tAc "SELECT 1 FROM pg_database WHERE datname='$dbName'" 2>&1
+		$dbCheck = & $psqlExe -h 127.0.0.1 -p $pgPort -U $dbUser -tAc "SELECT 1 FROM pg_database WHERE datname='$dbName'" postgres 2>&1
 		if ("$dbCheck".Trim() -eq '1') {
 			Log "Database '$dbName' already exists."
 		} else {
@@ -295,6 +393,9 @@ try {
 				if ($LASTEXITCODE -eq 0) {
 					Log "Database '$dbName' created successfully."
 					break
+				} elseif ("$createResult" -match 'already exists') {
+					Log "Database '$dbName' already exists (confirmed by createdb)."
+					break
 				} else {
 					LogErr "createdb attempt $($i+1) failed: $createResult"
 					if ($i -lt 2) { Start-Sleep -Seconds 2 }
@@ -303,6 +404,16 @@ try {
 		}
 	} else {
 		LogErr "psql.exe not found at $psqlExe - cannot verify database"
+	}
+	# Force UTF8 client_encoding at the database level (overrides client locale negotiation)
+	# This prevents WIN1252 encoding errors when inserting Cyrillic data
+	if (Test-Path $psqlExe) {
+		$encResult = & $psqlExe -h 127.0.0.1 -p $pgPort -U $dbUser -c "ALTER DATABASE `"$dbName`" SET client_encoding = 'UTF8'" postgres 2>&1
+		if ($LASTEXITCODE -eq 0) {
+			Log "Set client_encoding = UTF8 on database '$dbName'"
+		} else {
+			LogDebug "ALTER DATABASE client_encoding result: $encResult"
+		}
 	}
 } catch {
 	LogErr "Database creation check failed: $_"

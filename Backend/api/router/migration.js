@@ -7,14 +7,22 @@ const uuid = require('uuid');
 const { verifyToken, permissionCheck } = require("../middleware/auth");
 const { runMigration } = require('../controllers/migration');
 
+const isWindows = process.platform === 'win32';
+
 // Configure multer for Access file uploads
-// Use ProgramData directory (writable) instead of Program Files (read-only in production)
-const programData = process.env.ProgramData || process.env.PROGRAMDATA || 'C:\\ProgramData';
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const uploadDir = process.env.NODE_ENV === 'production'
-            ? path.join(programData, 'GSPApp', 'uploads', 'migrations')
-            : path.join(__dirname, '../../uploads/migrations');
+        let uploadDir;
+        if (process.env.NODE_ENV === 'production') {
+            if (isWindows) {
+                const programData = process.env.ProgramData || process.env.PROGRAMDATA || 'C:\\ProgramData';
+                uploadDir = path.join(programData, 'GSPApp', 'uploads', 'migrations');
+            } else {
+                uploadDir = process.env.UPLOAD_DIR || '/var/lib/gspapp/uploads/migrations';
+            }
+        } else {
+            uploadDir = path.join(__dirname, '../../uploads/migrations');
+        }
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
@@ -135,31 +143,57 @@ router.get('/status', verifyToken, permissionCheck("superAdmin"), async (req, re
     try {
         const { spawn } = require('child_process');
 
-        // Check if PowerShell scripts exist
-        const schemaScript = path.join(__dirname, '../../scripts/_ps_schema.ps1');
-        const streamScript = path.join(__dirname, '../../scripts/_ps_stream.ps1');
+        if (isWindows) {
+            // Windows: check PowerShell scripts + OleDb driver
+            const schemaScript = path.join(__dirname, '../../scripts/_ps_schema.ps1');
+            const streamScript = path.join(__dirname, '../../scripts/_ps_stream.ps1');
+            const scriptsExist = fs.existsSync(schemaScript) && fs.existsSync(streamScript);
 
-        const scriptsExist = fs.existsSync(schemaScript) && fs.existsSync(streamScript);
+            const accessDriverAvailable = await new Promise((resolve) => {
+                try {
+                    const ps = spawn('powershell.exe', ['-Command',
+                        'try { $conn = New-Object System.Data.OleDb.OleDbConnection; $true } catch { $false }'
+                    ]);
+                    ps.on('error', () => resolve(false));
+                    ps.on('close', (code) => resolve(code === 0));
+                } catch (e) {
+                    resolve(false);
+                }
+            });
 
-        // Check Access driver availability (quick test)
-        let accessDriverAvailable = false;
-        try {
-            const ps = spawn('powershell.exe', ['-Command',
-                'try { $conn = New-Object System.Data.OleDb.OleDbConnection; $true } catch { $false }'
-            ]);
-            accessDriverAvailable = true;
-        } catch (e) {
-            accessDriverAvailable = false;
+            return res.status(200).json({
+                code: 200,
+                data: {
+                    platform: 'win32',
+                    driver: 'powershell+oledb',
+                    scriptsExist,
+                    accessDriverAvailable,
+                    ready: scriptsExist && accessDriverAvailable
+                }
+            });
+        } else {
+            // Linux/macOS: check mdb-tools availability
+            const mdbToolsAvailable = await new Promise((resolve) => {
+                try {
+                    const proc = spawn('mdb-tables', ['--version']);
+                    proc.on('error', () => resolve(false));
+                    proc.on('close', () => resolve(true));
+                } catch (e) {
+                    resolve(false);
+                }
+            });
+
+            return res.status(200).json({
+                code: 200,
+                data: {
+                    platform: process.platform,
+                    driver: 'mdb-tools',
+                    mdbToolsAvailable,
+                    ready: mdbToolsAvailable,
+                    ...(!mdbToolsAvailable && { message: 'Install mdb-tools: sudo apt install mdbtools' })
+                }
+            });
         }
-
-        return res.status(200).json({
-            code: 200,
-            data: {
-                scriptsExist,
-                accessDriverAvailable,
-                ready: scriptsExist
-            }
-        });
     } catch (err) {
         return res.status(500).json({
             code: 500,
