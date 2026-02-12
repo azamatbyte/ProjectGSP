@@ -81,13 +81,13 @@ function runPowerShell(scriptPath, args) {
   });
 }
 
-function runPowerShellSync(scriptPath, args) {
+function runPowerShellSync(scriptPath, args, timeout) {
   if (!fs.existsSync(scriptPath)) return;
   try {
     execFileSync('powershell.exe', [
       '-ExecutionPolicy', 'Bypass', '-NoProfile', '-WindowStyle', 'Hidden',
       '-File', scriptPath, ...args,
-    ], { timeout: 30000 });
+    ], { timeout: timeout || 30000, windowsHide: true });
   } catch (e) {
     console.error('[PS sync]', e.message);
   }
@@ -212,17 +212,29 @@ async function ensureBackendRunning() {
 }
 
 function stopServices() {
-  // Kill Node process we spawned directly
-  if (nodeProcess) {
-    try { nodeProcess.kill(); } catch (_) {}
+  // Kill Node process tree we spawned directly
+  if (nodeProcess && nodeProcess.pid) {
+    try {
+      // On Windows, kill the entire process tree (node + child processes)
+      execFileSync('taskkill', ['/T', '/F', '/PID', String(nodeProcess.pid)], {
+        timeout: 10000,
+        windowsHide: true,
+      });
+    } catch (_) {
+      // Fallback: simple kill
+      try { nodeProcess.kill('SIGKILL'); } catch (_2) {}
+    }
     nodeProcess = null;
   }
 
-  // Also stop PG and any other Node via stop script
-  if (servicesStartedByUs && isPackaged) {
+  // Always stop PG via stop script when packaged (even if backend was already
+  // running when we started -- we own the portable PG instance)
+  if (isPackaged) {
     const stopScript = path.join(BACKEND_ROOT, 'scripts', 'stop_services.ps1');
-    console.log('[Electron] Stopping backend services...');
-    runPowerShellSync(stopScript, ['-AppRoot', BACKEND_ROOT]);
+    if (fs.existsSync(stopScript)) {
+      console.log('[Electron] Stopping backend services...');
+      runPowerShellSync(stopScript, ['-AppRoot', BACKEND_ROOT]);
+    }
   }
 }
 
@@ -253,6 +265,14 @@ async function createWindow() {
 
   mainWindow.loadURL(`http://localhost:${BACKEND_PORT}`);
   mainWindow.once('ready-to-show', () => mainWindow.show());
+
+  // Minimize to tray on close button instead of destroying window
+  mainWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
@@ -262,10 +282,16 @@ function createTray() {
   tray = new Tray(img);
   tray.setToolTip('\u041A\u041E\u041C\u041F\u041B\u0415\u041A\u0421');
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '\u041E\u0442\u043A\u0440\u044B\u0442\u044C', click: () => createWindow() },
+    { label: '\u041E\u0442\u043A\u0440\u044B\u0442\u044C', click: () => {
+      if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
+      else { createWindow(); }
+    }},
     { label: '\u0412\u044B\u0445\u043E\u0434', click: () => { isQuitting = true; app.quit(); } },
   ]));
-  tray.on('click', () => createWindow());
+  tray.on('click', () => {
+    if (mainWindow) { mainWindow.show(); mainWindow.focus(); }
+    else { createWindow(); }
+  });
 }
 
 // ── App lifecycle ───────────────────────────────────────────────────────

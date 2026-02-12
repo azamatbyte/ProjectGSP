@@ -83,7 +83,9 @@ const styles = {
     wrapper: {
         display: "flex",
         justifyContent: "center",
-        gap: 16,
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 8,
         marginTop: 16,
     },
     pill: {
