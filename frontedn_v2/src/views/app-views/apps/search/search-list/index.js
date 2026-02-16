@@ -62,6 +62,8 @@ const GlobalSearch = (props) => {
   const [search, setSearch] = useState(() => {
     return searchParamsData ? JSON.parse(searchParamsData) : {};
   });
+  const [sortField, setSortField] = useState(searchParams.get("sortField") || null);
+  const [sortOrder, setSortOrder] = useState(searchParams.get("sortOrder") || null);
   const [expand, setExpand] = useState(false);
   const [form] = Form.useForm();
   const { t } = useTranslation();
@@ -86,13 +88,15 @@ const GlobalSearch = (props) => {
     params.set("pageNumber", pageNumber.toString());
     params.set("pageSize", pageSize.toString());
     params.set("search", JSON.stringify(search));
+    if (sortField) params.set("sortField", sortField);
+    if (sortOrder) params.set("sortOrder", sortOrder);
     navigate(`${location.pathname}?${params.toString()}`, { replace: true });
 
     // Reset flag after a short delay
     setTimeout(() => {
       isUpdatingURL.current = false;
     }, 0);
-  }, [pageNumber, pageSize, search, location.pathname, navigate]);
+  }, [pageNumber, pageSize, search, sortField, sortOrder, location.pathname, navigate]);
 
   // FIX 3: Separate fetchData function with proper dependencies
   const fetchData = useCallback(async () => {
@@ -101,7 +105,9 @@ const GlobalSearch = (props) => {
       const res = await RegistrationService.getListByGlobalSearch(
         pageNumber,
         pageSize,
-        search
+        search,
+        sortField,
+        sortOrder
       );
       if (res?.data?.data?.length > 0) {
         setList(res?.data?.data);
@@ -117,7 +123,7 @@ const GlobalSearch = (props) => {
     } finally {
       setLoading(false);
     }
-  }, [pageNumber, pageSize, search]);
+  }, [pageNumber, pageSize, search, sortField, sortOrder]);
 
   // FIX 4: Separate fetchCount function
   const fetchCount = useCallback(async () => {
@@ -148,6 +154,9 @@ const GlobalSearch = (props) => {
       }
     }
 
+    const urlSortField = searchParams.get("sortField") || null;
+    const urlSortOrder = searchParams.get("sortOrder") || null;
+
     // Only update if values are actually different
     if (urlPageNumber !== pageNumber) {
       setPageNumber(urlPageNumber);
@@ -157,6 +166,12 @@ const GlobalSearch = (props) => {
     }
     if (JSON.stringify(urlSearch) !== JSON.stringify(search)) {
       setSearch(urlSearch);
+    }
+    if (urlSortField !== sortField) {
+      setSortField(urlSortField);
+    }
+    if (urlSortOrder !== sortOrder) {
+      setSortOrder(urlSortOrder);
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -182,7 +197,7 @@ const GlobalSearch = (props) => {
     }, 100); // Small delay to batch updates
 
     return () => clearTimeout(timeoutId);
-  }, [pageNumber, pageSize, search]); // These trigger URL updates
+  }, [pageNumber, pageSize, search, sortField, sortOrder]); // These trigger URL updates
 
   // FIX 8: Handle pagination reset with better logic
   useEffect(() => {
@@ -483,6 +498,17 @@ const GlobalSearch = (props) => {
     }
   }, 500);
 
+  const handleTableChange = useCallback((pagination, filters, sorter) => {
+    if (sorter.order) {
+      setSortField(sorter.field);
+      setSortOrder(sorter.order === 'ascend' ? 'ASC' : 'DESC');
+    } else {
+      setSortField(null);
+      setSortOrder(null);
+    }
+    setPageNumber(1);
+  }, []);
+
   const tableColumns = useMemo(
     () => [
       {
@@ -508,7 +534,9 @@ const GlobalSearch = (props) => {
         title: t("registration_number"),
         dataIndex: "reg_number",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "reg_number"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'reg_number' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (reg_number) => (
           <Tooltip title={reg_number}>
             <span
@@ -555,7 +583,9 @@ const GlobalSearch = (props) => {
         dataIndex: "form_reg",
         align: "center",
         width: "10%",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "form_reg"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'form_reg' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (form_reg) => (
           <Tooltip title={form_reg}>
             <span>
@@ -577,7 +607,9 @@ const GlobalSearch = (props) => {
         dataIndex: "form_reg_log",
         align: "center",
         width: "10%",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "form_reg_log"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'form_reg_log' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (form_reg_log) => {
           const truncated =
             form_reg_log && form_reg_log.length > 6
@@ -602,7 +634,9 @@ const GlobalSearch = (props) => {
         dataIndex: "relationdegree",
         align: "center",
         width: "10%",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "relationdegree"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'relationdegree' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (relationdegree) => (
           <Tooltip title={relationdegree}>
             <span>
@@ -625,7 +659,9 @@ const GlobalSearch = (props) => {
         dataIndex: "full_name",
         width: "15%",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "full_name"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'full_name' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (full_name) => (
           <Tooltip title={full_name}>
             <span style={{
@@ -668,6 +704,9 @@ const GlobalSearch = (props) => {
         dataIndex: "birth_date",
         align: "center",
         width: "10%",
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'birth_date' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (_, elm) => (
           <>{elm?.birth_date ? elm?.birth_datev1 : elm?.birth_year}</>
         ),
@@ -677,7 +716,9 @@ const GlobalSearch = (props) => {
         dataIndex: "reg_date",
         align: "center",
         width: "10%",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "reg_date"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'reg_date' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (reg_date) => (
           <Tooltip title={getDateDayString(reg_date)}>
             <span>
@@ -699,7 +740,9 @@ const GlobalSearch = (props) => {
         dataIndex: "reg_end_date",
         align: "center",
         width: "10%",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "reg_end_date"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'reg_end_date' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (reg_end_date) => (
           <Tooltip title={getDateDayString(reg_end_date)}>
             <span>
@@ -721,7 +764,9 @@ const GlobalSearch = (props) => {
         dataIndex: "complete_status",
         align: "center",
         width: "10%",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "complete_status"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'complete_status' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (complete_status, elm) => (
           <>
             {complete_status === "WAITING" ? (
@@ -743,7 +788,9 @@ const GlobalSearch = (props) => {
         dataIndex: "access_status",
         width: "10%",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "access_status"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'access_status' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (accessStatus, elm) => (
           <>
             {(accessStatus === "ДОПУСК" && accessStatus !== null) ||
@@ -802,7 +849,9 @@ const GlobalSearch = (props) => {
         dataIndex: "expired",
         width: "5%",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "expired"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'expired' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (expired) => (
           <Tooltip title={getDateDayString(expired)}>
             <span>
@@ -818,6 +867,9 @@ const GlobalSearch = (props) => {
         dataIndex: "pinfl",
         width: "5%",
         align: "center",
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'pinfl' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (pinfl) => (
           <Tooltip title={pinfl}>
             <span>
@@ -830,7 +882,9 @@ const GlobalSearch = (props) => {
         title: t("conclusion_register_number"),
         dataIndex: "conclusion_reg_num",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "conclusion_reg_num"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'conclusion_reg_num' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (conclusion_reg_num) => (
           <Tooltip title={conclusion_reg_num}>
             <span>
@@ -851,7 +905,9 @@ const GlobalSearch = (props) => {
         title: t("birth_place"),
         dataIndex: "birth_place",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "birth_place"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'birth_place' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (birthPlace) => {
           const text = birthPlace || "";
           const truncated = text.length > 10 ? text.slice(0, 10) + "..." : text;
@@ -876,7 +932,9 @@ const GlobalSearch = (props) => {
         title: t("work_place"),
         dataIndex: "workplace",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "workplace"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'workplace' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (workplace, elm) => {
           const fullText = `${workplace || ""} ${elm?.positionv1 || ""}`.trim();
           if (fullText.length > 7) {
@@ -908,7 +966,9 @@ const GlobalSearch = (props) => {
         title: t("compr_info"),
         dataIndex: "notes",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "notes"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'notes' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (notes) => {
           // Define the truncated version if notes length exceeds 10 characters
           const truncated =
@@ -935,7 +995,9 @@ const GlobalSearch = (props) => {
         title: t("residence"),
         dataIndex: "residence",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "residence"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'residence' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (residence) => (
           <Tooltip title={residence}>
             {residence
@@ -951,7 +1013,9 @@ const GlobalSearch = (props) => {
         title: t("initiator"),
         dataIndex: "initiator",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "initiator"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'initiator' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (_, elm) => {
           const fullName =
             (elm?.initiator_last_name
@@ -976,7 +1040,9 @@ const GlobalSearch = (props) => {
         title: t("executor"),
         dataIndex: "executor",
         align: "center",
-        // sorter: (a, b) => utils.antdTableSorter(a, b, "executor"),
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'executor' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (_, elm) => (
           <>
             {elm?.executor_last_name} {elm?.executor_first_name}
@@ -987,6 +1053,9 @@ const GlobalSearch = (props) => {
         title: t("updated_at"),
         dataIndex: "updatedat",
         align: "center",
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortField === 'updatedat' ? (sortOrder === 'ASC' ? 'ascend' : 'descend') : null,
         render: (updatedat) => (
           <span
             style={{
@@ -1002,7 +1071,7 @@ const GlobalSearch = (props) => {
         ),
       },
     ],
-    [t, total, pageNumber, pageSize, dropdownMenu]
+    [t, total, pageNumber, pageSize, dropdownMenu, sortField, sortOrder]
   );
 
   // FIX 9: Ensure pagination handlers don't cause loops
@@ -1963,6 +2032,8 @@ const GlobalSearch = (props) => {
               onClick={() => {
                 setSearch({});
                 form.resetFields();
+                setSortField(null);
+                setSortOrder(null);
                 setPageNumber(1);
               }}
             >
@@ -1999,6 +2070,7 @@ const GlobalSearch = (props) => {
           // }}
           loading={loading}
           pagination={false}
+          onChange={handleTableChange}
         />
         <Row
           style={{

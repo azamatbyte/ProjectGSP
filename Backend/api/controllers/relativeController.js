@@ -1,10 +1,8 @@
 const { PrismaClient } = require("@prisma/client");
-const dotenv = require("dotenv");
 const { RelativeSchema } = require("../helpers/validator");
 const { v4: uuidv4, validate: isUuid } = require("uuid");
 const { MODEL_TYPE } = require("../helpers/constants");
 
-dotenv.config();
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
@@ -393,6 +391,7 @@ exports.searchRelatives = async (req, res) => {
       birthPlace,
       workplace,
       model = "relative",
+      sort,
     } = req.body;
 
     const page = parseInt(pageNumber, 10);
@@ -480,39 +479,107 @@ exports.searchRelatives = async (req, res) => {
 
     console.log(filters);
 
-    // Get total count and relatives in a single transaction
-    const [totalRelatives, relatives] = await prisma.$transaction([
-      prisma.relatives.count({ where: filters }),
-      prisma.relatives.findMany({
-        where: filters,
-        include: {
-          registration: {
-            select: {
-              regNumber: true,
-              id: true,
-              fullName: true,
-            },
-          },
-          Initiator: {
-            select: {
-              id: true,
-              first_name: true,
-              last_name: true,
-            },
-          },
-          executor: {
-            select: {
-              id: true,
-              first_name: true,
-              last_name: true,
-            },
-          },
+    // Cyrillic-friendly ordering for name fields using Intl.Collator
+    const nameSortableFields = new Set(["fullName", "firstName", "lastName", "fatherName"]);
+
+    const getSortEntry = (s) => {
+      if (!s || typeof s !== "object") return null;
+      const entries = Object.entries(s);
+      if (entries.length !== 1) return null;
+      const [field, directionOrObj] = entries[0];
+      let direction = "asc";
+      if (typeof directionOrObj === "string") direction = directionOrObj;
+      else if (
+        directionOrObj &&
+        typeof directionOrObj === "object" &&
+        typeof directionOrObj.sort === "string"
+      ) {
+        direction = directionOrObj.sort;
+      }
+      return { field, direction: direction?.toLowerCase() === "desc" ? "desc" : "asc" };
+    };
+
+    const sortEntry = getSortEntry(sort);
+
+    const includeRelations = {
+      registration: {
+        select: {
+          regNumber: true,
+          id: true,
+          fullName: true,
         },
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * size,
-        take: size,
-      }),
-    ]);
+      },
+      Initiator: {
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+        },
+      },
+      executor: {
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+        },
+      },
+    };
+
+    let totalRelatives;
+    let relatives;
+
+    if (sortEntry && nameSortableFields.has(sortEntry.field)) {
+      // Fetch all IDs + the target field, sort with Cyrillic collator, then page
+      const toSelect = { id: true };
+      toSelect[sortEntry.field] = true;
+      const allForSort = await prisma.relatives.findMany({
+        where: filters,
+        select: toSelect,
+      });
+
+      const collator = new Intl.Collator(["ru", "uk", "kk", "uz"], {
+        sensitivity: "base",
+        numeric: true,
+        usage: "sort",
+      });
+
+      allForSort.sort((a, b) => {
+        const av = (a[sortEntry.field] || "").toString();
+        const bv = (b[sortEntry.field] || "").toString();
+        const cmp = collator.compare(av, bv);
+        return sortEntry.direction === "desc" ? -cmp : cmp;
+      });
+
+      totalRelatives = allForSort.length;
+      const offset = (page - 1) * size;
+      const pageIds = allForSort.slice(offset, offset + size).map((r) => r.id);
+
+      if (pageIds.length === 0) {
+        relatives = [];
+      } else {
+        const unordered = await prisma.relatives.findMany({
+          where: { id: { in: pageIds } },
+          include: includeRelations,
+        });
+        const pos = new Map(pageIds.map((id, i) => [id, i]));
+        unordered.sort((a, b) => pos.get(a.id) - pos.get(b.id));
+        relatives = unordered;
+      }
+    } else {
+      // Default DB-side ordering
+      const [count, rows] = await prisma.$transaction([
+        prisma.relatives.count({ where: filters }),
+        prisma.relatives.findMany({
+          where: filters,
+          include: includeRelations,
+          orderBy: sort ? sort : { createdAt: "desc" },
+          skip: (page - 1) * size,
+          take: size,
+        }),
+      ]);
+      totalRelatives = count;
+      relatives = rows;
+    }
 
     const totalPages = Math.ceil(totalRelatives / size);
 

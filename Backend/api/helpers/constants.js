@@ -1,3 +1,6 @@
+const { getEnv } = require('../../config/env');
+const env = getEnv();
+
 exports.MODEL_TYPE = {
   REGISTRATION: "registration",
   REGISTRATION_FOUR: "registration4",
@@ -16,8 +19,7 @@ exports.ACCESS_STATUS = {
   CONCLUSION: "ЗАКЛЮЧЕНИЕ",
 };
 
-exports.SERVER_URL = process.env.SERVER_URL
-  || `http://${process.env.HOST || '127.0.0.1'}:${process.env.PORT || 8080}`;
+exports.SERVER_URL = env.SERVER_URL;
 
 
 

@@ -11,8 +11,6 @@ import { useTranslation } from "react-i18next";
 import { getDateDayString } from "utils/aditionalFunctions";
 import EllipsisDropdown from "components/shared-components/EllipsisDropdown";
 import Flex from "components/shared-components/Flex";
-import Utils from "utils";
-
 const RelativeTable = ({
   id,
   redirect,
@@ -31,23 +29,33 @@ const RelativeTable = ({
     pageSize: 10,
     total: 0,
   });
-
+  const [sortField, setSortField] = useState(null);
+  const [sortOrder, setSortOrder] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
       setData((prev) => ({ ...prev, loading: true }));
-      const service =
-        formType === "4"
-          ? RegistrationService.getList
-          : RelativeService.list_by_registrationId;
-      const params =
-        formType === "4" ? { model: "registration4", regNumber } : id;
-      const response = await service(
-        data.pageNumber,
-        data.pageSize,
-        params,
-        model
-      );
+      const sort = sortField && sortOrder
+        ? { [sortField]: sortOrder.toLowerCase() }
+        : undefined;
+      let response;
+      if (formType === "4") {
+        response = await RegistrationService.getList(
+          data.pageNumber,
+          data.pageSize,
+          "registration4",
+          { regNumber },
+          sort ? { sort } : undefined
+        );
+      } else {
+        response = await RelativeService.list_by_registrationId(
+          data.pageNumber,
+          data.pageSize,
+          id,
+          model,
+          { params: { id, model }, ...(sort ? { sort } : {}) }
+        );
+      }
       setData({
         items: response?.data?.relatives || response?.data?.registrations || [],
         loading: false,
@@ -67,7 +75,7 @@ const RelativeTable = ({
         total: 0,
       });
     }
-  }, [id, model, formType, regNumber, data.pageNumber, data.pageSize]);
+  }, [id, model, formType, regNumber, data.pageNumber, data.pageSize, sortField, sortOrder]);
 
   useEffect(() => {
     if (model === "registration4") {
@@ -131,6 +139,16 @@ const RelativeTable = ({
     ]
    });
 
+  const handleTableChange = (pagination, filters, sorter) => {
+    if (sorter?.field && sorter?.order) {
+      setSortField(sorter.field);
+      setSortOrder(sorter.order === "ascend" ? "ASC" : "DESC");
+    } else {
+      setSortField(null);
+      setSortOrder(null);
+    }
+  };
+
   const columns = [
     {
       title: t("№"),
@@ -154,7 +172,9 @@ const RelativeTable = ({
             title: t("relation_degree"),
             dataIndex: "relationDegree",
             key: "relation_degree",
-            sorter: (a, b) => Utils.antdTableSorter(a, b, "relationDegree"),
+            sorter: true,
+            sortDirections: ["ascend", "descend"],
+            sortOrder: sortField === "relationDegree" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
             render: (text) =>
               text?.length > 30 ? text.slice(0, 30) + "..." : text,
           },
@@ -164,24 +184,36 @@ const RelativeTable = ({
       title: t("last_name"),
       dataIndex: "lastName",
       key: "last_name",
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "lastName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (text) => (text?.length > 30 ? text.slice(0, 30) + "..." : text),
     },
     {
       title: t("first_name"),
       dataIndex: "firstName",
       key: "first_name",
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "firstName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (text) => (text?.length > 30 ? text.slice(0, 30) + "..." : text),
     },
     {
       title: t("father_name"),
       dataIndex: "fatherName",
       key: "fatherName",
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "fatherName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (text) => (text?.length > 30 ? text.slice(0, 30) + "..." : text),
     },
     {
       title: t("birth_date"),
       dataIndex: "birthDate",
       key: "birthDate",
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "birthDate" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (birthDate, elm) => {
         const birthDateString = birthDate
           ? getDateDayString(birthDate)
@@ -195,12 +227,18 @@ const RelativeTable = ({
       title: t("birth_place"),
       dataIndex: "birthPlace",
       key: "birthPlace",
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "birthPlace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (text) => (text?.length > 30 ? text.slice(0, 30) + "..." : text),
     },
     {
       title: t("residence"),
       dataIndex: "residence",
       key: "residence",
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "residence" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (text) =>
         text?.length > 100 ? text.slice(0, 100) + "..." : text,
     },
@@ -208,6 +246,9 @@ const RelativeTable = ({
       title: t("workplace"),
       dataIndex: "workplace",
       key: "workplace",
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "workplace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (text, elm) =>
         elm?.workplace
           ? elm?.workplace + (elm?.position ? " - " + elm?.position : "")
@@ -217,6 +258,9 @@ const RelativeTable = ({
       title: t("notes"),
       dataIndex: "notes",
       key: "notes",
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "notes" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (text) => (text?.length > 10 ? text.slice(0, 10) + "..." : text),
     }
   ];
@@ -226,6 +270,7 @@ const RelativeTable = ({
       dataSource={data.items}
       columns={columns}
       loading={data.loading}
+      onChange={handleTableChange}
       pagination={{
         current: data.pageNumber,
         pageSize: data.pageSize,

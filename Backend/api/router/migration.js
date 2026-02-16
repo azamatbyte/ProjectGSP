@@ -6,6 +6,8 @@ const fs = require('fs');
 const uuid = require('uuid');
 const { verifyToken, permissionCheck } = require("../middleware/auth");
 const { runMigration } = require('../controllers/migration');
+const { getEnv } = require('../../config/env');
+const env = getEnv();
 
 const isWindows = process.platform === 'win32';
 
@@ -13,12 +15,11 @@ const isWindows = process.platform === 'win32';
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         let uploadDir;
-        if (process.env.NODE_ENV === 'production') {
+        if (env.NODE_ENV === 'production') {
             if (isWindows) {
-                const programData = process.env.ProgramData || process.env.PROGRAMDATA || 'C:\\ProgramData';
-                uploadDir = path.join(programData, 'GSPApp', 'uploads', 'migrations');
+                uploadDir = path.join(env.PROGRAM_DATA, 'GSPApp', 'uploads', 'migrations');
             } else {
-                uploadDir = process.env.UPLOAD_DIR || '/var/lib/gspapp/uploads/migrations';
+                uploadDir = env.UPLOAD_DIR;
             }
         } else {
             uploadDir = path.join(__dirname, '../../uploads/migrations');

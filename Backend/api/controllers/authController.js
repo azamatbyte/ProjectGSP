@@ -1,7 +1,6 @@
 const config = require("../../config/auth.config");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const dotenv = require("dotenv");
 const { userLogger } = require("../helpers/logger");
 const { AdminSchema } = require("../helpers/validator");
 const { PrismaClient } = require("@prisma/client");
@@ -10,7 +9,6 @@ const safeString = require("../helpers/safeString");
 // Initialize Prisma Client
 const prisma = require('../../db/database');
 
-dotenv.config();
 
 /**
  * @swagger

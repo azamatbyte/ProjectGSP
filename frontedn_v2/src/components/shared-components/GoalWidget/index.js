@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import { Progress } from "antd";
 import Card from "components/shared-components/Card";
 
-export const GoalWidget = ({ title, value, size, subtitle, strokeWidth, extra }) => {
+export const GoalWidget = ({ title, value, size, subtitle, strokeWidth, extra, cardStyle }) => {
 	return (
-		<Card>
+		<Card style={cardStyle}>
 			<div className="text-center">
 				{title && <h4 className="mb-3 font-weight-bold">{title}</h4>}
 				<Progress type="dashboard" percent={value} size={size} strokeWidth={strokeWidth}/>
@@ -26,6 +26,7 @@ GoalWidget.propTypes = {
 	value: PropTypes.number,
 	size: PropTypes.number,
 	subtitle: PropTypes.string,
+	cardStyle: PropTypes.object,
 	extra:PropTypes.oneOfType([
 		PropTypes.string,
 		PropTypes.element

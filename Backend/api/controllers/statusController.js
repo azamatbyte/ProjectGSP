@@ -1,11 +1,9 @@
 const { PrismaClient } = require("@prisma/client");
-const dotenv = require("dotenv");
 const {  AccessStatus } = require("../helpers/validator");
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
 
-dotenv.config();
 
 /**
  * @swagger

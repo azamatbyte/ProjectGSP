@@ -1,4 +1,3 @@
-const dotenv = require("dotenv");
 const { PrismaClient, Prisma } = require("@prisma/client");
 const { RegistrationSchema } = require("../helpers/validator");
 const { v4: uuidv4, validate: isUuid } = require("uuid");
@@ -19,7 +18,6 @@ const { MODEL_TYPE } = require("../helpers/constants");
 const { buildSearchQuery, buildCountQuery } = require("../helpers/globalSearchQueryBuilder");
 const { equal } = require("assert");
 
-dotenv.config();
 
 // Register archiver-zip-encrypted for password-protected ZIP files
 const archiverZipEncrypted = require('archiver-zip-encrypted');
@@ -2503,10 +2501,18 @@ exports.globalSearch = async (req, res) => {
       recordNumberStatus,
       executorId,
       executorIdStatus,
+      sortField,
+      sortOrder,
     } = req.body;
 
     pageNumber = parseInt(pageNumber, 10);
     pageSize = parseInt(pageSize, 10);
+
+    // Validate sortOrder
+    const validSortOrder = sortOrder && ['ASC', 'DESC'].includes(sortOrder.toUpperCase())
+      ? sortOrder.toUpperCase()
+      : null;
+    const validSortField = sortField || null;
 
     let filter = "";
 
@@ -2789,7 +2795,7 @@ exports.globalSearch = async (req, res) => {
     };
 
     // Build and execute the query using inline SQL (replaces search_recordsv25 function)
-    const query = buildSearchQuery(searchParams, pageNumber, pageSize);
+    const query = buildSearchQuery(searchParams, pageNumber, pageSize, validSortField, validSortOrder);
 
     let results = await prisma.$queryRawUnsafe(query);
     results = results.map((item) => ({

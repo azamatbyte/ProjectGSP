@@ -1,9 +1,11 @@
 const path = require('path');
 const { createLogger, format, transports, config } = require('winston');
+const { getEnv } = require('../../config/env');
 const { combine, timestamp, json } = format;
+const env = getEnv();
 
-const logDir = process.env.NODE_ENV === 'production' && process.env.ProgramData
-  ? path.join(process.env.ProgramData, 'GSPApp', 'logs')
+const logDir = env.NODE_ENV === 'production' && env.PROGRAM_DATA
+  ? path.join(env.PROGRAM_DATA, 'GSPApp', 'logs')
   : './logs';
 
 const userLogger = createLogger({

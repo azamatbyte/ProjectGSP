@@ -10,8 +10,8 @@ RelativeService.delete = function (id) {
 	return Request.deleteRequest(`relatives/delete/${id}`);
 };
 
-RelativeService.getList = function (pageNumber=1, pageSize=10,search=null) {
-	return Request.postRequest(`relatives/list?pageNumber=${pageNumber}&pageSize=${pageSize}`,search);
+RelativeService.getList = function (pageNumber=1, pageSize=10,search=null,sort) {
+	return Request.postRequest(`relatives/list?pageNumber=${pageNumber}&pageSize=${pageSize}`,{...search, ...(sort ? { sort } : {})});
 };
 
 RelativeService.searchByRegistrationId = function (registrationId,pageNumber=1, pageSize=10) {

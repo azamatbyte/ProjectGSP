@@ -1,6 +1,4 @@
 const { PrismaClient } = require("@prisma/client");
-const dotenv = require("dotenv");
-dotenv.config();
 const safeString = require("../helpers/safeString");
 
 // Initialize Prisma Client

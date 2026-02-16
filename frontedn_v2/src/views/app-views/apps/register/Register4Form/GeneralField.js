@@ -27,7 +27,6 @@ import WorkPlaceService from "services/WorkPlaceService";
 import FormService from "services/FormService";
 import RegistrationService from "services/RegistrationService";
 import InitiatorService from "services/InitiatorService";
-import utils from "utils";
 import { getDateDayString, getDateString } from "utils/aditionalFunctions";
 import AccessStatusService from "services/AccessStatusService";
 import { useTranslation } from "react-i18next";
@@ -109,6 +108,8 @@ const GeneralField = (props) => {
   const [relativeTotal, setRelativeTotal] = useState(0);
 
   const [loading, setLoading] = useState(false);
+  const [sortField, setSortField] = useState(null);
+  const [sortOrder, setSortOrder] = useState(null);
 
   const completeStatus = [
     { key: "WAITING", label: t("waiting") },
@@ -201,13 +202,15 @@ const GeneralField = (props) => {
       try {
         setLoading(true);
         if (regNumber !== "") {
+          const sortParam = sortField && sortOrder
+            ? { sort: { [sortField]: sortOrder.toLowerCase() } }
+            : undefined;
           const data = await RegistrationService.getList(
             relativePageNumber,
             relativePageSize,
-            {
-              regNumber: regNumber,
-              model: "registration4",
-            }
+            "registration4",
+            { regNumber: regNumber },
+            sortParam
           );
           setDataSource(data?.data?.registrations);
           setRelativeTotal(data?.data?.total_registrations);
@@ -227,7 +230,7 @@ const GeneralField = (props) => {
     if (mode !== "EDIT") {
       fetchData();
     }
-  }, [regNumber, relativePageNumber, relativePageSize, mode, t]);
+  }, [regNumber, relativePageNumber, relativePageSize, mode, t, sortField, sortOrder]);
 
   const debouncedFetchWorkplaces = debounce(async (searchText) => {
     if (searchText.length > 2) {
@@ -364,18 +367,32 @@ const GeneralField = (props) => {
     ],
   };
 
+  const handleTableChange = (pagination, filters, sorter) => {
+    if (sorter?.field && sorter?.order) {
+      setSortField(sorter.field);
+      setSortOrder(sorter.order === "ascend" ? "ASC" : "DESC");
+    } else {
+      setSortField(null);
+      setSortOrder(null);
+    }
+  };
+
   const tableColumns = [
     {
       title: t("reg_number"),
       dataIndex: "regNumber",
       width: "2%",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "regNumber"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "regNumber" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
     },
     {
       title: t("access_status"),
       dataIndex: "accessStatus",
       width: "7%",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "accessStatus"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "accessStatus" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (accessStatus, elm) => (
         <>
           {/* {(accessStatus !== 'ДОПУСК' && accessStatus !== null) ?
@@ -423,7 +440,9 @@ const GeneralField = (props) => {
       title: t("full_name"),
       dataIndex: "fullName",
       width: "10%",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "fullName"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "fullName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (fullName) => (
         <span style={{ whiteSpace: "normal", wordWrap: "break-word" }}>
           {fullName}
@@ -433,12 +452,16 @@ const GeneralField = (props) => {
     {
       title: t("form"),
       dataIndex: "form_reg",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "form_reg"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "form_reg" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
     },
     {
       title: t("birth_date"),
       dataIndex: "birthDate",
-      sorter: (a, b) => new Date(a.birthDate) - new Date(b.birthDate),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "birthDate" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (_, elm) => (
         <>
           {elm?.birthDate !== null && elm?.birthDate !== "Неизвестно"
@@ -452,12 +475,16 @@ const GeneralField = (props) => {
     {
       title: t("birth_place"),
       dataIndex: "birthPlace",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "birthPlace"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "birthPlace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
     },
     {
       title: t("work_place"),
       dataIndex: "workplace",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "workplace"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "workplace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (workplace, elm) => {
         if (workplace) {
           if (elm?.position) {
@@ -473,7 +500,9 @@ const GeneralField = (props) => {
     {
       title: t("residence"),
       dataIndex: "residence",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "residence"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "residence" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (residence) => (
         <p>
           {residence?.length > 100
@@ -503,7 +532,6 @@ const GeneralField = (props) => {
     {
       title: t("initiator"),
       dataIndex: "initiator",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "initiator"),
       render: (_, elm) => {
         return (
           <>
@@ -515,7 +543,6 @@ const GeneralField = (props) => {
     {
       title: t("executor"),
       dataIndex: "executor",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "executor"),
       render: (_, elm) => {
         return (
           <>
@@ -1014,6 +1041,7 @@ const GeneralField = (props) => {
               columns={tableColumns}
               dataSource={dataSource}
               loading={loading}
+              onChange={handleTableChange}
               pagination={{
                 current: relativePageNumber,
                 pageSize: relativePageSize,

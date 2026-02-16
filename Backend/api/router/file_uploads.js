@@ -3,11 +3,9 @@ const router = express.Router();
 const multer = require('multer');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const dotenv = require('dotenv');
 const uuid = require('uuid');
 const { verifyToken, permissionCheck } = require("../middleware/auth");
 const { SERVER_URL } = require('../helpers/constants');
-dotenv.config();
 
 var storage = multer.diskStorage({
     destination: function (req, file, cb) {

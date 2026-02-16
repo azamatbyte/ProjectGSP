@@ -10,15 +10,17 @@ const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
 const fs = require("fs");
 const path = require("path");
+const { getEnv } = require("../../config/env");
 
 const prisma = new PrismaClient();
 const isWindows = process.platform === 'win32';
+const env = getEnv();
 
 // ============================================================
 // Configuration
 // ============================================================
-const OLEDB_PROVIDER = process.env.OLEDB_PROVIDER || "Microsoft.ACE.OLEDB.12.0";
-const BATCH_SIZE = parseInt(process.env.BATCH_SIZE || "2000", 10);
+const OLEDB_PROVIDER = env.OLEDB_PROVIDER;
+const BATCH_SIZE = env.BATCH_SIZE;
 
 // PowerShell helper scripts (Windows only)
 const SCHEMA_SCRIPT = path.join(__dirname, "../../scripts/_ps_schema.ps1");
@@ -35,7 +37,7 @@ const MDB_TO_ADO = {
 
 // Temp database config (same PostgreSQL server, different database)
 const getTempPgConfig = () => {
-    const mainUrl = process.env.DATABASE_URL;
+    const mainUrl = env.DATABASE_URL;
     const match = mainUrl.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)/);
     if (!match) throw new Error("Invalid DATABASE_URL format");
     return {
@@ -1074,7 +1076,7 @@ async function runMigration(accessFilePath) {
     console.log("============================================\n");
     console.log(`Access DB : ${accessFilePath}`);
     console.log(`Temp DB   : access_migration`);
-    console.log(`Prod DB   : ${process.env.DATABASE_URL}`);
+    console.log(`Prod DB   : ${env.DATABASE_URL}`);
     console.log(`Batch Size: ${BATCH_SIZE}\n`);
 
     try {

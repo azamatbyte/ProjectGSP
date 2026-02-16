@@ -568,52 +568,23 @@ try {
 		}
 		else {
 			$appLog = Join-Path $logsDir 'app.log'
+			$appErrLog = Join-Path $logsDir 'app-error.log'
 			$workingDir = Join-Path $AppRoot 'app'
 
 			Log "Starting Node server..."
 			LogDebug "Working directory: $workingDir"
 			LogDebug "App log file: $appLog"
-			LogDebug "NODE_ENV will be set to: production"
 
-			$startInfo = New-Object System.Diagnostics.ProcessStartInfo
-			$startInfo.FileName = $nodeExe
-			$startInfo.Arguments = '"' + $indexJs + '"'
-			$startInfo.WorkingDirectory = $workingDir
-			$startInfo.RedirectStandardOutput = $true
-			$startInfo.RedirectStandardError  = $true
-			$startInfo.UseShellExecute = $false
-			$startInfo.CreateNoWindow = $true
-
-			# Copy all environment variables
-			$envCount = 0
-			foreach ($envVar in Get-ChildItem Env:) {
-				$startInfo.EnvironmentVariables[$envVar.Name] = $envVar.Value
-				$envCount++
-			}
-			$startInfo.EnvironmentVariables['NODE_ENV'] = 'production'
-			LogDebug "Copied $envCount environment variables to Node process"
-
-			$proc = New-Object System.Diagnostics.Process
-			$proc.StartInfo = $startInfo
+			# Set NODE_ENV in current session (child process inherits environment)
+			$env:NODE_ENV = 'production'
 
 			try {
-				$started = $proc.Start()
-				if ($started) {
+				# Use Start-Process with -RedirectStandardOutput for persistent file handles
+				# Unlike Start-Job, this survives after the PowerShell script exits
+				$proc = Start-Process -FilePath $nodeExe -ArgumentList "`"$indexJs`"" -WorkingDirectory $workingDir -NoNewWindow -PassThru -RedirectStandardOutput $appLog -RedirectStandardError $appErrLog
+				if ($proc) {
 					$proc.Id | Out-File $nodePidFile -Encoding ascii
 					Log "Node started successfully (PID $($proc.Id))"
-
-					# Start background job to capture output
-					Start-Job -ScriptBlock {
-						Param($p,$log)
-						try {
-							while (-not $p.HasExited) {
-								while (-not $p.StandardOutput.EndOfStream) { $p.StandardOutput.ReadLine() | Out-File -FilePath $log -Append }
-								while (-not $p.StandardError.EndOfStream)  { $p.StandardError.ReadLine()  | Out-File -FilePath $log -Append }
-								Start-Sleep -Milliseconds 200
-							}
-						} catch { }
-					} -ArgumentList $proc,$appLog | Out-Null
-					LogDebug "Started background job to capture Node output to: $appLog"
 				} else {
 					LogErr "Failed to start Node process"
 				}

@@ -1,4 +1,9 @@
+require('../api/helpers/consoleLogWithFunctionName');
+const { loadEnv } = require('../config/env');
 const { PrismaClient } = require('@prisma/client');
+const { exitProcess } = require('../core/processLifecycle');
+
+loadEnv();
 
 const prisma = new PrismaClient();
 
@@ -115,8 +120,8 @@ async function createDefaultAdminsAndServices() {
 }
 
 createDefaultAdminsAndServices()
-    .then(() => process.exit(0))
+    .then(() => exitProcess(0))
     .catch((err) => {
         console.error(err);
-        process.exit(1);
+        exitProcess(1);
     });

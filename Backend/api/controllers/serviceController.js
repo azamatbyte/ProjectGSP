@@ -1,10 +1,8 @@
 const { PrismaClient } = require("@prisma/client");
-const dotenv = require("dotenv");
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
 
-dotenv.config();
 
 /**
  * @swagger

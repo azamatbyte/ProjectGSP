@@ -1,4 +1,3 @@
-const dotenv = require("dotenv");
 const { PrismaClient } = require("@prisma/client");
 const xlsx = require("xlsx");
 const ExcelJS = require("exceljs");
@@ -13,7 +12,6 @@ const {
 const safeString = require("../helpers/safeString");
 const compareDates = require("../helpers/compareDates");
 const { getDateDayString, getDateStringWithFormat } = require("../helpers/time");
-dotenv.config();
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');

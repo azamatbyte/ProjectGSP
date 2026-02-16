@@ -68,8 +68,8 @@ Name: "{commonappdata}\GSPApp\pids"; Permissions: users-modify
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\scripts\setup_env.ps1"" -AppRoot ""{app}\backend"""; StatusMsg: "Configuring environment..."; Components: backend; Flags: runhidden
 ; Initialize database
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\backend\scripts\init_db.ps1"" -AppRoot ""{app}\backend"""; StatusMsg: "Initializing database..."; Components: backend; Flags: runhidden
-; Start services
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\backend\scripts\start_services.ps1"" -AppRoot ""{app}\backend"""; StatusMsg: "Starting services..."; Components: backend; Flags: runhidden nowait
+; Start services (must wait for completion so database is created, schema pushed, and seeded)
+Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\backend\scripts\start_services.ps1"" -AppRoot ""{app}\backend"""; StatusMsg: "Starting services (this may take up to 60 seconds)..."; Components: backend; Flags: runhidden
 ; Launch frontend after install
 Filename: "{app}\frontend\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Components: frontend; Flags: nowait postinstall skipifsilent
 

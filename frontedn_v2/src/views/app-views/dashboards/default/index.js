@@ -1,48 +1,27 @@
 import React, { useState } from "react";
 import { Row, Col, Button, Avatar, Dropdown, Table,  Tag } from "antd";
-import StatisticWidget from "components/shared-components/StatisticWidget";
 import ChartWidget from "components/shared-components/ChartWidget";
-import AvatarStatus from "components/shared-components/AvatarStatus";
 import GoalWidget from "components/shared-components/GoalWidget";
 import Card from "components/shared-components/Card";
 import Flex from "components/shared-components/Flex";
 import { 
   VisitorChartData, 
-  AnnualStatisticData, 
-  ActiveMembersData, 
-  NewMembersData, 
   RecentTransactionData 
 } from "./DefaultDashboardData";
-import ApexChart from "react-apexcharts";
-import { apexLineChartDefaultOption, COLOR_2 } from "constants/ChartConstant";
+import RevenueBarChart from "./components/RevenueBarChart";
+import SalesBarChart from "./components/SalesBarChart";
+import CostsBarChart from "./components/CostsBarChart";
 import { SPACER } from "constants/ThemeConstant";
 import { 
-  UserAddOutlined, 
   FileExcelOutlined, 
   PrinterOutlined, 
-  PlusOutlined, 
   EllipsisOutlined, 
-  StopOutlined, 
   ReloadOutlined 
 } from "@ant-design/icons";
 import utils from "utils";
 import { useSelector } from "react-redux";
 
-const MembersChart = props => (
-  <ApexChart {...props}/>
-);
-
-const memberChartOption = {
-  ...apexLineChartDefaultOption,
-  ...{
-    chart: {
-      sparkline: {
-        enabled: true,
-      }
-    },
-    colors: [COLOR_2],
-  }
-};
+const TOP_CARD_MIN_HEIGHT = 430;
 
 const latestTransactionOption = [
   {
@@ -69,27 +48,6 @@ const latestTransactionOption = [
       <Flex alignItems="center" gap={SPACER[2]}>
         <FileExcelOutlined />
         <span className="ml-2">Export</span>
-      </Flex>
-    ),
-  },
-];
-
-const newJoinMemberOptions = [
-  {
-    key: "Add all",
-    label: (
-      <Flex alignItems="center" gap={SPACER[2]}>
-        <PlusOutlined />
-        <span className="ml-2">Add all</span>
-      </Flex>
-    ),
-  },
-  {
-    key: "Disable all",
-    label: (
-      <Flex alignItems="center" gap={SPACER[2]}>
-        <StopOutlined />
-        <span className="ml-2">Disable all</span>
       </Flex>
     ),
   },
@@ -143,9 +101,6 @@ const tableColumns = [
 
 export const DefaultDashboard = () => {
   const [visitorChartData] = useState(VisitorChartData);
-  const [annualStatisticData] = useState(AnnualStatisticData);
-  const [activeMembersData] = useState(ActiveMembersData);
-  const [newMembersData] = useState(NewMembersData);
   const [recentTransactionData] = useState(RecentTransactionData);
   const { direction } = useSelector(state => state.theme);
 
@@ -154,28 +109,14 @@ export const DefaultDashboard = () => {
       <Row gutter={16}>
         <Col xs={24} sm={24} md={24} lg={18}>
           <Row gutter={16}>
-            {
-              annualStatisticData.map((elm, i) => (
-                <Col xs={24} sm={24} md={24} lg={24} xl={8} key={i}>
-                  <StatisticWidget 
-                    title={elm.title} 
-                    value={elm.value}
-                    status={elm.status}
-                    subtitle={elm.subtitle}
-                  />
-                </Col>
-              ))
-            }
-          </Row>
-          <Row gutter={16}>
-            <Col span={24}>
-                <ChartWidget 
-                  title="Unique Visitors" 
-                  series={visitorChartData.series} 
-                  xAxis={visitorChartData.categories} 
-                  height={"400px"}
-                  direction={direction}
-                />
+            <Col xs={24} sm={24} md={24} lg={24} xl={8}>
+              <RevenueBarChart cardMinHeight={TOP_CARD_MIN_HEIGHT} />
+            </Col>
+            <Col xs={24} sm={24} md={24} lg={24} xl={8}>
+              <SalesBarChart cardMinHeight={TOP_CARD_MIN_HEIGHT} />
+            </Col>
+            <Col xs={24} sm={24} md={24} lg={24} xl={8}>
+              <CostsBarChart cardMinHeight={TOP_CARD_MIN_HEIGHT} />
             </Col>
           </Row>
         </Col>
@@ -185,39 +126,32 @@ export const DefaultDashboard = () => {
             value={87}
             subtitle="You need abit more effort to hit monthly target"
             extra={<Button type="primary">Learn More</Button>}
-          />
-          <StatisticWidget 
-            title={
-              <MembersChart 
-                options={memberChartOption}
-                series={activeMembersData}
-                height={145}
-              />
-            }
-            value='17,329'
-            status={3.7}
-            subtitle="Active members"
+            cardStyle={{ minHeight: TOP_CARD_MIN_HEIGHT }}
           />
         </Col>
       </Row>
       <Row gutter={16}>
-        <Col xs={24} sm={24} md={24} lg={7}>
-          <Card title="New Join Member" extra={<CardDropdown items={newJoinMemberOptions} />}>
-            <div className="mt-3">
-              {
-                newMembersData.map((elm, i) => (
-                  <div key={i} className={"d-flex align-items-center justify-content-between mb-4"}>
-                    <AvatarStatus id={i} src={elm.img} name={elm.name} subTitle={elm.title} />
-                    <div>
-                      <Button icon={<UserAddOutlined />} type="default" size="small">Add</Button>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-          </Card>
+        <Col xs={24} sm={24} md={24} lg={12}>
+          <ChartWidget
+            title="Unique Visitors"
+            series={visitorChartData.series}
+            xAxis={visitorChartData.categories}
+            height={"400px"}
+            direction={direction}
+          />
         </Col>
-        <Col xs={24} sm={24} md={24} lg={17}>
+        <Col xs={24} sm={24} md={24} lg={12}>
+          <ChartWidget
+            title="Unique Visitors"
+            series={visitorChartData.series}
+            xAxis={visitorChartData.categories}
+            height={"400px"}
+            direction={direction}
+          />
+        </Col>
+      </Row>
+      <Row gutter={16}>
+        <Col xs={24} sm={24} md={24} lg={24}>
           <Card title="Latest Transactions" extra={<CardDropdown items={latestTransactionOption} />}>
             <Table 
               className="no-border-last" 

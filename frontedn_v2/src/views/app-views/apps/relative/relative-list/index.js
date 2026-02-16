@@ -50,12 +50,17 @@ const RelativeList = () => {
   const [form] = Form.useForm();
   const [modalDeleteVisible, setModalDeleteVisible] = useState(false);
   const [deleteRowId, setDeleteRowId] = useState(null);
+  const [sortField, setSortField] = useState(null);
+  const [sortOrder, setSortOrder] = useState(null);
   const { t } = useTranslation();
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await RelativeService.getList(pageNumber, pageSize, search);
+      const sortParam = sortField && sortOrder
+        ? { [sortField]: sortOrder.toLowerCase() }
+        : undefined;
+      const res = await RelativeService.getList(pageNumber, pageSize, search, sortParam);
       setList(res?.data?.relatives);
       setTotal(res?.data?.total_relatives);
     } catch (error) {
@@ -65,7 +70,7 @@ const RelativeList = () => {
     } finally {
       setLoading(false);
     }
-  }, [pageNumber, pageSize, search, t]);
+  }, [pageNumber, pageSize, search, sortField, sortOrder, t]);
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -210,6 +215,16 @@ const RelativeList = () => {
     );
   };
 
+  const handleTableChange = (pagination, filters, sorter) => {
+    if (sorter?.field && sorter?.order) {
+      setSortField(sorter.field);
+      setSortOrder(sorter.order === "ascend" ? "ASC" : "DESC");
+    } else {
+      setSortField(null);
+      setSortOrder(null);
+    }
+  };
+
   const tableColumns = [
     {
       title: t("№"),
@@ -236,7 +251,9 @@ const RelativeList = () => {
       title: t("full_name"),
       dataIndex: "fullName",
       width: "15%",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "fullName"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "fullName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (full_name) => (
         <Tooltip title={full_name}>
           <span style={{
@@ -261,17 +278,23 @@ const RelativeList = () => {
     {
       title: t("registration_number"),
       dataIndex: "regNumber",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "regNumber"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "regNumber" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
     },
     {
       title: t("registration_degree"),
       dataIndex: "relationDegree",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "relationDegree"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "relationDegree" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
     },
     {
       title: t("birth_date"),
       dataIndex: "birthDate",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "birthDate"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "birthDate" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (birthDate, elm) => {
         if (birthDate) {
           return getDateDayString(birthDate);
@@ -282,12 +305,16 @@ const RelativeList = () => {
     {
       title: t("birthplace"),
       dataIndex: "birthPlace",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "birthPlace"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "birthPlace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
     },
     {
       title: t("residence"),
       dataIndex: "residence",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "residence"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "residence" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (residence) => {
         const text = residence || "";
         // If the text is longer than 10 characters, truncate it.
@@ -313,7 +340,9 @@ const RelativeList = () => {
     {
       title: t("work_place"),
       dataIndex: "workplace",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "workplace"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "workplace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (workplace, elm) => {
         if (workplace) {
           if (elm?.position) {
@@ -329,7 +358,9 @@ const RelativeList = () => {
     {
       title: t("note"),
       dataIndex: "notes",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "notes"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "notes" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (notes) => {
         const displayText = notes || "";
         const isLong = displayText.length > 50;
@@ -344,7 +375,9 @@ const RelativeList = () => {
       title: t("updated_at"),
       dataIndex: "updatedAt",
       width: "15%",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "updatedAt"),
+      sorter: true,
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortField === "updatedAt" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
       render: (updatedAt) => (
         <>{updatedAt ? getDateString(updatedAt) : t("unknown")}</>
       ),
@@ -463,6 +496,8 @@ const RelativeList = () => {
               onClick={() => {
                 setSearch({ model: search?.model ?? "" });
                 form.resetFields();
+                setSortField(null);
+                setSortOrder(null);
               }}
               tabIndex={9}
             >
@@ -496,6 +531,7 @@ const RelativeList = () => {
           //   ...rowSelection,
           // }}
           pagination={false}
+          onChange={handleTableChange}
         />
         <Row style={{ marginTop: 16, justifyContent: "space-between", alignItems: "center" }}>
           <Col>

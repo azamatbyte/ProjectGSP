@@ -223,14 +223,68 @@ function buildWhereConditions(params, tableAlias = "r", regAlias = null) {
 }
 
 /**
+ * Whitelist of allowed sort fields mapped to their SQL column expressions.
+ * Text columns use LOWER() for case-insensitive sorting (works with both Latin and Cyrillic).
+ */
+const SORT_FIELD_MAP = {
+    reg_number: { expr: 'LOWER(reg_number)', type: 'text' },
+    form_reg: { expr: 'LOWER(form_reg)', type: 'text' },
+    form_reg_log: { expr: 'LOWER(form_reg_log)', type: 'text' },
+    relationdegree: { expr: 'LOWER(relationDegree)', type: 'text' },
+    full_name: { expr: 'LOWER(full_name)', type: 'text' },
+    birth_date: { expr: 'birth_date', type: 'date' },
+    reg_date: { expr: 'reg_date', type: 'date' },
+    reg_end_date: { expr: 'reg_end_date', type: 'date' },
+    complete_status: { expr: 'LOWER(complete_status)', type: 'text' },
+    access_status: { expr: 'LOWER(access_status)', type: 'text' },
+    expired: { expr: 'expired', type: 'date' },
+    pinfl: { expr: 'LOWER(pinfl)', type: 'text' },
+    conclusion_reg_num: { expr: 'LOWER(conclusion_reg_num)', type: 'text' },
+    birth_place: { expr: 'LOWER(birth_place)', type: 'text' },
+    workplace: { expr: 'LOWER(workplace)', type: 'text' },
+    notes: { expr: 'LOWER(notes)', type: 'text' },
+    residence: { expr: 'LOWER(residence)', type: 'text' },
+    initiator: { expr: 'LOWER(initiator_last_name)', type: 'text' },
+    executor: { expr: 'LOWER(executor_last_name)', type: 'text' },
+    updatedat: { expr: 'updatedAt', type: 'date' },
+    createdat: { expr: 'createdAt', type: 'date' },
+};
+
+/**
+ * Builds the ORDER BY clause based on sort parameters.
+ * @param {string|null} sortField - The field to sort by (must be in SORT_FIELD_MAP)
+ * @param {string|null} sortOrder - ASC or DESC
+ * @returns {string} - The ORDER BY clause
+ */
+function buildOrderByClause(sortField, sortOrder) {
+    if (!sortField || !sortOrder) {
+        return 'ORDER BY model_name, createdAt DESC';
+    }
+
+    const fieldKey = sortField.toLowerCase();
+    const mapping = SORT_FIELD_MAP[fieldKey];
+    if (!mapping) {
+        return 'ORDER BY model_name, createdAt DESC';
+    }
+
+    const direction = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const nullsHandling = direction === 'ASC' ? 'NULLS LAST' : 'NULLS FIRST';
+
+    return `ORDER BY ${mapping.expr} ${direction} ${nullsHandling}`;
+}
+
+/**
  * Builds the full search query for Registration records
  * @param {object} params - Search parameters
  * @param {number} pageNumber - Page number (1-indexed)
  * @param {number} pageSize - Number of records per page
+ * @param {string|null} sortField - Field to sort by
+ * @param {string|null} sortOrder - Sort direction (ASC or DESC)
  * @returns {string} - Complete SQL query
  */
-function buildSearchQuery(params, pageNumber, pageSize) {
+function buildSearchQuery(params, pageNumber, pageSize, sortField, sortOrder) {
     const offset = (pageNumber - 1) * pageSize;
+    const orderByClause = buildOrderByClause(sortField, sortOrder);
 
     // Build Registration WHERE conditions
     const regConditions = buildWhereConditions(params, "r");
@@ -331,7 +385,7 @@ function buildSearchQuery(params, pageNumber, pageSize) {
       INNER JOIN "Registration" regg ON rel."registrationId" = regg."id"
       ${relWhereClause}
     ) combined_results
-    ORDER BY model_name, createdAt DESC
+    ${orderByClause}
     LIMIT ${pageSize} OFFSET ${offset};
   `;
 
@@ -376,6 +430,8 @@ module.exports = {
     buildWhereConditions,
     buildTextFilter,
     buildDateRangeFilter,
+    buildOrderByClause,
     sanitizeValue,
     processSearchTerm,
+    SORT_FIELD_MAP,
 };
