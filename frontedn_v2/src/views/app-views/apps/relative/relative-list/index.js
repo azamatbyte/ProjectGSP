@@ -50,15 +50,14 @@ const RelativeList = () => {
   const [form] = Form.useForm();
   const [modalDeleteVisible, setModalDeleteVisible] = useState(false);
   const [deleteRowId, setDeleteRowId] = useState(null);
-  const [sortField, setSortField] = useState(null);
-  const [sortOrder, setSortOrder] = useState(null);
+  const [sortedColumns, setSortedColumns] = useState([]);
   const { t } = useTranslation();
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const sortParam = sortField && sortOrder
-        ? { [sortField]: sortOrder.toLowerCase() }
+      const sortParam = sortedColumns.length > 0
+        ? sortedColumns.map(s => ({ [s.field]: s.order.toLowerCase() }))
         : undefined;
       const res = await RelativeService.getList(pageNumber, pageSize, search, sortParam);
       setList(res?.data?.relatives);
@@ -70,7 +69,7 @@ const RelativeList = () => {
     } finally {
       setLoading(false);
     }
-  }, [pageNumber, pageSize, search, sortField, sortOrder, t]);
+  }, [pageNumber, pageSize, search, sortedColumns, t]);
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -216,13 +215,11 @@ const RelativeList = () => {
   };
 
   const handleTableChange = (pagination, filters, sorter) => {
-    if (sorter?.field && sorter?.order) {
-      setSortField(sorter.field);
-      setSortOrder(sorter.order === "ascend" ? "ASC" : "DESC");
-    } else {
-      setSortField(null);
-      setSortOrder(null);
-    }
+    const sorters = Array.isArray(sorter) ? sorter : [sorter];
+    const newSorted = sorters
+      .filter(s => s.order)
+      .map(s => ({ field: s.field, order: s.order === 'ascend' ? 'ASC' : 'DESC' }));
+    setSortedColumns(newSorted);
   };
 
   const tableColumns = [
@@ -251,9 +248,9 @@ const RelativeList = () => {
       title: t("full_name"),
       dataIndex: "fullName",
       width: "15%",
-      sorter: true,
+      sorter: { multiple: 1 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "fullName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "fullName"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (full_name) => (
         <Tooltip title={full_name}>
           <span style={{
@@ -278,23 +275,23 @@ const RelativeList = () => {
     {
       title: t("registration_number"),
       dataIndex: "regNumber",
-      sorter: true,
+      sorter: { multiple: 2 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "regNumber" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "regNumber"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
     },
     {
       title: t("registration_degree"),
       dataIndex: "relationDegree",
-      sorter: true,
+      sorter: { multiple: 3 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "relationDegree" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "relationDegree"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
     },
     {
       title: t("birth_date"),
       dataIndex: "birthDate",
-      sorter: true,
+      sorter: { multiple: 4 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "birthDate" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "birthDate"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (birthDate, elm) => {
         if (birthDate) {
           return getDateDayString(birthDate);
@@ -305,16 +302,16 @@ const RelativeList = () => {
     {
       title: t("birthplace"),
       dataIndex: "birthPlace",
-      sorter: true,
+      sorter: { multiple: 5 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "birthPlace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "birthPlace"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
     },
     {
       title: t("residence"),
       dataIndex: "residence",
-      sorter: true,
+      sorter: { multiple: 6 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "residence" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "residence"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (residence) => {
         const text = residence || "";
         // If the text is longer than 10 characters, truncate it.
@@ -340,9 +337,9 @@ const RelativeList = () => {
     {
       title: t("work_place"),
       dataIndex: "workplace",
-      sorter: true,
+      sorter: { multiple: 7 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "workplace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "workplace"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (workplace, elm) => {
         if (workplace) {
           if (elm?.position) {
@@ -358,9 +355,9 @@ const RelativeList = () => {
     {
       title: t("note"),
       dataIndex: "notes",
-      sorter: true,
+      sorter: { multiple: 8 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "notes" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "notes"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (notes) => {
         const displayText = notes || "";
         const isLong = displayText.length > 50;
@@ -375,9 +372,9 @@ const RelativeList = () => {
       title: t("updated_at"),
       dataIndex: "updatedAt",
       width: "15%",
-      sorter: true,
+      sorter: { multiple: 9 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "updatedAt" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "updatedAt"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (updatedAt) => (
         <>{updatedAt ? getDateString(updatedAt) : t("unknown")}</>
       ),
@@ -496,8 +493,7 @@ const RelativeList = () => {
               onClick={() => {
                 setSearch({ model: search?.model ?? "" });
                 form.resetFields();
-                setSortField(null);
-                setSortOrder(null);
+                setSortedColumns([]);
               }}
               tabIndex={9}
             >

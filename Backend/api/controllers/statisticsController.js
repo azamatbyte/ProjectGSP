@@ -240,6 +240,236 @@ exports.countedRecords = async (req, res) => {
 
 /**
  * @swagger
+ * /api/v1/statistics/finished_registration_percentage:
+ *   post:
+ *     summary: "Get finished registration percentage"
+ *     tags: [Statistics]
+ *     security:
+ *       - apiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: "Finished registration percentage fetched successfully"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Finished registration percentage fetched successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     percentage:
+ *                       type: integer
+ *                       minimum: 0
+ *                       maximum: 100
+ *                       example: 67
+ *                     finished_count:
+ *                       type: integer
+ *                       example: 120
+ *                     total_count:
+ *                       type: integer
+ *                       example: 180
+ *       500:
+ *         description: "Internal server error"
+ */
+exports.finishedRegistrationPercentage = async (req, res) => {
+  try {
+    const total_count = await prisma.registration.count();
+
+    const finishedRows = await prisma.$queryRaw`
+      SELECT COUNT(*)::bigint AS finished_count
+      FROM "Registration"
+      WHERE "regDate" IS NOT NULL
+        AND "regEndDate" IS NOT NULL
+        AND "regEndDate" > "regDate"
+    `;
+
+    const rawFinished = finishedRows?.[0]?.finished_count ?? 0;
+    const finished_count = Number(rawFinished);
+
+    const rawPercentage = total_count > 0 ? (finished_count / total_count) * 100 : 0;
+    const percentage = Math.round(Math.min(100, Math.max(0, rawPercentage)));
+
+    return res.status(200).json({
+      code: 200,
+      message: "Finished registration percentage fetched successfully",
+      data: {
+        percentage,
+        finished_count,
+        total_count,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching finished registration percentage:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/statistics/latest_transactions:
+ *   post:
+ *     summary: "Get paginated latest dashboard transactions by admin"
+ *     tags: [Statistics]
+ *     security:
+ *       - apiKeyAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               pageNumber:
+ *                 type: integer
+ *                 example: 1
+ *               pageSize:
+ *                 type: integer
+ *                 example: 10
+ *     responses:
+ *       200:
+ *         description: "Latest transactions fetched successfully"
+ *       400:
+ *         description: "Validation error"
+ *       500:
+ *         description: "Internal server error"
+ */
+exports.latestTransactions = async (req, res) => {
+  try {
+    const { pageNumber, pageSize } = req.body || {};
+
+    const parsedPageNumber = parsePositiveInt(pageNumber, 1);
+    const parsedPageSize = parsePositiveInt(pageSize, 10);
+
+    if (parsedPageNumber === null || parsedPageSize === null) {
+      return res.status(400).json({
+        code: 400,
+        message: "pageNumber and pageSize must be positive integers",
+      });
+    }
+
+    const safePageSize = Math.min(parsedPageSize, 100);
+    const skip = (parsedPageNumber - 1) * safePageSize;
+
+    const [admins, total] = await Promise.all([
+      prisma.admin.findMany({
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          father_name: true,
+          photo: true,
+          status: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: safePageSize,
+      }),
+      prisma.admin.count(),
+    ]);
+
+    const adminIds = admins.map((admin) => admin.id);
+
+    let registeredGroups = [];
+    let overdueGroups = [];
+
+    if (adminIds.length > 0) {
+      const todayStartUTC = new Date();
+      todayStartUTC.setUTCHours(0, 0, 0, 0);
+
+      [registeredGroups, overdueGroups] = await Promise.all([
+        prisma.registration.groupBy({
+          by: ["executorId"],
+          where: {
+            executorId: { in: adminIds },
+          },
+          _count: {
+            _all: true,
+          },
+        }),
+        prisma.registration.groupBy({
+          by: ["executorId"],
+          where: {
+            executorId: { in: adminIds },
+            expired: {
+              not: null,
+              lt: todayStartUTC,
+            },
+          },
+          _count: {
+            _all: true,
+          },
+        }),
+      ]);
+    }
+
+    const registeredMap = new Map();
+    for (const group of registeredGroups) {
+      if (group.executorId) {
+        registeredMap.set(group.executorId, Number(group?._count?._all) || 0);
+      }
+    }
+
+    const overdueMap = new Map();
+    for (const group of overdueGroups) {
+      if (group.executorId) {
+        overdueMap.set(group.executorId, Number(group?._count?._all) || 0);
+      }
+    }
+
+    const rows = admins.map((admin) => {
+      const fullName = [admin?.last_name, admin?.first_name, admin?.father_name]
+        .filter((part) => typeof part === "string" && part.trim() !== "")
+        .join(" ")
+        .trim();
+
+      return {
+        id: admin.id,
+        photo: admin?.photo || "",
+        fullName: fullName || "-",
+        registeredCount: registeredMap.get(admin.id) || 0,
+        overdueCount: overdueMap.get(admin.id) || 0,
+        status: admin?.status || "inactive",
+      };
+    });
+
+    return res.status(200).json({
+      code: 200,
+      message: "Latest transactions fetched successfully",
+      data: {
+        rows,
+        pagination: {
+          pageNumber: parsedPageNumber,
+          pageSize: safePageSize,
+          total,
+          totalPages: Math.ceil(total / safePageSize),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching latest transactions:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @swagger
  * /api/v1/statistics/reportStatements:
  *   post:
  *     summary: "IDlar massivi asosida hujjat yaratish"
@@ -6052,3 +6282,132 @@ function reportMonitoringByAdmin(
     ],
   };
 }
+
+
+/**
+ * @swagger
+ * /api/v1/statistics/top_otk1_workplaces:
+ *   post:
+ *     summary: "Get top 3 workplaces with the most OTK-1 rejections per year"
+ *     tags: [Statistics]
+ *     security:
+ *       - apiKeyAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               year:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 default: 5
+ *                 example: 5
+ *                 description: "Number of past years to include (1-10)"
+ *               model:
+ *                 type: string
+ *                 default: registration
+ *                 example: registration
+ *                 description: "Registration model filter (e.g. registration, registration4)"
+ *     responses:
+ *       200:
+ *         description: "Top OTK-1 workplaces fetched successfully"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Top OTK-1 workplaces fetched successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       year:
+ *                         type: integer
+ *                         example: 2025
+ *                       top:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             rank:
+ *                               type: integer
+ *                               example: 1
+ *                             workplace:
+ *                               type: string
+ *                               example: "Веймар"
+ *                             count:
+ *                               type: integer
+ *                               example: 42
+ *       400:
+ *         description: "Validation error"
+ *       500:
+ *         description: "Internal server error"
+ */
+exports.topOtk1Workplaces = async (req, res) => {
+  try {
+    const { year, model } = req.body || {};
+    const yearCount = parsePositiveInt(year, 5);
+    const modelFilter = typeof model === "string" && model.trim() !== "" ? model.trim() : "registration";
+
+    if (yearCount === null || yearCount > 10) {
+      return res.status(400).json({
+        code: 400,
+        message: "year must be a positive integer between 1 and 10",
+      });
+    }
+
+    const buckets = getYearlyBuckets(yearCount);
+
+    const data = await Promise.all(
+      buckets.map(async (bucket) => {
+        const { startDate, endDate } = bucket;
+
+        const groups = await prisma.registration.groupBy({
+          by: ["workplace"],
+          where: {
+            regEndDate: { gte: startDate, lte: endDate },
+            accessStatus: { contains: "ОТКАЗ-1" },
+            workplace: { not: "" },
+            model: modelFilter,
+          },
+          _count: { id: true },
+          orderBy: { _count: { id: "desc" } },
+          take: 3,
+        });
+
+        const top = groups.map((g, index) => ({
+          rank: index + 1,
+          workplace: g.workplace || "",
+          count: Number(g._count.id) || 0,
+        }));
+
+        return {
+          year: bucket.year,
+          top,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      code: 200,
+      message: "Top OTK-1 workplaces fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching top OTK-1 workplaces:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};

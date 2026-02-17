@@ -252,25 +252,39 @@ const SORT_FIELD_MAP = {
 
 /**
  * Builds the ORDER BY clause based on sort parameters.
- * @param {string|null} sortField - The field to sort by (must be in SORT_FIELD_MAP)
- * @param {string|null} sortOrder - ASC or DESC
+ * Accepts either legacy (sortField, sortOrder) strings or an array of {field, order} objects.
+ * @param {Array<{field:string, order:string}>|string|null} sortFields - Array of sort entries, or legacy sortField string
+ * @param {string|null} [sortOrder] - Legacy sortOrder (ASC/DESC), used only when sortFields is a string
  * @returns {string} - The ORDER BY clause
  */
-function buildOrderByClause(sortField, sortOrder) {
-    if (!sortField || !sortOrder) {
+function buildOrderByClause(sortFields, sortOrder) {
+    // Normalize to array format
+    let entries = [];
+    if (Array.isArray(sortFields)) {
+        entries = sortFields;
+    } else if (typeof sortFields === 'string' && sortFields) {
+        // Legacy: single sortField + sortOrder strings
+        entries = [{ field: sortFields, order: sortOrder || 'ASC' }];
+    }
+
+    // Filter to only valid entries
+    const validEntries = entries
+        .filter(e => e && e.field)
+        .map(e => {
+            const fieldKey = e.field.toLowerCase();
+            const mapping = SORT_FIELD_MAP[fieldKey];
+            if (!mapping) return null;
+            const direction = (e.order || 'ASC').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+            const nullsHandling = direction === 'ASC' ? 'NULLS LAST' : 'NULLS FIRST';
+            return `${mapping.expr} ${direction} ${nullsHandling}`;
+        })
+        .filter(Boolean);
+
+    if (validEntries.length === 0) {
         return 'ORDER BY model_name, createdAt DESC';
     }
 
-    const fieldKey = sortField.toLowerCase();
-    const mapping = SORT_FIELD_MAP[fieldKey];
-    if (!mapping) {
-        return 'ORDER BY model_name, createdAt DESC';
-    }
-
-    const direction = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-    const nullsHandling = direction === 'ASC' ? 'NULLS LAST' : 'NULLS FIRST';
-
-    return `ORDER BY ${mapping.expr} ${direction} ${nullsHandling}`;
+    return `ORDER BY ${validEntries.join(', ')}`;
 }
 
 /**
@@ -278,13 +292,13 @@ function buildOrderByClause(sortField, sortOrder) {
  * @param {object} params - Search parameters
  * @param {number} pageNumber - Page number (1-indexed)
  * @param {number} pageSize - Number of records per page
- * @param {string|null} sortField - Field to sort by
- * @param {string|null} sortOrder - Sort direction (ASC or DESC)
+ * @param {Array<{field:string, order:string}>|string|null} sortFields - Array of sort entries, or legacy sortField string
+ * @param {string|null} [sortOrder] - Legacy sortOrder, used only when sortFields is a string
  * @returns {string} - Complete SQL query
  */
-function buildSearchQuery(params, pageNumber, pageSize, sortField, sortOrder) {
+function buildSearchQuery(params, pageNumber, pageSize, sortFields, sortOrder) {
     const offset = (pageNumber - 1) * pageSize;
-    const orderByClause = buildOrderByClause(sortField, sortOrder);
+    const orderByClause = buildOrderByClause(sortFields, sortOrder);
 
     // Build Registration WHERE conditions
     const regConditions = buildWhereConditions(params, "r");

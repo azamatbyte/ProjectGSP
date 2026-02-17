@@ -44,10 +44,9 @@ RegistrationService.getLogList = function (data) {
 	return Request.postRequest("register/logs", data);
 };
 
-RegistrationService.getListByGlobalSearch = function (pageNumber=1, pageSize=10, search=null, sortField=null, sortOrder=null) {
+RegistrationService.getListByGlobalSearch = function (pageNumber=1, pageSize=10, search=null, sortFields=[]) {
 	const body = { ...search };
-	if (sortField) body.sortField = sortField;
-	if (sortOrder) body.sortOrder = sortOrder;
+	if (sortFields.length > 0) body.sortFields = sortFields;
 	return Request.postRequest(`register/globalSearch?pageNumber=${pageNumber}&pageSize=${pageSize}`, body);
 };
 

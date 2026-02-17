@@ -875,41 +875,42 @@ exports.getRegistrationList = async (req, res) => {
     let registrations;
     let totalRegistrations;
 
-    // Hot-fix: Cyrillic-friendly ordering for name fields using Intl.Collator.
-    // Prisma/PostgreSQL collation can place visually-similar Latin letters before Cyrillic.
-    // When sorting by these fields, we sort IDs in-memory with a Russian collator, then page.
-    const nameSortableFields = new Set(["fullName", "firstName", "lastName", "fatherName"]);
-
-    const getSortEntry = (s) => {
-      if (!s || typeof s !== "object") return null;
-      // Support {field: 'asc'} and {field: { sort: 'asc' }} shapes
-      const entries = Object.entries(s);
-      if (entries.length !== 1) return null;
-      const [field, directionOrObj] = entries[0];
-      let direction = "asc";
-      if (typeof directionOrObj === "string") direction = directionOrObj;
-      else if (
-        directionOrObj &&
-        typeof directionOrObj === "object" &&
-        typeof directionOrObj.sort === "string"
-      ) {
-        direction = directionOrObj.sort;
-      }
-      return { field, direction: direction?.toLowerCase() === "desc" ? "desc" : "asc" };
+    // Parse sort into array of {field, direction} entries.
+    // Accepts: single {field: 'asc'}, array [{field: 'asc'}, ...], or null.
+    const parseSortEntries = (s) => {
+      if (!s) return [];
+      const parseOne = (obj) => {
+        if (!obj || typeof obj !== "object") return null;
+        const entries = Object.entries(obj);
+        if (entries.length !== 1) return null;
+        const [field, directionOrObj] = entries[0];
+        let direction = "asc";
+        if (typeof directionOrObj === "string") direction = directionOrObj;
+        else if (directionOrObj && typeof directionOrObj === "object" && typeof directionOrObj.sort === "string") {
+          direction = directionOrObj.sort;
+        }
+        return { field, direction: direction?.toLowerCase() === "desc" ? "desc" : "asc" };
+      };
+      if (Array.isArray(s)) return s.map(parseOne).filter(Boolean);
+      const single = parseOne(s);
+      return single ? [single] : [];
     };
 
-    const sortEntry = getSortEntry(sort);
+    const sortEntries = parseSortEntries(sort);
 
-    if (sortEntry && nameSortableFields.has(sortEntry.field)) {
-      // 1) Get all matching IDs with the field needed for sorting (lightweight select)
+    // Cyrillic-friendly ordering for name fields using Intl.Collator.
+    const nameSortableFields = new Set(["fullName", "firstName", "lastName", "fatherName"]);
+    const hasNameSort = sortEntries.some(e => nameSortableFields.has(e.field));
+
+    if (sortEntries.length > 0 && hasNameSort) {
+      // Need in-memory Cyrillic-aware multi-key sort
       const toSelect = { id: true };
-      toSelect[sortEntry.field] = true;
+      for (const e of sortEntries) toSelect[e.field] = true;
       const allForSort = await prisma.registration.findMany({
         where: filters,
         select: toSelect,
       });
 
-      // 2) Cyrillic-aware compare
       const collator = new Intl.Collator(["ru", "uk", "kk", "uz"], {
         sensitivity: "base",
         numeric: true,
@@ -917,10 +918,18 @@ exports.getRegistrationList = async (req, res) => {
       });
 
       allForSort.sort((a, b) => {
-        const av = (a[sortEntry.field] || "").toString();
-        const bv = (b[sortEntry.field] || "").toString();
-        const cmp = collator.compare(av, bv);
-        return sortEntry.direction === "desc" ? -cmp : cmp;
+        for (const entry of sortEntries) {
+          const av = (a[entry.field] || "").toString();
+          const bv = (b[entry.field] || "").toString();
+          let cmp;
+          if (nameSortableFields.has(entry.field)) {
+            cmp = collator.compare(av, bv);
+          } else {
+            cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          }
+          if (cmp !== 0) return entry.direction === "desc" ? -cmp : cmp;
+        }
+        return 0;
       });
 
       totalRegistrations = allForSort.length;
@@ -931,7 +940,6 @@ exports.getRegistrationList = async (req, res) => {
       if (pageIds.length === 0) {
         registrations = [];
       } else {
-        // 3) Fetch full rows for the page and restore order of IDs
         const unordered = await prisma.registration.findMany({
           where: { id: { in: pageIds } },
           include: {
@@ -948,16 +956,15 @@ exports.getRegistrationList = async (req, res) => {
         registrations = unordered;
       }
     } else {
-      // Default DB-side ordering
+      // DB-side ordering (no Cyrillic name fields or no sort at all)
+      const orderBy = sortEntries.length > 0
+        ? sortEntries.map(e => ({ [e.field]: e.direction }))
+        : [{ createdAt: "desc" }];
       registrations = await prisma.registration.findMany({
         where: filters,
         skip: (pageNumber - 1) * pageSize,
         take: pageSize,
-        orderBy: sort
-          ? sort
-          : {
-            createdAt: "desc",
-          },
+        orderBy,
         include: {
           executor: {
             select: {
@@ -2503,16 +2510,29 @@ exports.globalSearch = async (req, res) => {
       executorIdStatus,
       sortField,
       sortOrder,
+      sortFields,
     } = req.body;
 
     pageNumber = parseInt(pageNumber, 10);
     pageSize = parseInt(pageSize, 10);
 
-    // Validate sortOrder
-    const validSortOrder = sortOrder && ['ASC', 'DESC'].includes(sortOrder.toUpperCase())
-      ? sortOrder.toUpperCase()
-      : null;
-    const validSortField = sortField || null;
+    // Normalize sort params to array format: [{field, order}]
+    let validSortFields = [];
+    if (Array.isArray(sortFields) && sortFields.length > 0) {
+      // New format: array of {field, order}
+      validSortFields = sortFields
+        .filter(e => e && typeof e.field === 'string' && e.field)
+        .map(e => ({
+          field: e.field,
+          order: e.order && ['ASC', 'DESC'].includes(e.order.toUpperCase()) ? e.order.toUpperCase() : 'ASC',
+        }));
+    } else if (sortField) {
+      // Legacy format: single sortField/sortOrder strings
+      const validSortOrder = sortOrder && ['ASC', 'DESC'].includes(sortOrder.toUpperCase())
+        ? sortOrder.toUpperCase()
+        : 'ASC';
+      validSortFields = [{ field: sortField, order: validSortOrder }];
+    }
 
     let filter = "";
 
@@ -2795,7 +2815,7 @@ exports.globalSearch = async (req, res) => {
     };
 
     // Build and execute the query using inline SQL (replaces search_recordsv25 function)
-    const query = buildSearchQuery(searchParams, pageNumber, pageSize, validSortField, validSortOrder);
+    const query = buildSearchQuery(searchParams, pageNumber, pageSize, validSortFields);
 
     let results = await prisma.$queryRawUnsafe(query);
     results = results.map((item) => ({

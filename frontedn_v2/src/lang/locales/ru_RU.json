@@ -9,7 +9,7 @@
     "sidenav.dashboard.form": "Формы",
     "sidenav.dashboard.status": "Статусы проверки",
     "sidenav.dashboard.service": "Права пользователей",
-    "sidenav.dashboard.statistc": "Статистика",
+    "sidenav.dashboard.statistics": "Статистика",
     "sidenav.dashboard.registration": "База данных",
     "sidenav.dashboard.registration2": "Учетные карты",
     "sidenav.dashboard.relative": "Родственники",
@@ -522,5 +522,16 @@
     "status_database": "База данных",
     "status_working": "Работает",
     "status_not_working": "Не работает",
-    "status_checking": "Проверяется…"
+    "status_checking": "Проверяется…",
+    "dashboard_finished_target_title": "Завершенные регистрации",
+    "dashboard_finished_target_subtitle": "Процент завершения регистрации: {{percentage}}%",
+    "dashboard_finished_target_counts": "Завершено {{finished}} из {{total}} регистраций",
+    "dashboard_latest_title": "Последние операции",
+    "dashboard_latest_column_customer": "Проверяемое лицо",
+    "dashboard_latest_column_registered": "Зарегистрировано",
+    "dashboard_latest_column_overdue": "Просрочено",
+    "dashboard_latest_column_status": "Статус",
+    "dashboard_otk1_title": "Топ ОТКАЗ-1 по организациям",
+    "dashboard_otk1_years_label": "Лет",
+    "dashboard_otk1_loading_error": "Не удалось загрузить данные ОТКАЗ-1"
 }

@@ -32,4 +32,16 @@ StatisticsService.countedRecords = function (data) {
   return Request.postRequest("statistics/counted_records", data);
 };
 
+StatisticsService.finishedRegistrationPercentage = function (data) {
+  return Request.postRequest("statistics/finished_registration_percentage", data);
+};
+
+StatisticsService.latestTransactions = function (data) {
+  return Request.postRequest("statistics/latest_transactions", data);
+};
+
+StatisticsService.topOtk1Workplaces = function (data) {
+  return Request.postRequest("statistics/top_otk1_workplaces", data);
+};
+
 export default StatisticsService;

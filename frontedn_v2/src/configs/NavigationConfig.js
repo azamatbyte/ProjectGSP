@@ -264,7 +264,7 @@ const dashBoardNavTree = [
           {
             key: "dashboards",
             path: `${APP_PREFIX_PATH}/default`,
-            title: "sidenav.dashboard.statistc",
+            title: "sidenav.dashboard.statistics",
             icon: LineChartOutlined,
             breadcrumb: true,
             submenu: [],

@@ -7,6 +7,9 @@ const {
   monitoringByAdmin,
   weeeklyReport,
   countedRecords,
+  finishedRegistrationPercentage,
+  latestTransactions,
+  topOtk1Workplaces,
 } = require("../controllers/statisticsController");
 const { verifyToken, checkAdminAccess } = require("../middleware/auth");
 
@@ -22,7 +25,13 @@ router.post("/statisticsByYear", verifyToken, checkAdminAccess(3), statisticsByY
 // 7- zapros
 router.post("/monitoringByAdmin", verifyToken, checkAdminAccess(3), monitoringByAdmin);
 // 9- zapros
-router.post("/weeeklyReport", verifyToken,  weeeklyReport);
+router.post("/weeeklyReport", verifyToken, weeeklyReport);
 // counted records
 router.post("/counted_records", verifyToken, checkAdminAccess(3), countedRecords);
+// finished registration percentage
+router.post("/finished_registration_percentage", verifyToken, checkAdminAccess(3), finishedRegistrationPercentage);
+// latest transactions dashboard
+router.post("/latest_transactions", verifyToken, checkAdminAccess(3), latestTransactions);
+// top otk1 workplaces
+router.post("/top_otk1_workplaces", verifyToken, checkAdminAccess(3), topOtk1Workplaces);
 module.exports = router;

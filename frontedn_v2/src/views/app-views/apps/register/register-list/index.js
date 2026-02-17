@@ -63,8 +63,7 @@ const RegisterList = () => {
 
   const [modalDeleteVisible, setModalDeleteVisible] = useState(false);
   const [deleteRowId, setDeleteRowId] = useState(null);
-  const [sortField, setSortField] = useState(null);
-  const [sortOrder, setSortOrder] = useState(null);
+  const [sortedColumns, setSortedColumns] = useState([]);
 
   // Configuration for tab navigation - set to -1 to skip fields
   const tabNavigationConfig = {
@@ -115,8 +114,8 @@ const RegisterList = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const sortParam = sortField && sortOrder
-        ? { sort: { [sortField]: sortOrder.toLowerCase() } }
+      const sortParam = sortedColumns.length > 0
+        ? { sort: sortedColumns.map(s => ({ [s.field]: s.order.toLowerCase() })) }
         : undefined;
       const res = await RegistrationService.getList(
         pageNumber,
@@ -141,7 +140,7 @@ const RegisterList = () => {
     } finally {
       setLoading(false);
     }
-  }, [pageNumber, pageSize, search, sortField, sortOrder]);
+  }, [pageNumber, pageSize, search, sortedColumns]);
 
   useEffect(() => {
     updateSearchParams();
@@ -344,13 +343,11 @@ const RegisterList = () => {
   };
 
   const handleTableChange = (pagination, filters, sorter) => {
-    if (sorter?.field && sorter?.order) {
-      setSortField(sorter.field);
-      setSortOrder(sorter.order === "ascend" ? "ASC" : "DESC");
-    } else {
-      setSortField(null);
-      setSortOrder(null);
-    }
+    const sorters = Array.isArray(sorter) ? sorter : [sorter];
+    const newSorted = sorters
+      .filter(s => s.order)
+      .map(s => ({ field: s.field, order: s.order === 'ascend' ? 'ASC' : 'DESC' }));
+    setSortedColumns(newSorted);
   };
 
   const tableColumns = [
@@ -379,9 +376,9 @@ const RegisterList = () => {
       title: t("reg_number"),
       dataIndex: "regNumber",
       width: "5%",
-      sorter: true,
+      sorter: { multiple: 1 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "regNumber" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "regNumber"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (regNumber) => (
         <Tooltip title={regNumber}>
           <span
@@ -401,9 +398,9 @@ const RegisterList = () => {
     {
       title: t("form_code"),
       dataIndex: "form_reg",
-      sorter: true,
+      sorter: { multiple: 2 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "form_reg" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "form_reg"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (form_reg) => (
         <Tooltip title={form_reg}>
           <span>
@@ -423,9 +420,9 @@ const RegisterList = () => {
     {
       title: t("form_reg"),
       dataIndex: "form_reg_log",
-      sorter: true,
+      sorter: { multiple: 3 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "form_reg_log" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "form_reg_log"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (form_reg_log) => {
         const truncated =
           form_reg_log && form_reg_log.length > 6
@@ -450,23 +447,23 @@ const RegisterList = () => {
     {
       title: t("register_date"),
       dataIndex: "regDate",
-      sorter: true,
+      sorter: { multiple: 4 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "regDate" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "regDate"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
     },
     {
       title: t("register_end_date"),
       dataIndex: "regEndDate",
-      sorter: true,
+      sorter: { multiple: 5 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "regEndDate" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "regEndDate"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
     },
     {
       title: t("completion_status"),
       dataIndex: "completeStatus",
-      sorter: true,
+      sorter: { multiple: 6 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "completeStatus" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "completeStatus"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (completeStatus, elm) => (
         <>
           {completeStatus === "WAITING" ? (
@@ -487,9 +484,9 @@ const RegisterList = () => {
       title: t("access_status"),
       dataIndex: "accessStatus",
       width: "7%",
-      sorter: true,
+      sorter: { multiple: 7 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "accessStatus" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "accessStatus"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (accessStatus, elm) => (
         <>
           {(accessStatus === "ДОПУСК" && accessStatus !== null) ||
@@ -547,9 +544,9 @@ const RegisterList = () => {
       title: t("expired"),
       dataIndex: "expired",
       width: "5%",
-      sorter: true,
+      sorter: { multiple: 8 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "expired" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "expired"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (expired) => (
         <Tooltip title={expired}>
           <span>
@@ -563,9 +560,9 @@ const RegisterList = () => {
     {
       title: t("conclusion_register_number"),
       dataIndex: "conclusionRegNum",
-      sorter: true,
+      sorter: { multiple: 9 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "conclusionRegNum" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "conclusionRegNum"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (conclusionRegNum, elm) => (
         <p onClick={() => dowloadRapport(elm?.id, conclusionRegNum)}>
           {conclusionRegNum}
@@ -576,9 +573,9 @@ const RegisterList = () => {
       title: t("full_name"),
       dataIndex: "fullName",
       width: "15%",
-      sorter: true,
+      sorter: { multiple: 10 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "fullName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "fullName"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (full_name) => (
         <Tooltip title={full_name}>
           <span style={{
@@ -605,9 +602,9 @@ const RegisterList = () => {
       dataIndex: "pinfl",
       width: "5%",
       align: "center",
-      sorter: true,
+      sorter: { multiple: 11 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "pinfl" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "pinfl"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (pinfl) => (
         <Tooltip title={pinfl}>
           <span>
@@ -619,9 +616,9 @@ const RegisterList = () => {
     {
       title: t("birth_date"),
       dataIndex: "birthDate",
-      sorter: true,
+      sorter: { multiple: 12 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "birthDate" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "birthDate"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (_, elm) => (
         <>
           {elm?.birthDate === null ||
@@ -637,9 +634,9 @@ const RegisterList = () => {
     {
       title: t("birth_place"),
       dataIndex: "birthPlace",
-      sorter: true,
+      sorter: { multiple: 13 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "birthPlace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "birthPlace"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (birthPlace) => {
         const text = birthPlace || "";
         // If the text is longer than 10 characters, truncate it.
@@ -665,9 +662,9 @@ const RegisterList = () => {
     {
       title: t("work_place"),
       dataIndex: "workplace",
-      sorter: true,
+      sorter: { multiple: 14 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "workplace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "workplace"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (workplace, elm) => {
         const text = `${workplace || ""} ${elm?.positionv1 || ""}`.trim();
         return text.length > 7 ? (
@@ -692,9 +689,9 @@ const RegisterList = () => {
     {
       title: t("residence"),
       dataIndex: "residence",
-      sorter: true,
+      sorter: { multiple: 15 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "residence" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "residence"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (residence) => (
         <Tooltip title={residence}>
           <span>
@@ -734,9 +731,9 @@ const RegisterList = () => {
     {
       title: t("updated_at"),
       dataIndex: "updatedAt",
-      sorter: true,
+      sorter: { multiple: 16 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "updatedAt" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "updatedAt"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (updatedAt) => (
         <>{updatedAt ? getDateString(updatedAt) : t("unknown")}</>
       ),
@@ -1227,8 +1224,7 @@ const RegisterList = () => {
                   model: search?.model ? search?.model : "registration",
                 });
                 form.resetFields();
-                setSortField(null);
-                setSortOrder(null);
+                setSortedColumns([]);
               }}
             >
               <ClearOutlined /> {t("clear")}

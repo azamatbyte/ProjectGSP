@@ -526,5 +526,10 @@
     "status_database": "Маълумотлар базаси",
     "status_working": "Ишлаяпти",
     "status_not_working": "Ишламаяпти",
-    "status_checking": "Текширилмоқда…"
+    "status_checking": "Текширилмоқда…",
+    "dashboard_latest_title": "Сўнгги операциялар",
+    "dashboard_latest_column_customer": "Текширилувчи шахс",
+    "dashboard_latest_column_registered": "Рўйхатга олинган",
+    "dashboard_latest_column_overdue": "Муддати ўтган",
+    "dashboard_latest_column_status": "Ҳолат"
 }

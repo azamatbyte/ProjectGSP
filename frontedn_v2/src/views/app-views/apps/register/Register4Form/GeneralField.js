@@ -108,8 +108,7 @@ const GeneralField = (props) => {
   const [relativeTotal, setRelativeTotal] = useState(0);
 
   const [loading, setLoading] = useState(false);
-  const [sortField, setSortField] = useState(null);
-  const [sortOrder, setSortOrder] = useState(null);
+  const [sortedColumns, setSortedColumns] = useState([]);
 
   const completeStatus = [
     { key: "WAITING", label: t("waiting") },
@@ -202,8 +201,8 @@ const GeneralField = (props) => {
       try {
         setLoading(true);
         if (regNumber !== "") {
-          const sortParam = sortField && sortOrder
-            ? { sort: { [sortField]: sortOrder.toLowerCase() } }
+          const sortParam = sortedColumns.length > 0
+            ? { sort: sortedColumns.map(s => ({ [s.field]: s.order.toLowerCase() })) }
             : undefined;
           const data = await RegistrationService.getList(
             relativePageNumber,
@@ -230,7 +229,7 @@ const GeneralField = (props) => {
     if (mode !== "EDIT") {
       fetchData();
     }
-  }, [regNumber, relativePageNumber, relativePageSize, mode, t, sortField, sortOrder]);
+  }, [regNumber, relativePageNumber, relativePageSize, mode, t, sortedColumns]);
 
   const debouncedFetchWorkplaces = debounce(async (searchText) => {
     if (searchText.length > 2) {
@@ -368,13 +367,11 @@ const GeneralField = (props) => {
   };
 
   const handleTableChange = (pagination, filters, sorter) => {
-    if (sorter?.field && sorter?.order) {
-      setSortField(sorter.field);
-      setSortOrder(sorter.order === "ascend" ? "ASC" : "DESC");
-    } else {
-      setSortField(null);
-      setSortOrder(null);
-    }
+    const sorters = Array.isArray(sorter) ? sorter : [sorter];
+    const newSorted = sorters
+      .filter(s => s.order)
+      .map(s => ({ field: s.field, order: s.order === 'ascend' ? 'ASC' : 'DESC' }));
+    setSortedColumns(newSorted);
   };
 
   const tableColumns = [
@@ -382,17 +379,17 @@ const GeneralField = (props) => {
       title: t("reg_number"),
       dataIndex: "regNumber",
       width: "2%",
-      sorter: true,
+      sorter: { multiple: 1 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "regNumber" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "regNumber"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
     },
     {
       title: t("access_status"),
       dataIndex: "accessStatus",
       width: "7%",
-      sorter: true,
+      sorter: { multiple: 2 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "accessStatus" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "accessStatus"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (accessStatus, elm) => (
         <>
           {/* {(accessStatus !== 'ДОПУСК' && accessStatus !== null) ?
@@ -440,9 +437,9 @@ const GeneralField = (props) => {
       title: t("full_name"),
       dataIndex: "fullName",
       width: "10%",
-      sorter: true,
+      sorter: { multiple: 3 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "fullName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "fullName"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (fullName) => (
         <span style={{ whiteSpace: "normal", wordWrap: "break-word" }}>
           {fullName}
@@ -452,16 +449,16 @@ const GeneralField = (props) => {
     {
       title: t("form"),
       dataIndex: "form_reg",
-      sorter: true,
+      sorter: { multiple: 4 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "form_reg" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "form_reg"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
     },
     {
       title: t("birth_date"),
       dataIndex: "birthDate",
-      sorter: true,
+      sorter: { multiple: 5 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "birthDate" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "birthDate"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (_, elm) => (
         <>
           {elm?.birthDate !== null && elm?.birthDate !== "Неизвестно"
@@ -475,16 +472,16 @@ const GeneralField = (props) => {
     {
       title: t("birth_place"),
       dataIndex: "birthPlace",
-      sorter: true,
+      sorter: { multiple: 6 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "birthPlace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "birthPlace"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
     },
     {
       title: t("work_place"),
       dataIndex: "workplace",
-      sorter: true,
+      sorter: { multiple: 7 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "workplace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "workplace"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (workplace, elm) => {
         if (workplace) {
           if (elm?.position) {
@@ -500,9 +497,9 @@ const GeneralField = (props) => {
     {
       title: t("residence"),
       dataIndex: "residence",
-      sorter: true,
+      sorter: { multiple: 8 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "residence" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "residence"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (residence) => (
         <p>
           {residence?.length > 100

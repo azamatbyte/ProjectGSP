@@ -33,16 +33,15 @@ const RelativeTable = ({
     pageSize: 10,
     total: 0,
   });
-  const [sortField, setSortField] = useState(null);
-  const [sortOrder, setSortOrder] = useState(null);
+  const [sortedColumns, setSortedColumns] = useState([]);
 
   const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
     try {
       setData((prev) => ({ ...prev, loading: true }));
-      const sort = sortField && sortOrder
-        ? { [sortField]: sortOrder.toLowerCase() }
+      const sort = sortedColumns.length > 0
+        ? sortedColumns.map(s => ({ [s.field]: s.order.toLowerCase() }))
         : undefined;
       let response;
       if (formType === "4") {
@@ -81,7 +80,7 @@ const RelativeTable = ({
         total: 0,
       });
     }
-  }, [id, model, formType, regNumber, data.pageNumber, data.pageSize, sortField, sortOrder]);
+  }, [id, model, formType, regNumber, data.pageNumber, data.pageSize, sortedColumns]);
 
   useEffect(() => {
     fetchData();
@@ -147,13 +146,11 @@ const RelativeTable = ({
    });
 
   const handleTableChange = (pagination, filters, sorter) => {
-    if (sorter?.field && sorter?.order) {
-      setSortField(sorter.field);
-      setSortOrder(sorter.order === "ascend" ? "ASC" : "DESC");
-    } else {
-      setSortField(null);
-      setSortOrder(null);
-    }
+    const sorters = Array.isArray(sorter) ? sorter : [sorter];
+    const newSorted = sorters
+      .filter(s => s.order)
+      .map(s => ({ field: s.field, order: s.order === 'ascend' ? 'ASC' : 'DESC' }));
+    setSortedColumns(newSorted);
   };
 
   const columns = [
@@ -163,9 +160,9 @@ const RelativeTable = ({
             title: t("relation_degree"),
             dataIndex: "relationDegree",
             key: "relation_degree",
-            sorter: true,
+            sorter: { multiple: 1 },
             sortDirections: ["ascend", "descend"],
-            sortOrder: sortField === "relationDegree" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+            sortOrder: (() => { const f = sortedColumns.find(s => s.field === "relationDegree"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
             render: (text) =>
               text?.length > 30 ? text.slice(0, 30) + "..." : text,
           },
@@ -175,36 +172,36 @@ const RelativeTable = ({
       title: t("last_name"),
       dataIndex: "lastName",
       key: "last_name",
-      sorter: true,
+      sorter: { multiple: 2 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "lastName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "lastName"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (text) => (text?.length > 30 ? text.slice(0, 30) + "..." : text),
     },
     {
       title: t("first_name"),
       dataIndex: "firstName",
       key: "first_name",
-      sorter: true,
+      sorter: { multiple: 3 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "firstName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "firstName"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (text) => (text?.length > 30 ? text.slice(0, 30) + "..." : text),
     },
     {
       title: t("father_name"),
       dataIndex: "fatherName",
       key: "fatherName",
-      sorter: true,
+      sorter: { multiple: 4 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "fatherName" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "fatherName"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (text) => (text?.length > 30 ? text.slice(0, 30) + "..." : text),
     },
     {
       title: t("birth_date"),
       dataIndex: "birthDate",
       key: "birthDate",
-      sorter: true,
+      sorter: { multiple: 5 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "birthDate" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "birthDate"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (text, elm) =>
         elm?.birthDate ? getDateDayString(elm.birthDate) : elm?.birthYear || "",
     },
@@ -212,18 +209,18 @@ const RelativeTable = ({
       title: t("birth_place"),
       dataIndex: "birthPlace",
       key: "birthPlace",
-      sorter: true,
+      sorter: { multiple: 6 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "birthPlace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "birthPlace"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (text) => (text?.length > 30 ? text.slice(0, 30) + "..." : text),
     },
     {
       title: t("residence"),
       dataIndex: "residence",
       key: "residence",
-      sorter: true,
+      sorter: { multiple: 7 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "residence" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "residence"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (text) =>
         text?.length > 100 ? text.slice(0, 100) + "..." : text,
     },
@@ -231,9 +228,9 @@ const RelativeTable = ({
       title: t("workplace"),
       dataIndex: "workplace",
       key: "workplace",
-      sorter: true,
+      sorter: { multiple: 8 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "workplace" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "workplace"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (text, elm) =>
         elm?.workplace
           ? elm?.workplace + (elm?.position ? " - " + elm?.position : "")
@@ -243,9 +240,9 @@ const RelativeTable = ({
       title: t("notes"),
       dataIndex: "notes",
       key: "notes",
-      sorter: true,
+      sorter: { multiple: 9 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortField === "notes" ? (sortOrder === "ASC" ? "ascend" : "descend") : null,
+      sortOrder: (() => { const f = sortedColumns.find(s => s.field === "notes"); return f ? (f.order === "ASC" ? "ascend" : "descend") : null; })(),
       render: (text) => (text?.length > 10 ? text.slice(0, 10) + "..." : text),
     },
     {

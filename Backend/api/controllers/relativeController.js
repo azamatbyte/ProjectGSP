@@ -479,27 +479,31 @@ exports.searchRelatives = async (req, res) => {
 
     console.log(filters);
 
-    // Cyrillic-friendly ordering for name fields using Intl.Collator
-    const nameSortableFields = new Set(["fullName", "firstName", "lastName", "fatherName"]);
-
-    const getSortEntry = (s) => {
-      if (!s || typeof s !== "object") return null;
-      const entries = Object.entries(s);
-      if (entries.length !== 1) return null;
-      const [field, directionOrObj] = entries[0];
-      let direction = "asc";
-      if (typeof directionOrObj === "string") direction = directionOrObj;
-      else if (
-        directionOrObj &&
-        typeof directionOrObj === "object" &&
-        typeof directionOrObj.sort === "string"
-      ) {
-        direction = directionOrObj.sort;
-      }
-      return { field, direction: direction?.toLowerCase() === "desc" ? "desc" : "asc" };
+    // Parse sort into array of {field, direction} entries.
+    const parseSortEntries = (s) => {
+      if (!s) return [];
+      const parseOne = (obj) => {
+        if (!obj || typeof obj !== "object") return null;
+        const entries = Object.entries(obj);
+        if (entries.length !== 1) return null;
+        const [field, directionOrObj] = entries[0];
+        let direction = "asc";
+        if (typeof directionOrObj === "string") direction = directionOrObj;
+        else if (directionOrObj && typeof directionOrObj === "object" && typeof directionOrObj.sort === "string") {
+          direction = directionOrObj.sort;
+        }
+        return { field, direction: direction?.toLowerCase() === "desc" ? "desc" : "asc" };
+      };
+      if (Array.isArray(s)) return s.map(parseOne).filter(Boolean);
+      const single = parseOne(s);
+      return single ? [single] : [];
     };
 
-    const sortEntry = getSortEntry(sort);
+    const sortEntries = parseSortEntries(sort);
+
+    // Cyrillic-friendly ordering for name fields using Intl.Collator
+    const nameSortableFields = new Set(["fullName", "firstName", "lastName", "fatherName"]);
+    const hasNameSort = sortEntries.some(e => nameSortableFields.has(e.field));
 
     const includeRelations = {
       registration: {
@@ -528,10 +532,10 @@ exports.searchRelatives = async (req, res) => {
     let totalRelatives;
     let relatives;
 
-    if (sortEntry && nameSortableFields.has(sortEntry.field)) {
-      // Fetch all IDs + the target field, sort with Cyrillic collator, then page
+    if (sortEntries.length > 0 && hasNameSort) {
+      // In-memory Cyrillic-aware multi-key sort
       const toSelect = { id: true };
-      toSelect[sortEntry.field] = true;
+      for (const e of sortEntries) toSelect[e.field] = true;
       const allForSort = await prisma.relatives.findMany({
         where: filters,
         select: toSelect,
@@ -544,10 +548,18 @@ exports.searchRelatives = async (req, res) => {
       });
 
       allForSort.sort((a, b) => {
-        const av = (a[sortEntry.field] || "").toString();
-        const bv = (b[sortEntry.field] || "").toString();
-        const cmp = collator.compare(av, bv);
-        return sortEntry.direction === "desc" ? -cmp : cmp;
+        for (const entry of sortEntries) {
+          const av = (a[entry.field] || "").toString();
+          const bv = (b[entry.field] || "").toString();
+          let cmp;
+          if (nameSortableFields.has(entry.field)) {
+            cmp = collator.compare(av, bv);
+          } else {
+            cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          }
+          if (cmp !== 0) return entry.direction === "desc" ? -cmp : cmp;
+        }
+        return 0;
       });
 
       totalRelatives = allForSort.length;
@@ -566,13 +578,16 @@ exports.searchRelatives = async (req, res) => {
         relatives = unordered;
       }
     } else {
-      // Default DB-side ordering
+      // DB-side ordering
+      const orderBy = sortEntries.length > 0
+        ? sortEntries.map(e => ({ [e.field]: e.direction }))
+        : [{ createdAt: "desc" }];
       const [count, rows] = await prisma.$transaction([
         prisma.relatives.count({ where: filters }),
         prisma.relatives.findMany({
           where: filters,
           include: includeRelations,
-          orderBy: sort ? sort : { createdAt: "desc" },
+          orderBy,
           skip: (page - 1) * size,
           take: size,
         }),
@@ -1008,34 +1023,54 @@ exports.getRelativesListByRegistrationId = async (req, res) => {
     let totalRelatives;
     let relatives;
 
-    // Cyrillic-aware sorting for specific name fields
-    const nameSortableFields = new Set(["firstName", "lastName", "fatherName"]);
-    const getSortEntry = (s) => {
-      if (!s || typeof s !== "object") return null;
-      const entries = Object.entries(s);
-      if (entries.length !== 1) return null;
-      const [field, directionOrObj] = entries[0];
-      let direction = "asc";
-      if (typeof directionOrObj === "string") direction = directionOrObj;
-      else if (
-        directionOrObj &&
-        typeof directionOrObj === "object" &&
-        typeof directionOrObj.sort === "string"
-      ) {
-        direction = directionOrObj.sort;
-      }
-      return {
-        field,
-        direction: direction?.toLowerCase() === "desc" ? "desc" : "asc",
+    // Parse sort into array of {field, direction} entries.
+    const parseSortEntries = (s) => {
+      if (!s) return [];
+      const parseOne = (obj) => {
+        if (!obj || typeof obj !== "object") return null;
+        const entries = Object.entries(obj);
+        if (entries.length !== 1) return null;
+        const [field, directionOrObj] = entries[0];
+        let direction = "asc";
+        if (typeof directionOrObj === "string") direction = directionOrObj;
+        else if (directionOrObj && typeof directionOrObj === "object" && typeof directionOrObj.sort === "string") {
+          direction = directionOrObj.sort;
+        }
+        return { field, direction: direction?.toLowerCase() === "desc" ? "desc" : "asc" };
       };
+      if (Array.isArray(s)) return s.map(parseOne).filter(Boolean);
+      const single = parseOne(s);
+      return single ? [single] : [];
     };
 
-    const sortEntry = getSortEntry(sort);
+    const sortEntries = parseSortEntries(sort);
 
-    if (sortEntry && nameSortableFields.has(sortEntry.field)) {
-      // Fetch all IDs + the target field, sort with Russian collator, then page
+    // Cyrillic-aware sorting for specific name fields
+    const nameSortableFields = new Set(["firstName", "lastName", "fatherName"]);
+    const hasNameSort = sortEntries.some(e => nameSortableFields.has(e.field));
+
+    const selectFields = {
+      id: true,
+      relationDegree: true,
+      fullName: true,
+      firstName: true,
+      lastName: true,
+      fatherName: true,
+      birthYear: true,
+      birthDate: true,
+      birthPlace: true,
+      residence: true,
+      workplace: true,
+      position: true,
+      notes: true,
+      model: true,
+      additionalNotes: true,
+    };
+
+    if (sortEntries.length > 0 && hasNameSort) {
+      // In-memory Cyrillic-aware multi-key sort
       const toSelect = { id: true };
-      toSelect[sortEntry.field] = true;
+      for (const e of sortEntries) toSelect[e.field] = true;
       const allForSort = await prisma.relatives.findMany({
         where: filters,
         select: toSelect,
@@ -1048,10 +1083,18 @@ exports.getRelativesListByRegistrationId = async (req, res) => {
       });
 
       allForSort.sort((a, b) => {
-        const av = (a[sortEntry.field] || "").toString();
-        const bv = (b[sortEntry.field] || "").toString();
-        const cmp = collator.compare(av, bv);
-        return sortEntry.direction === "desc" ? -cmp : cmp;
+        for (const entry of sortEntries) {
+          const av = (a[entry.field] || "").toString();
+          const bv = (b[entry.field] || "").toString();
+          let cmp;
+          if (nameSortableFields.has(entry.field)) {
+            cmp = collator.compare(av, bv);
+          } else {
+            cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          }
+          if (cmp !== 0) return entry.direction === "desc" ? -cmp : cmp;
+        }
+        return 0;
       });
 
       totalRelatives = allForSort.length;
@@ -1063,52 +1106,23 @@ exports.getRelativesListByRegistrationId = async (req, res) => {
       } else {
         const unordered = await prisma.relatives.findMany({
           where: { id: { in: pageIds } },
-          select: {
-            id: true,
-            relationDegree: true,
-            fullName: true,
-            firstName: true,
-            lastName: true,
-            fatherName: true,
-            birthYear: true,
-            birthDate: true,
-            birthPlace: true,
-            residence: true,
-            workplace: true,
-            position: true,
-            notes: true,
-            model: true,
-            additionalNotes: true,
-          },
+          select: selectFields,
         });
         const pos = new Map(pageIds.map((id, i) => [id, i]));
         unordered.sort((a, b) => pos.get(a.id) - pos.get(b.id));
         relatives = unordered;
       }
     } else {
-      // Default DB-side ordering
+      // DB-side ordering
+      const orderBy = sortEntries.length > 0
+        ? sortEntries.map(e => ({ [e.field]: e.direction }))
+        : [{ createdAt: "asc" }];
       const result = await prisma.$transaction([
         prisma.relatives.count({ where: filters }),
         prisma.relatives.findMany({
           where: filters,
-          select: {
-            id: true,
-            relationDegree: true,
-            fullName: true,
-            firstName: true,
-            lastName: true,
-            fatherName: true,
-            birthYear: true,
-            birthDate: true,
-            birthPlace: true,
-            residence: true,
-            workplace: true,
-            position: true,
-            notes: true,
-            model: true,
-            additionalNotes: true,
-          },
-          orderBy: [sort ? sort : { createdAt: "asc" }],
+          select: selectFields,
+          orderBy,
           skip: (page - 1) * size,
           take: size,
         }),
