@@ -37,7 +37,6 @@ const fields = [
 ];
 
 const RelativeList = () => {
-  console.log("RelativeList render");
   const navigate = useNavigate();
   const [list, setList] = useState([]);
   const [pageNumber, setPageNumber] = useState(1);
@@ -435,7 +434,7 @@ const RelativeList = () => {
         form={form}
         name="advanced_search"
         className="ant-advanced-search-form"
-        onFinish={(values) => console.log("Received values of form: ", values)}
+        onFinish={() => {}}
       >
         {/* <div style={{ marginBottom: '16px', fontWeight: 'bold' }}>Search system:</div> */}
         <Row gutter={8} style={{ marginBottom: "-10px" }}>

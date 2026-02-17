@@ -65,36 +65,43 @@ instance.interceptors.request.use(
 );
 
 
+let refreshPromise = null;
+
 instance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Handle network errors (server not reachable)
-    // if (!error.response) {
-    //   // alert('Server is not working. Please try again later.');
-    //   clearStorage();
-    //   window.location.href = '/auth/login?redirect=/app/dashboards/default';
-    //   return Promise.reject(error);
-    // }
-
     const originalRequest = error.config;
     if ((error?.response?.statusText === "Unauthorized" || error?.response?.status === 401) && !originalRequest._retry) {
       originalRequest._retry = true;
+
+      if (!refreshPromise) {
+        refreshPromise = Request.postRequest(refresh_token, { refreshToken: getStorageR() })
+          .then((response) => {
+            const { accessToken, refreshToken } = response.data;
+            setStorage(accessToken);
+            setStorageR(refreshToken);
+            return accessToken;
+          })
+          .catch((err) => {
+            err.toLogin = true;
+            if (err?.response?.status === 403) {
+              clearStorage();
+              localStorage.removeItem("AUTH_TOKEN");
+              window.location.href = "/auth/login?redirect=/app/dashboards/default";
+            }
+            throw err;
+          })
+          .finally(() => {
+            refreshPromise = null;
+          });
+      }
+
       try {
-        const refresh = getStorageR();
-        const response = await Request.postRequest(refresh_token, { refreshToken: refresh });
-        const { accessToken, refreshToken } = response.data;
-        setStorage(accessToken);
-        setStorageR(refreshToken);
-        originalRequest.headers["x-access-token"] = `${accessToken}`;
+        const newToken = await refreshPromise;
+        originalRequest.headers["x-access-token"] = `${newToken}`;
         return axios(originalRequest);
-      } catch (error) {
-        error.toLogin = true;
-        if (error?.response?.status === 403) {
-          clearStorage();
-          localStorage.removeItem("AUTH_TOKEN");
-          window.location.href = "/auth/login?redirect=/app/dashboards/default";
-        }
-        return Promise.reject(error);
+      } catch (err) {
+        return Promise.reject(err);
       }
     }
 

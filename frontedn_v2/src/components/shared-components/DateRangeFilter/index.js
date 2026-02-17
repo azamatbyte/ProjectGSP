@@ -1,6 +1,9 @@
 import React, { useMemo, useCallback, useRef, useEffect } from "react";
 import { DatePicker } from "antd";
-import moment from "moment";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
 
 /**
  * Qayta foydalaniladigan RangePicker wrapperi.
@@ -148,11 +151,11 @@ const DateRangeFilter = ({
 
       if (dates && dates[0] && dates[1]) {
         // Build UTC midnight timestamps to avoid timezone shifts across locales
-        const start = moment
+        const start = dayjs
           .utc(dates[0].format("YYYY-MM-DD"), "YYYY-MM-DD")
           .startOf("day")
           .toISOString();
-        const end = moment
+        const end = dayjs
           .utc(dates[1].format("YYYY-MM-DD"), "YYYY-MM-DD")
           .endOf("day")
           .toISOString();

@@ -192,13 +192,14 @@ const Index = (props) => {
         formManual.setFieldsValue({ form_reg: formOptions[0].value });
       }
 
-      setTimeout(() => {
+      const id = setTimeout(() => {
         // reg_number input maydonini active qilish
         const regNumberInput = document.querySelector("[tabindex=\"2\"]");
         if (regNumberInput) {
           regNumberInput.focus();
         }
       }, 300);
+      return () => clearTimeout(id);
     }
   }, [manualModalVisible, formOptions, formManual]);
 
@@ -215,9 +216,10 @@ const Index = (props) => {
   useEffect(() => {
     if (modalVisible && datePickerRef.current) {
       // Kichik timeout kerak, modal render bo'lishini kutish uchun
-      setTimeout(() => {
-        datePickerRef.current.focus();
+      const id = setTimeout(() => {
+        datePickerRef.current?.focus();
       }, 100);
+      return () => clearTimeout(id);
     }
   }, [modalVisible]);
 
@@ -292,10 +294,12 @@ const Index = (props) => {
   }, [location.search, location.pathname, navigate, search]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const workplaces = await fetchWorkplaces("");
-      const initiators = await fetchInitiators("");
-      const forms = await fetchForms("");
+    const fetchInitialData = async () => {
+      const [workplaces, initiators, forms] = await Promise.all([
+        fetchWorkplaces(""),
+        fetchInitiators(""),
+        fetchForms(""),
+      ]);
 
       setWorkplaceOptions(
         workplaces.map((item) => ({
@@ -318,7 +322,7 @@ const Index = (props) => {
       );
     };
 
-    fetchData();
+    fetchInitialData();
   }, []);
 
   const fetchData = useCallback(async () => {

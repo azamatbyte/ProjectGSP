@@ -1,4 +1,3 @@
-import fetch from "auth/FetchInterceptor";
 import { auth_signin, get_user } from "utils/api_urls";
 import Request from "utils/request";
 
@@ -10,14 +9,6 @@ AuthService.login = function (data) {
 
 AuthService.getByToken = function () {
 	return Request.postRequest(get_user);
-};
-
-AuthService.register = function (data) {
-	return fetch({
-		url: "/auth/register",
-		method: "post",
-		data: data
-	});
 };
 
 AuthService.getList = function (pageNumber = 1, pageSize = 10, query = "", status = "") {

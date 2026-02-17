@@ -45,7 +45,6 @@ import RelativeService from "services/RelativeService";
 import AccessStatusService from "services/AccessStatusService";
 
 const GlobalSearch = (props) => {
-  console.log("GlobalSearch render");
   const [searchParams] = useSearchParams();
   const searchParamsData = searchParams.get("search");
   const navigate = useNavigate();
@@ -68,11 +67,13 @@ const GlobalSearch = (props) => {
   const [expand, setExpand] = useState(false);
   const [form] = Form.useForm();
   const { t } = useTranslation();
-  const [initiatorOptions, setInitiatorOptions] = useState([]);
+  const [filterOptions, setFilterOptions] = useState({
+    initiators: [],
+    executors: [],
+    accessStatus: [],
+  });
   const [initiatorFetching, setInitiatorFetching] = useState(false);
-  const [executorOptions, setExecutorOptions] = useState([]);
   const [executorFetching, setExecutorFetching] = useState(false);
-  const [accessStatusOptions, setAccessStatusOptions] = useState([]);
   const [accessStatusFetching, setAccessStatusFetching] = useState(false);
 
   // FIX 1: Use ref to track if we're programmatically updating URL to prevent loops
@@ -263,35 +264,30 @@ const GlobalSearch = (props) => {
           fetchAccessStatus(""),
         ]);
 
-        setInitiatorOptions(
-          initiators.map((item) => ({
+        setFilterOptions({
+          initiators: initiators.map((item) => ({
             value: item?.id,
             label: item?.full_name,
             id: item?.id,
-          }))
-        );
-
-        setExecutorOptions(
-          executors.map((item) => ({
+          })),
+          executors: executors.map((item) => ({
             value: item?.id,
             label: item?.full_name,
             id: item?.id,
-          }))
-        );
-
-        setAccessStatusOptions(
-          accessStatus.map((item) => ({
+          })),
+          accessStatus: accessStatus.map((item) => ({
             value: item.name,
             label: item.name,
-          }))
-        );
+          })),
+        });
       } catch (error) {
         console.error("Error initializing options:", error);
       }
     };
 
     initializeOptions();
-  }, [fetchInitiators, fetchExecutors]); // Added dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   const backHandle = useCallback(() => {
     navigate(-1);
@@ -448,13 +444,14 @@ const GlobalSearch = (props) => {
         if (searchText.length >= 1) {
           setInitiatorFetching(true);
           const initiators = await fetchInitiators(searchText);
-          setInitiatorOptions(
-            initiators.map((item) => ({
+          setFilterOptions((prev) => ({
+            ...prev,
+            initiators: initiators.map((item) => ({
               value: item?.id,
               label: item?.full_name,
               id: item?.id,
-            }))
-          );
+            })),
+          }));
           setInitiatorFetching(false);
         }
       }, 500),
@@ -467,32 +464,19 @@ const GlobalSearch = (props) => {
         if (searchText.length >= 1) {
           setExecutorFetching(true);
           const executors = await fetchExecutors(searchText);
-          setExecutorOptions(
-            executors.map((item) => ({
+          setFilterOptions((prev) => ({
+            ...prev,
+            executors: executors.map((item) => ({
               value: item?.id,
               label: item?.full_name,
               id: item?.id,
-            }))
-          );
+            })),
+          }));
           setExecutorFetching(false);
         }
       }, 500),
     [fetchExecutors]
   );
-
-  const debouncedFetchAccessStatus = debounce(async (searchText) => {
-    if (searchText.length >= 1) {
-      setAccessStatusFetching(true);
-      const data = await fetchAccessStatus(searchText);
-      setAccessStatusOptions(
-        data.map((item) => ({
-          value: item.name,
-          label: item.name,
-        }))
-      );
-      setAccessStatusFetching(false);
-    }
-  }, 500);
 
   const handleTableChange = useCallback((pagination, filters, sorter) => {
     const sorters = Array.isArray(sorter) ? sorter : [sorter];
@@ -503,6 +487,19 @@ const GlobalSearch = (props) => {
     setPageNumber(1);
   }, []);
 
+  const sortOrderMap = useMemo(() => {
+    const map = {};
+    sortedColumns.forEach((s) => {
+      map[s.field] = s.order === 'ASC' ? 'ascend' : 'descend';
+    });
+    return map;
+  }, [sortedColumns]);
+
+  const rowNumber = useCallback(
+    (index) => total - ((pageNumber - 1) * pageSize + index),
+    [total, pageNumber, pageSize]
+  );
+
   const tableColumns = useMemo(
     () => [
       {
@@ -510,7 +507,7 @@ const GlobalSearch = (props) => {
         dataIndex: "number",
         align: "center",
         render: (text, record, index) => (
-          <span>{total - ((pageNumber - 1) * pageSize + index)}</span>
+          <span>{rowNumber(index)}</span>
         ),
       },
       {
@@ -530,7 +527,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 1 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'reg_number'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['reg_number'] || null,
         render: (reg_number) => (
           <Tooltip title={reg_number}>
             <span
@@ -579,7 +576,7 @@ const GlobalSearch = (props) => {
         width: "10%",
         sorter: { multiple: 2 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'form_reg'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['form_reg'] || null,
         render: (form_reg) => (
           <Tooltip title={form_reg}>
             <span>
@@ -603,7 +600,7 @@ const GlobalSearch = (props) => {
         width: "10%",
         sorter: { multiple: 3 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'form_reg_log'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['form_reg_log'] || null,
         render: (form_reg_log) => {
           const truncated =
             form_reg_log && form_reg_log.length > 6
@@ -630,7 +627,7 @@ const GlobalSearch = (props) => {
         width: "10%",
         sorter: { multiple: 4 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'relationdegree'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['relationdegree'] || null,
         render: (relationdegree) => (
           <Tooltip title={relationdegree}>
             <span>
@@ -655,7 +652,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 5 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'full_name'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['full_name'] || null,
         render: (full_name) => (
           <Tooltip title={full_name}>
             <span style={{
@@ -700,7 +697,7 @@ const GlobalSearch = (props) => {
         width: "10%",
         sorter: { multiple: 6 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'birth_date'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['birth_date'] || null,
         render: (_, elm) => (
           <>{elm?.birth_date ? elm?.birth_datev1 : elm?.birth_year}</>
         ),
@@ -712,7 +709,7 @@ const GlobalSearch = (props) => {
         width: "10%",
         sorter: { multiple: 7 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'reg_date'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['reg_date'] || null,
         render: (reg_date) => (
           <Tooltip title={getDateDayString(reg_date)}>
             <span>
@@ -736,7 +733,7 @@ const GlobalSearch = (props) => {
         width: "10%",
         sorter: { multiple: 8 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'reg_end_date'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['reg_end_date'] || null,
         render: (reg_end_date) => (
           <Tooltip title={getDateDayString(reg_end_date)}>
             <span>
@@ -760,7 +757,7 @@ const GlobalSearch = (props) => {
         width: "10%",
         sorter: { multiple: 9 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'complete_status'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['complete_status'] || null,
         render: (complete_status, elm) => (
           <>
             {complete_status === "WAITING" ? (
@@ -784,7 +781,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 10 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'access_status'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['access_status'] || null,
         render: (accessStatus, elm) => (
           <>
             {(accessStatus === "ДОПУСК" && accessStatus !== null) ||
@@ -845,7 +842,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 11 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'expired'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['expired'] || null,
         render: (expired) => (
           <Tooltip title={getDateDayString(expired)}>
             <span>
@@ -863,7 +860,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 12 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'pinfl'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['pinfl'] || null,
         render: (pinfl) => (
           <Tooltip title={pinfl}>
             <span>
@@ -878,7 +875,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 13 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'conclusion_reg_num'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['conclusion_reg_num'] || null,
         render: (conclusion_reg_num) => (
           <Tooltip title={conclusion_reg_num}>
             <span>
@@ -901,7 +898,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 14 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'birth_place'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['birth_place'] || null,
         render: (birthPlace) => {
           const text = birthPlace || "";
           const truncated = text.length > 10 ? text.slice(0, 10) + "..." : text;
@@ -928,7 +925,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 15 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'workplace'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['workplace'] || null,
         render: (workplace, elm) => {
           const fullText = `${workplace || ""} ${elm?.positionv1 || ""}`.trim();
           if (fullText.length > 7) {
@@ -962,7 +959,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 16 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'notes'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['notes'] || null,
         render: (notes) => {
           // Define the truncated version if notes length exceeds 10 characters
           const truncated =
@@ -991,7 +988,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 17 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'residence'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['residence'] || null,
         render: (residence) => (
           <Tooltip title={residence}>
             {residence
@@ -1009,7 +1006,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 18 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'initiator'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['initiator'] || null,
         render: (_, elm) => {
           const fullName =
             (elm?.initiator_last_name
@@ -1036,7 +1033,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 19 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'executor'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['executor'] || null,
         render: (_, elm) => (
           <>
             {elm?.executor_last_name} {elm?.executor_first_name}
@@ -1049,7 +1046,7 @@ const GlobalSearch = (props) => {
         align: "center",
         sorter: { multiple: 20 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: (() => { const f = sortedColumns.find(s => s.field === 'updatedat'); return f ? (f.order === 'ASC' ? 'ascend' : 'descend') : null; })(),
+        sortOrder: sortOrderMap['updatedat'] || null,
         render: (updatedat) => (
           <span
             style={{
@@ -1065,7 +1062,7 @@ const GlobalSearch = (props) => {
         ),
       },
     ],
-    [t, total, pageNumber, pageSize, dropdownMenu, sortedColumns]
+    [t, rowNumber, dropdownMenu, sortOrderMap]
   );
 
   // FIX 9: Ensure pagination handlers don't cause loops
@@ -1859,7 +1856,7 @@ const GlobalSearch = (props) => {
                         onSearch={debouncedFetchExecutors}
                         loading={executorFetching}
                         filterOption={false}
-                        options={executorOptions}
+                        options={filterOptions.executors}
                         tabIndex={16}
                         allowClear
                       />
@@ -1899,7 +1896,7 @@ const GlobalSearch = (props) => {
                         onSearch={debouncedFetchInitiators}
                         loading={initiatorFetching}
                         filterOption={false}
-                        options={initiatorOptions}
+                        options={filterOptions.initiators}
                         allowClear
                         tabIndex={17}
                       />
