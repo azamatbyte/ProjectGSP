@@ -316,6 +316,8 @@
     "dashboard_series_sp_completed": "СП завершена",
     "dashboard_series_access": "допуск",
     "dashboard_loading_error": "Не удалось загрузить данные графика",
+    "dashboard_unique_visitors_title": "Просроченные регистрации по формам",
+    "dashboard_form_overdue_loading_error": "Не удалось загрузить динамику просроченных регистраций",
     "select_dates": "Выберите даты",
     "deleted_successfully": "Удалено успешно",
     "success": "Успешно",

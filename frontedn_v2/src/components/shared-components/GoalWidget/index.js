@@ -4,15 +4,34 @@ import { Progress } from "antd";
 import Card from "components/shared-components/Card";
 
 export const GoalWidget = ({ title, value, size, subtitle, strokeWidth, extra, cardStyle, cardBodyStyle }) => {
+	const mergedCardStyle = {
+		display: "flex",
+		flexDirection: "column",
+		...cardStyle
+	};
+	const mergedBodyStyle = {
+		flex: 1,
+		width: "100%",
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		...cardBodyStyle
+	};
+	const detailsMaxWidth = `${size + 60}px`;
+
 	return (
-		<Card style={cardStyle} bodyStyle={cardBodyStyle}>
-			<div className="text-center">
+		<Card style={mergedCardStyle} bodyStyle={mergedBodyStyle}>
+			<div className="text-center" style={{ width: "100%" }}>
 				{title && <h4 className="mb-3 font-weight-bold">{title}</h4>}
 				<Progress type="dashboard" percent={value} size={size} strokeWidth={strokeWidth}/>
-				<div className={`mt-2 mx-auto text-muted ${extra ? "mb-3" : ""}`} style={{maxWidth: `${size + 30}px`}}>
+				<div className={`mt-2 mx-auto text-muted ${extra ? "mb-3" : ""}`} style={{ maxWidth: detailsMaxWidth }}>
 					{subtitle}
 				</div>
-				{extra}
+				{extra && (
+					<div className="mx-auto" style={{ maxWidth: detailsMaxWidth }}>
+						{extra}
+					</div>
+				)}
 			</div>
 		</Card>
 	);

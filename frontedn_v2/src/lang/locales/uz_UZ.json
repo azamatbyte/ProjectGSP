@@ -416,6 +416,8 @@
     "dashboard_series_sp_completed": "МТ якунланган",
     "dashboard_series_access": "рухсат",
     "dashboard_loading_error": "График маълумотларини юклаб бўлмади",
+    "dashboard_unique_visitors_title": "Шакллар бўйича муддати ўтган рўйхатлар",
+    "dashboard_form_overdue_loading_error": "Муддати ўтган рўйхатлар динамикасини юклаб бўлмади",
     "select_dates": "Саналарни танланг",
     "deleted_successfully": "Муваффақиятли ўчирилди",
     "success": "Муваффақиятли",

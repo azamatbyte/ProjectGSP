@@ -32,6 +32,10 @@ StatisticsService.countedRecords = function (data) {
   return Request.postRequest("statistics/counted_records", data);
 };
 
+StatisticsService.formOverdueTrend = function (data) {
+  return Request.postRequest("statistics/form_overdue_trend", data);
+};
+
 StatisticsService.finishedRegistrationPercentage = function (data) {
   return Request.postRequest("statistics/finished_registration_percentage", data);
 };

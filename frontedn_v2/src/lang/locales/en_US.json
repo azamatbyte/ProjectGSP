@@ -308,6 +308,8 @@
 	"dashboard_series_sp_completed": "SP completed",
 	"dashboard_series_access": "access",
 	"dashboard_loading_error": "Failed to load chart data",
+	"dashboard_unique_visitors_title": "Overdue Registrations by Form",
+	"dashboard_form_overdue_loading_error": "Failed to load overdue trend data",
 	"select_dates": "Select Dates",
 	"deleted_successfully": "Delete Successfully",
 	"success": "Success",

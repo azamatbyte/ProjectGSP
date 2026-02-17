@@ -4,13 +4,9 @@ import ChartWidget from "components/shared-components/ChartWidget";
 import GoalWidget from "components/shared-components/GoalWidget";
 import Card from "components/shared-components/Card";
 import Flex from "components/shared-components/Flex";
-import {
-  VisitorChartData,
-} from "./DefaultDashboardData";
 import StatisticsService from "services/StattisticsService";
-import RevenueBarChart from "./components/RevenueBarChart";
+import FormService from "services/FormService";
 import SalesBarChart from "./components/SalesBarChart";
-import CostsBarChart from "./components/CostsBarChart";
 import { SPACER } from "constants/ThemeConstant";
 import {
   FileExcelOutlined,
@@ -22,12 +18,16 @@ import utils from "utils";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 
-const HERO_CHART_HEIGHT = "680px";
-const SECONDARY_VISITOR_CHART_HEIGHT = "340px";
-const SIDE_CARD_MIN_HEIGHT = 210;
+const HERO_CHART_HEIGHT = "400px";
+const SECONDARY_VISITOR_CHART_HEIGHT = "350px";
+const SIDE_CARD_MIN_HEIGHT = 455;
 const KPI_CARD_MIN_HEIGHT = 340;
 const DEFAULT_AXIS = "MONTH";
-const LATEST_TABLE_DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_TREND_MONTH_RANGE = 12;
+const DEFAULT_TREND_YEAR_RANGE = 5;
+const TREND_MONTH_RANGE_OPTIONS = [3, 6, 9, 12, 18, 24];
+const TREND_YEAR_RANGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const LATEST_TABLE_DEFAULT_PAGE_SIZE = 5;
 
 const CardDropdown = ({ items }) => {
 
@@ -42,10 +42,15 @@ const CardDropdown = ({ items }) => {
 
 export const DefaultDashboard = () => {
   const { t, i18n } = useTranslation();
-  const [visitorChartData] = useState(VisitorChartData);
   const [axis, setAxis] = useState(DEFAULT_AXIS);
+  const [trendAxis, setTrendAxis] = useState(DEFAULT_AXIS);
+  const [trendMonthRange, setTrendMonthRange] = useState(DEFAULT_TREND_MONTH_RANGE);
+  const [trendYearRange, setTrendYearRange] = useState(DEFAULT_TREND_YEAR_RANGE);
   const [heroRows, setHeroRows] = useState([]);
   const [heroLoading, setHeroLoading] = useState(false);
+  const [trendRows, setTrendRows] = useState([]);
+  const [trendForms, setTrendForms] = useState([]);
+  const [trendLoading, setTrendLoading] = useState(false);
   const [finishedPercentage, setFinishedPercentage] = useState(0);
   const [finishedCount, setFinishedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
@@ -60,6 +65,14 @@ export const DefaultDashboard = () => {
     { value: "MONTH", label: t("dashboard_axis_month") },
     { value: "YEAR", label: t("dashboard_axis_year") },
   ];
+
+  const trendRangeOptions = useMemo(
+    () => (trendAxis === "MONTH" ? TREND_MONTH_RANGE_OPTIONS : TREND_YEAR_RANGE_OPTIONS)
+      .map((value) => ({ value, label: String(value) })),
+    [trendAxis]
+  );
+
+  const trendRangeValue = trendAxis === "MONTH" ? trendMonthRange : trendYearRange;
 
   const heroCategories = useMemo(() => {
     const localeMap = { ru: "ru-RU", uz: "uz-UZ" };
@@ -247,6 +260,78 @@ export const DefaultDashboard = () => {
     };
   }, [heroRows, heroCategories, t]);
 
+  const trendChartData = useMemo(() => {
+    const rows = Array.isArray(trendRows) ? trendRows : [];
+    if (rows.length === 0) {
+      return {
+        categories: [],
+        series: [],
+      };
+    }
+
+    const localeMap = { ru: "ru-RU", uz: "uz-UZ" };
+    const locale = localeMap[i18n.language] || "ru-RU";
+    const bucketMap = new Map();
+    const valueMap = new Map();
+    const formsSet = new Set();
+
+    rows.forEach((item) => {
+      const yearValue = Number(item?.year) || 0;
+      if (!yearValue) return;
+
+      const monthValue = trendAxis === "MONTH" ? Number(item?.month) || 1 : null;
+      const bucketKey = `${yearValue}-${monthValue === null ? 0 : monthValue}`;
+      const formName = typeof item?.form_reg === "string" ? item.form_reg : "";
+      const rowValue = Number(item?.value) || 0;
+
+      if (!bucketMap.has(bucketKey)) {
+        bucketMap.set(bucketKey, {
+          key: bucketKey,
+          year: yearValue,
+          month: monthValue,
+        });
+      }
+
+      if (formName) {
+        formsSet.add(formName);
+        valueMap.set(`${formName}::${bucketKey}`, rowValue);
+      }
+    });
+
+    const buckets = Array.from(bucketMap.values()).sort((a, b) => {
+      if (a.year === b.year) {
+        return (a.month || 0) - (b.month || 0);
+      }
+      return a.year - b.year;
+    });
+
+    const categories = buckets.map((bucket) => {
+      if (trendAxis === "MONTH") {
+        const monthName = new Date(bucket.year, (bucket.month || 1) - 1, 1)
+          .toLocaleString(locale, { month: "short" });
+        return `${monthName} ${bucket.year}`;
+      }
+      return String(bucket.year);
+    });
+
+    const forms = Array.from(formsSet);
+    const series = forms.map((formName) => ({
+      name: formName,
+      data: buckets.map((bucket) => valueMap.get(`${formName}::${bucket.key}`) || 0),
+    }));
+
+    return {
+      categories,
+      series,
+    };
+  }, [trendRows, trendAxis, i18n.language]);
+
+  const trendChartOptions = useMemo(() => ({
+    legend: {
+      show: false,
+    },
+  }), []);
+
   const latestTransactionOption = useMemo(() => ([
     {
       key: "refresh",
@@ -352,6 +437,75 @@ export const DefaultDashboard = () => {
   useEffect(() => {
     let cancelled = false;
 
+    const loadTrendForms = async () => {
+      try {
+        const response = await FormService.listWithStatus(1, 500, "", "registration");
+        if (cancelled) return;
+
+        const forms = Array.isArray(response?.data?.forms)
+          ? [...new Set(response.data.forms
+            .map((item) => (typeof item?.name === "string" ? item.name.trim() : ""))
+            .filter(Boolean))]
+          : [];
+
+        setTrendForms(forms);
+      } catch (error) {
+        if (!cancelled) {
+          setTrendForms([]);
+          message.error(t("dashboard_form_overdue_loading_error"));
+        }
+      }
+    };
+
+    loadTrendForms();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTrendData = async () => {
+      if (!Array.isArray(trendForms) || trendForms.length === 0) {
+        setTrendRows([]);
+        return;
+      }
+
+      setTrendLoading(true);
+      try {
+        const response = await StatisticsService.formOverdueTrend({
+          x_axis: trendAxis,
+          month: trendMonthRange,
+          year: trendYearRange,
+          form_reg: trendForms,
+        });
+        if (cancelled) return;
+
+        setTrendRows(Array.isArray(response?.data?.data) ? response.data.data : []);
+      } catch (error) {
+        if (!cancelled) {
+          setTrendRows([]);
+          message.error(t("dashboard_form_overdue_loading_error"));
+        }
+      } finally {
+        if (!cancelled) {
+          setTrendLoading(false);
+        }
+      }
+    };
+
+    loadTrendData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [trendAxis, trendForms, trendMonthRange, trendYearRange, t]);
+
+  useEffect(() => {
+    let cancelled = false;
+
     const loadFinishedPercentage = async () => {
       try {
         const response = await StatisticsService.finishedRegistrationPercentage({});
@@ -421,7 +575,7 @@ export const DefaultDashboard = () => {
   return (
     <>
       <Row gutter={16}>
-        <Col xs={24} sm={24} md={24} lg={16}>
+        <Col xs={24} sm={24} md={24} lg={18}>
           <ChartWidget
             title={t("dashboard_records_title")}
             series={heroSeries}
@@ -444,7 +598,7 @@ export const DefaultDashboard = () => {
             }
           />
         </Col>
-        <Col xs={24} sm={24} md={24} lg={8}>
+        <Col xs={24} sm={24} md={24} lg={6}>
           <GoalWidget
             title={t("dashboard_finished_target_title")}
             value={finishedPercentage}
@@ -453,10 +607,6 @@ export const DefaultDashboard = () => {
             extra={t("dashboard_finished_target_counts", { finished: finishedCount, total: totalCount })}
             cardStyle={{ minHeight: SIDE_CARD_MIN_HEIGHT }}
             cardBodyStyle={{ padding: "12px" }}
-          />
-          <RevenueBarChart
-            cardMinHeight={KPI_CARD_MIN_HEIGHT}
-            height={320}
           />
         </Col>
       </Row>
@@ -470,10 +620,37 @@ export const DefaultDashboard = () => {
         <Col xs={24} sm={24} md={24} lg={8}>
           <ChartWidget
             title={t("dashboard_unique_visitors_title")}
-            series={visitorChartData.series}
-            xAxis={visitorChartData.categories}
+            series={trendChartData.series}
+            xAxis={trendChartData.categories}
             height={SECONDARY_VISITOR_CHART_HEIGHT}
             direction={direction}
+            customOptions={trendChartOptions}
+            extra={
+              <div style={{ marginTop: 26, display: "flex", gap: 8 }}>
+                <Select
+                  value={trendAxis}
+                  options={axisOptions}
+                  size="small"
+                  style={{ minWidth: 140 }}
+                  onChange={(value) => setTrendAxis(value)}
+                  loading={trendLoading}
+                />
+                <Select
+                  value={trendRangeValue}
+                  options={trendRangeOptions}
+                  size="small"
+                  style={{ minWidth: 90 }}
+                  onChange={(value) => {
+                    if (trendAxis === "MONTH") {
+                      setTrendMonthRange(value);
+                    } else {
+                      setTrendYearRange(value);
+                    }
+                  }}
+                  loading={trendLoading}
+                />
+              </div>
+            }
           />
         </Col>
       </Row>

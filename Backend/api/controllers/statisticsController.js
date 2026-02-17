@@ -240,6 +240,189 @@ exports.countedRecords = async (req, res) => {
 
 /**
  * @swagger
+ * /api/v1/statistics/form_overdue_trend:
+ *   post:
+ *     summary: "Get overdue registration trend by form for month/year axis"
+ *     tags: [Statistics]
+ *     security:
+ *       - apiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - x_axis
+ *               - form_reg
+ *             properties:
+ *               x_axis:
+ *                 type: string
+ *                 enum: [MONTH, YEAR]
+ *                 example: MONTH
+ *               month:
+ *                 type: integer
+ *                 default: 12
+ *                 example: 12
+ *               year:
+ *                 type: integer
+ *                 default: 5
+ *                 example: 5
+ *               form_reg:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Form A", "Form B"]
+ *     responses:
+ *       200:
+ *         description: "Form overdue trend fetched successfully"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Form overdue trend fetched successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       year:
+ *                         type: integer
+ *                         example: 2026
+ *                       month:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 2
+ *                       form_reg:
+ *                         type: string
+ *                         example: Form A
+ *                       value:
+ *                         type: integer
+ *                         example: 15
+ *       400:
+ *         description: "Validation error"
+ *       500:
+ *         description: "Internal server error"
+ */
+exports.formOverdueTrend = async (req, res) => {
+  try {
+    const { x_axis, x_axsisi, month, year, form_reg } = req.body || {};
+    const axisRaw = x_axis ?? x_axsisi;
+    const axis = typeof axisRaw === "string" ? axisRaw.toUpperCase().trim() : "";
+
+    if (!["MONTH", "YEAR"].includes(axis)) {
+      return res.status(400).json({
+        code: 400,
+        message: "x_axis must be one of: MONTH, YEAR",
+      });
+    }
+
+    const monthCount = parsePositiveInt(month, 12);
+    const yearCount = parsePositiveInt(year, 5);
+    if (monthCount === null || yearCount === null) {
+      return res.status(400).json({
+        code: 400,
+        message: "month and year must be positive integers",
+      });
+    }
+
+    const requestedForms = Array.isArray(form_reg)
+      ? [...new Set(form_reg.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean))]
+      : [];
+
+    if (requestedForms.length === 0) {
+      return res.status(400).json({
+        code: 400,
+        message: "form_reg must be a non-empty array of strings",
+      });
+    }
+
+    const existingForms = await prisma.form.findMany({
+      where: {
+        name: { in: requestedForms },
+        status: true,
+      },
+      select: {
+        name: true,
+      },
+    });
+
+    const validForms = existingForms.map((item) => item.name).filter(Boolean);
+    if (validForms.length === 0) {
+      return res.status(400).json({
+        code: 400,
+        message: "No valid active form_reg values were provided",
+      });
+    }
+
+    const buckets = axis === "MONTH" ? getMonthlyBuckets(monthCount) : getYearlyBuckets(yearCount);
+    const todayStartUTC = new Date();
+    todayStartUTC.setUTCHours(0, 0, 0, 0);
+
+    const data = [];
+    for (const bucket of buckets) {
+      const startDate = new Date(bucket.startDate);
+      startDate.setUTCHours(0, 0, 0, 0);
+
+      const endDate = new Date(bucket.endDate);
+      endDate.setUTCHours(23, 59, 59, 999);
+
+      const groups = await prisma.registration.groupBy({
+        by: ["form_reg"],
+        where: {
+          form_reg: { in: validForms },
+          regDate: {
+            not: null,
+            gte: startDate,
+            lte: endDate,
+          },
+          expired: {
+            not: null,
+            lt: todayStartUTC,
+          },
+        },
+        _count: {
+          _all: true,
+        },
+      });
+
+      const valueMap = new Map(
+        groups.map((item) => [item.form_reg || "", Number(item?._count?._all) || 0])
+      );
+
+      for (const formName of validForms) {
+        data.push({
+          year: bucket.year,
+          month: bucket.month,
+          form_reg: formName,
+          value: valueMap.get(formName) || 0,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      code: 200,
+      message: "Form overdue trend fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching form overdue trend:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @swagger
  * /api/v1/statistics/finished_registration_percentage:
  *   post:
  *     summary: "Get finished registration percentage"

@@ -7,6 +7,7 @@ const {
   monitoringByAdmin,
   weeeklyReport,
   countedRecords,
+  formOverdueTrend,
   finishedRegistrationPercentage,
   latestTransactions,
   topOtk1Workplaces,
@@ -28,6 +29,8 @@ router.post("/monitoringByAdmin", verifyToken, checkAdminAccess(3), monitoringBy
 router.post("/weeeklyReport", verifyToken, weeeklyReport);
 // counted records
 router.post("/counted_records", verifyToken, checkAdminAccess(3), countedRecords);
+// overdue trend by form
+router.post("/form_overdue_trend", verifyToken, checkAdminAccess(3), formOverdueTrend);
 // finished registration percentage
 router.post("/finished_registration_percentage", verifyToken, checkAdminAccess(3), finishedRegistrationPercentage);
 // latest transactions dashboard
