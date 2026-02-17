@@ -7,8 +7,9 @@ class CostsBarChart extends Component {
   render() {
     const {
       title = "Costs",
-      height = 300,
+      height = 320,
       cardMinHeight = 430,
+      cardBodyStyle = { padding: "12px 12px 8px" },
       categories = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"],
       series = [
         { name: "Operational Cost", data: [22, 28, 34, 39, 42, 46, 51, 55, 60] },
@@ -68,7 +69,7 @@ class CostsBarChart extends Component {
     };
 
     return (
-      <Card title={title} style={{ minHeight: cardMinHeight }}>
+      <Card title={title} style={{ minHeight: cardMinHeight }} bodyStyle={cardBodyStyle}>
         <ApexChart options={options} series={series} width="100%" height={height} type="bar" />
       </Card>
     );

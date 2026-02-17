@@ -28,4 +28,8 @@ StatisticsService.weeeklyReport = function (data) {
   return Request.postRequest("statistics/weeeklyReport", data);
 };
 
+StatisticsService.countedRecords = function (data) {
+  return Request.postRequest("statistics/counted_records", data);
+};
+
 export default StatisticsService;

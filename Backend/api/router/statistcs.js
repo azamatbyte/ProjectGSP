@@ -6,6 +6,7 @@ const {
   statisticsByForm,
   monitoringByAdmin,
   weeeklyReport,
+  countedRecords,
 } = require("../controllers/statisticsController");
 const { verifyToken, checkAdminAccess } = require("../middleware/auth");
 
@@ -22,4 +23,6 @@ router.post("/statisticsByYear", verifyToken, checkAdminAccess(3), statisticsByY
 router.post("/monitoringByAdmin", verifyToken, checkAdminAccess(3), monitoringByAdmin);
 // 9- zapros
 router.post("/weeeklyReport", verifyToken,  weeeklyReport);
+// counted records
+router.post("/counted_records", verifyToken, checkAdminAccess(3), countedRecords);
 module.exports = router;

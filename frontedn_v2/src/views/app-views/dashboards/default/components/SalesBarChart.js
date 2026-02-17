@@ -7,8 +7,9 @@ class SalesBarChart extends Component {
   render() {
     const {
       title = "Sales",
-      height = 300,
+      height = 320,
       cardMinHeight = 430,
+      cardBodyStyle = { padding: "12px 12px 8px" },
       categories = ["Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"],
       series = [
         { name: "Domestic Sales", data: [30, 42, 55, 47, 62, 59, 70, 65, 74] },
@@ -68,7 +69,7 @@ class SalesBarChart extends Component {
     };
 
     return (
-      <Card title={title} style={{ minHeight: cardMinHeight }}>
+      <Card title={title} style={{ minHeight: cardMinHeight }} bodyStyle={cardBodyStyle}>
         <ApexChart options={options} series={series} width="100%" height={height} type="bar" />
       </Card>
     );

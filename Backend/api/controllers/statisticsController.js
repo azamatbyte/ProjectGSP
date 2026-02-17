@@ -36,6 +36,208 @@ function toRuDateUTC(dateLike) {
   });
 }
 
+function parsePositiveInt(value, defaultValue) {
+  if (value === undefined || value === null || value === "") return defaultValue;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+function getMonthlyBuckets(count) {
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+  const currentMonth = now.getUTCMonth();
+  const buckets = [];
+
+  for (let i = count - 1; i >= 0; i--) {
+    const point = new Date(Date.UTC(currentYear, currentMonth - i, 1));
+    const y = point.getUTCFullYear();
+    const m = point.getUTCMonth();
+
+    buckets.push({
+      month: m + 1,
+      year: y,
+      startDate: new Date(Date.UTC(y, m, 1)),
+      endDate: new Date(Date.UTC(y, m + 1, 0)),
+    });
+  }
+
+  return buckets;
+}
+
+function getYearlyBuckets(count) {
+  const now = new Date();
+  const currentYear = now.getUTCFullYear();
+  const buckets = [];
+
+  for (let i = count - 1; i >= 0; i--) {
+    const y = currentYear - i;
+
+    buckets.push({
+      month: null,
+      year: y,
+      startDate: new Date(Date.UTC(y, 0, 1)),
+      endDate: new Date(Date.UTC(y, 11, 31)),
+    });
+  }
+
+  return buckets;
+}
+
+/**
+ * @swagger
+ * /api/v1/statistics/counted_records:
+ *   post:
+ *     summary: "Get counted registration records grouped by month or year"
+ *     tags: [Statistics]
+ *     security:
+ *       - apiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - x_axis
+ *             properties:
+ *               x_axis:
+ *                 type: string
+ *                 enum: [MONTH, YEAR]
+ *                 example: MONTH
+ *               month:
+ *                 type: integer
+ *                 default: 18
+ *                 example: 18
+ *               year:
+ *                 type: integer
+ *                 default: 6
+ *                 example: 6
+ *     responses:
+ *       200:
+ *         description: "Counted records fetched successfully"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: Counted records fetched successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       month:
+ *                         type: integer
+ *                         nullable: true
+ *                         example: 2
+ *                       year:
+ *                         type: integer
+ *                         example: 2026
+ *                       open_count:
+ *                         type: integer
+ *                         example: 10
+ *                       close_count:
+ *                         type: integer
+ *                         example: 4
+ *                       access_count:
+ *                         type: integer
+ *                         example: 2
+ *                       otk1_count:
+ *                         type: integer
+ *                         example: 1
+ *       400:
+ *         description: "Validation error"
+ *       500:
+ *         description: "Internal server error"
+ */
+exports.countedRecords = async (req, res) => {
+  try {
+    const { x_axis, month, year } = req.body || {};
+    const axis = typeof x_axis === "string" ? x_axis.toUpperCase().trim() : "";
+
+    if (!["MONTH", "YEAR"].includes(axis)) {
+      return res.status(400).json({
+        code: 400,
+        message: "x_axis must be one of: MONTH, YEAR",
+      });
+    }
+
+    const monthCount = parsePositiveInt(month, 18);
+    const yearCount = parsePositiveInt(year, 6);
+    if (monthCount === null || yearCount === null) {
+      return res.status(400).json({
+        code: 400,
+        message: "month and year must be positive integers",
+      });
+    }
+
+    const buckets = axis === "MONTH" ? getMonthlyBuckets(monthCount) : getYearlyBuckets(yearCount);
+
+    const data = await Promise.all(
+      buckets.map(async (bucket) => {
+        const { startDate, endDate } = bucket;
+
+        const [open_count, close_count, access_count, otk1_count] = await Promise.all([
+          prisma.registration.count({
+            where: {
+              regDate: { gte: startDate, lte: endDate },
+            },
+          }),
+          prisma.registration.count({
+            where: {
+              regEndDate: { gte: startDate, lte: endDate },
+            },
+          }),
+          prisma.registration.count({
+            where: {
+              regEndDate: { gte: startDate, lte: endDate },
+              OR: [
+                { accessStatus: "ДОПУСК" },
+                { accessStatus: { contains: "снят" } },
+                { accessStatus: { contains: "СНЯТ" } },
+              ],
+            },
+          }),
+          prisma.registration.count({
+            where: {
+              regEndDate: { gte: startDate, lte: endDate },
+              AND: [{ accessStatus: { contains: "ОТКАЗ-1" } }],
+            },
+          }),
+        ]);
+
+        return {
+          month: bucket.month,
+          year: bucket.year,
+          open_count,
+          close_count,
+          access_count,
+          otk1_count,
+        };
+      })
+    );
+
+    return res.status(200).json({
+      code: 200,
+      message: "Counted records fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching counted records:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 /**
  * @swagger
  * /api/v1/statistics/reportStatements:

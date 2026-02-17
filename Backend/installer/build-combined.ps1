@@ -53,6 +53,15 @@ $ErrorActionPreference = 'Stop'
 function Step($m){ Write-Host "`n=== $m ===" -ForegroundColor Cyan }
 function Warn($m){ Write-Warning $m }
 function Fail($m){ Write-Error $m; exit 1 }
+function Stop-ProcessIfExists([int]$Pid) {
+    try {
+        Stop-Process -Id $Pid -Force -ErrorAction Stop
+        Write-Host "Stopped PID=$Pid"
+        return $true
+    } catch {
+        return $false
+    }
+}
 
 # Resolve script root (handles -File invocation where $PSScriptRoot may be empty)
 $ScriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
@@ -125,15 +134,41 @@ function Expand-ZipWithProgress {
 
 #region Backend Build
 if (-not $SkipBackend) {
-    Step 'Terminating local node processes'
-    Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -and ($_.Path -like "$BackendRoot*") } | ForEach-Object {
-        try { Stop-Process -Id $_.Id -Force; Write-Host "Stopped node PID=$($_.Id)" } catch { }
+    Step 'Terminating local node/prisma processes'
+    $candidates = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        ($_.Name -in @('node.exe', 'npm.exe', 'npx.exe', 'query-engine-windows.exe')) -and
+        $_.CommandLine -and
+        ($_.CommandLine -match [regex]::Escape($BackendRoot))
     }
+    foreach ($proc in $candidates) {
+        [void](Stop-ProcessIfExists -Pid $proc.ProcessId)
+    }
+    Start-Sleep -Seconds 2
 
     Step 'Installing Backend dependencies (npm ci)'
     Push-Location $BackendRoot
     & npm ci
-    if ($LASTEXITCODE -ne 0) { Fail 'npm ci failed' }
+    if ($LASTEXITCODE -ne 0) {
+        Warn 'npm ci failed on first attempt. Retrying after cleanup of Prisma lock candidates.'
+        $prismaDll = Join-Path $BackendRoot 'node_modules\.prisma\client\query_engine-windows.dll.node'
+        if (Test-Path $prismaDll) {
+            try { attrib -R $prismaDll 2>$null | Out-Null } catch { }
+        }
+        $lockCandidates = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+            ($_.Name -in @('node.exe', 'query-engine-windows.exe')) -and
+            $_.CommandLine -and
+            ($_.CommandLine -match [regex]::Escape($BackendRoot))
+        }
+        foreach ($proc in $lockCandidates) {
+            [void](Stop-ProcessIfExists -Pid $proc.ProcessId)
+        }
+        if (Test-Path $prismaDll) {
+            try { Remove-Item $prismaDll -Force -ErrorAction Stop } catch { }
+        }
+        Start-Sleep -Seconds 2
+        & npm ci
+        if ($LASTEXITCODE -ne 0) { Fail 'npm ci failed' }
+    }
     
     Step 'Generating Prisma client'
     & npx prisma generate
@@ -149,7 +184,18 @@ if (-not $SkipBackend) {
     if (Test-Path $AppDest) { Remove-Item $AppDest -Recurse -Force }
     New-Item -ItemType Directory -Force -Path $AppDest | Out-Null
 
-    $Include = @('index.js', 'api', 'db', 'prisma', 'config', 'scripts', 'package.json', 'package-lock.json')
+    $Include = @(
+        'index.js',
+        'app',
+        'api',
+        'core',
+        'db',
+        'prisma',
+        'config',
+        'scripts',
+        'package.json',
+        'package-lock.json'
+    )
     foreach ($i in $Include) {
         $src = Join-Path $BackendRoot $i
         if (Test-Path $src) { Copy-Item $src $AppDest -Recurse -Force }
