@@ -8,7 +8,7 @@ import {
 } from "@ant-design/icons";
 import AuthService from "services/AuthService";
 
-export const NavBackup = () => {
+export const NavBackup = ({ compact = false, onAction }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -29,6 +29,9 @@ export const NavBackup = () => {
 
   const handleClick = async () => {
     try {
+      if (onAction) {
+        onAction();
+      }
       setLoading(true);
 
       const response = await AuthService.backup({
@@ -115,27 +118,59 @@ export const NavBackup = () => {
 
   return (
     <>
-      {/* BACKUP */}
-      <Button
-        type="primary"
-        icon={loading ? <LoadingOutlined spin /> : <DownloadOutlined />}
-        loading={loading}
-        onClick={handleClick}
-        disabled={loading}
-        className="mr-2"
-        style={{ marginTop: 12, height: 48 }}
-      >
-        {t("backup")}
-      </Button>
+      {compact ? (
+        <div style={{ display: "grid", gap: 8 }}>
+          <Button
+            type="primary"
+            icon={loading ? <LoadingOutlined spin /> : <DownloadOutlined />}
+            loading={loading}
+            onClick={handleClick}
+            disabled={loading}
+            block
+            style={{ height: 40 }}
+          >
+            {t("backup")}
+          </Button>
 
-      {/* RESTORE */}
-      <Button
-        icon={<UploadOutlined />}
-        onClick={() => setUploadModalOpen(true)}
-        style={{ marginTop: 12, height: 48 }}
-      >
-        {t("upload_backup")}
-      </Button>
+          <Button
+            icon={<UploadOutlined />}
+            onClick={() => {
+              if (onAction) {
+                onAction();
+              }
+              setUploadModalOpen(true);
+            }}
+            block
+            style={{ height: 40 }}
+          >
+            {t("upload_backup")}
+          </Button>
+        </div>
+      ) : (
+        <>
+          {/* BACKUP */}
+          <Button
+            type="primary"
+            icon={loading ? <LoadingOutlined spin /> : <DownloadOutlined />}
+            loading={loading}
+            onClick={handleClick}
+            disabled={loading}
+            className="mr-2"
+            style={{ marginTop: 12, height: 48 }}
+          >
+            {t("backup")}
+          </Button>
+
+          {/* RESTORE */}
+          <Button
+            icon={<UploadOutlined />}
+            onClick={() => setUploadModalOpen(true)}
+            style={{ marginTop: 12, height: 48 }}
+          >
+            {t("upload_backup")}
+          </Button>
+        </>
+      )}
 
       <Modal
         title={t("upload_backup")}

@@ -736,6 +736,17 @@ exports.getRegistrationList = async (req, res) => {
     ) {
       return res.status(400).json({ message: "Invalid pagination parameters" });
     }
+
+    const normalizeNameSearchTerm = (value) => {
+      if (value === null || value === undefined) return null;
+      const term = String(value).replace(/%/g, "").replace(/\*/g, "%").trim();
+      return term === "" ? null : term;
+    };
+
+    const normalizedFirstName = normalizeNameSearchTerm(firstName);
+    const normalizedLastName = normalizeNameSearchTerm(lastName);
+    const normalizedFatherName = normalizeNameSearchTerm(fatherName);
+
     // Qidiruv shartlarini dinamik ravishda va xavfsiz yarating
     const andConditions = [];
 
@@ -760,41 +771,8 @@ exports.getRegistrationList = async (req, res) => {
       });
     }
 
-    if (firstName) {
-      andConditions.push({
-        firstName: {
-          contains: String(firstName)
-            .replace(/%/g, "")
-            .replace(/\*/g, "%")
-            .trim(),
-          mode: "insensitive",
-        },
-      });
-    }
-
     if (form_reg) {
       andConditions.push({ form_reg: { contains: String(form_reg).trim(), mode: "insensitive" } });
-    }
-
-    if (lastName) {
-      andConditions.push({
-        lastName: {
-          contains: String(lastName).replace(/%/g, "").replace(/\*/g, "%").trim(),
-          mode: "insensitive",
-        },
-      });
-    }
-
-    if (fatherName) {
-      andConditions.push({
-        fatherName: {
-          contains: String(fatherName)
-            .replace(/%/g, "")
-            .replace(/\*/g, "%")
-            .trim(),
-          mode: "insensitive",
-        },
-      });
     }
 
     if (birthDate) {
@@ -868,6 +846,34 @@ exports.getRegistrationList = async (req, res) => {
       andConditions.push({ model: { equals: model } });
     }
 
+    if (normalizedFirstName || normalizedLastName || normalizedFatherName) {
+      const nameSqlConditions = [];
+
+      if (normalizedFirstName) {
+        nameSqlConditions.push(
+          Prisma.sql`lower(trim(coalesce("firstName", ''))) LIKE '%' || lower(trim(${normalizedFirstName})) || '%'`
+        );
+      }
+      if (normalizedLastName) {
+        nameSqlConditions.push(
+          Prisma.sql`lower(trim(coalesce("lastName", ''))) LIKE '%' || lower(trim(${normalizedLastName})) || '%'`
+        );
+      }
+      if (normalizedFatherName) {
+        nameSqlConditions.push(
+          Prisma.sql`lower(trim(coalesce("fatherName", ''))) LIKE '%' || lower(trim(${normalizedFatherName})) || '%'`
+        );
+      }
+
+      const matchingNameIds = await prisma.$queryRaw`
+        SELECT "id"
+        FROM "Registration"
+        WHERE ${Prisma.join(nameSqlConditions, Prisma.sql` AND `)}
+      `;
+
+      andConditions.push({ id: { in: matchingNameIds.map((item) => item.id) } });
+    }
+
     const filters = andConditions.length > 0 ? { AND: andConditions } : {};
 
     console.log(sort);
@@ -901,11 +907,35 @@ exports.getRegistrationList = async (req, res) => {
     // Cyrillic-friendly ordering for name fields using Intl.Collator.
     const nameSortableFields = new Set(["fullName", "firstName", "lastName", "fatherName"]);
     const hasNameSort = sortEntries.some(e => nameSortableFields.has(e.field));
+    const hasBirthDateSort = sortEntries.some((e) => e.field === "birthDate");
 
-    if (sortEntries.length > 0 && hasNameSort) {
-      // Need in-memory Cyrillic-aware multi-key sort
+    const getEffectiveBirthDateSortValue = (record) => {
+      if (record?.birthDate) {
+        const parsedBirthDate = new Date(record.birthDate);
+        if (!Number.isNaN(parsedBirthDate.getTime())) {
+          return parsedBirthDate.getTime();
+        }
+      }
+
+      if (record?.birthYear !== null && record?.birthYear !== undefined) {
+        const birthYearInt = parseInt(record.birthYear, 10);
+        if (!Number.isNaN(birthYearInt)) {
+          // Year-only records are sorted as end-of-year dates.
+          return Date.UTC(birthYearInt, 11, 31, 23, 59, 59, 999);
+        }
+      }
+
+      return null;
+    };
+
+    if (sortEntries.length > 0 && (hasNameSort || hasBirthDateSort)) {
+      // Need in-memory sort for Cyrillic names and birthDate fallback to birthYear.
       const toSelect = { id: true };
       for (const e of sortEntries) toSelect[e.field] = true;
+      if (hasBirthDateSort) {
+        toSelect.birthDate = true;
+        toSelect.birthYear = true;
+      }
       const allForSort = await prisma.registration.findMany({
         where: filters,
         select: toSelect,
@@ -919,17 +949,44 @@ exports.getRegistrationList = async (req, res) => {
 
       allForSort.sort((a, b) => {
         for (const entry of sortEntries) {
-          const av = (a[entry.field] || "").toString();
-          const bv = (b[entry.field] || "").toString();
-          let cmp;
-          if (nameSortableFields.has(entry.field)) {
-            cmp = collator.compare(av, bv);
+          let cmp = 0;
+
+          if (entry.field === "birthDate") {
+            const av = getEffectiveBirthDateSortValue(a);
+            const bv = getEffectiveBirthDateSortValue(b);
+
+            // Keep records without both birthDate and birthYear at the end for both ASC and DESC.
+            if (av === null && bv === null) {
+              cmp = 0;
+            } else if (av === null) {
+              cmp = 1;
+            } else if (bv === null) {
+              cmp = -1;
+            } else {
+              cmp = av < bv ? -1 : av > bv ? 1 : 0;
+              if (entry.direction === "desc") {
+                cmp = -cmp;
+              }
+            }
           } else {
-            cmp = av < bv ? -1 : av > bv ? 1 : 0;
+            const av = (a[entry.field] || "").toString();
+            const bv = (b[entry.field] || "").toString();
+
+            if (nameSortableFields.has(entry.field)) {
+              cmp = collator.compare(av, bv);
+            } else {
+              cmp = av < bv ? -1 : av > bv ? 1 : 0;
+            }
+
+            if (cmp !== 0 && entry.direction === "desc") {
+              cmp = -cmp;
+            }
           }
-          if (cmp !== 0) return entry.direction === "desc" ? -cmp : cmp;
+
+          if (cmp !== 0) return cmp;
         }
-        return 0;
+        // Deterministic tie-breaker for stable pagination.
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
       });
 
       totalRegistrations = allForSort.length;

@@ -62,6 +62,41 @@ function Stop-ProcessIfExists([int]$Pid) {
         return $false
     }
 }
+function Stop-ProcessesUsingPath([string[]]$Paths) {
+    if (-not $Paths -or $Paths.Count -eq 0) { return 0 }
+    $PathRegexes = $Paths | Where-Object { $_ } | ForEach-Object { [regex]::Escape($_) }
+    if (-not $PathRegexes -or $PathRegexes.Count -eq 0) { return 0 }
+
+    $matches = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        $cmd = $_.CommandLine
+        $exe = $_.ExecutablePath
+        ($cmd -and ($PathRegexes | Where-Object { $cmd -match $_ } | Select-Object -First 1)) -or
+        ($exe -and ($PathRegexes | Where-Object { $exe -match $_ } | Select-Object -First 1))
+    }
+    $stopped = 0
+    foreach ($proc in $matches) {
+        if (Stop-ProcessIfExists -Pid $proc.ProcessId) { $stopped++ }
+    }
+    return $stopped
+}
+function Remove-DirectoryWithRetry([string]$Path, [int]$MaxAttempts = 5, [int]$DelaySeconds = 2) {
+    if (-not (Test-Path $Path)) { return }
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            Remove-Item $Path -Recurse -Force -ErrorAction Stop
+            return
+        } catch {
+            $msg = $_.Exception.Message
+            Warn "Failed to remove '$Path' (attempt $attempt/$MaxAttempts): $msg"
+            [void](Stop-ProcessesUsingPath -Paths @($Path))
+            if ($attempt -lt $MaxAttempts) {
+                Start-Sleep -Seconds $DelaySeconds
+            } else {
+                Fail "Could not remove '$Path'. Close apps using files in this folder and retry."
+            }
+        }
+    }
+}
 
 # Resolve script root (handles -File invocation where $PSScriptRoot may be empty)
 $ScriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Definition }
@@ -93,7 +128,9 @@ if (-not (Test-Path $IssFile)) { Fail "Inno Setup script not found at $IssFile" 
 
 if ($Clean -and (Test-Path $BuildDir)) { 
     Step 'Cleaning previous build directory'
-    Remove-Item $BuildDir -Recurse -Force 
+    $killed = Stop-ProcessesUsingPath -Paths @($BuildDir, (Join-Path $FrontendDir 'dist\win-unpacked'))
+    if ($killed -gt 0) { Write-Host "Stopped $killed process(es) locking previous build artifacts." -ForegroundColor Yellow }
+    Remove-DirectoryWithRetry -Path $BuildDir -MaxAttempts 5 -DelaySeconds 2
 }
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 

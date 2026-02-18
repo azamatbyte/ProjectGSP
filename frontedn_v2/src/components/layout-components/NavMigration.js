@@ -7,7 +7,7 @@ import {
 } from "@ant-design/icons";
 import MigrationService from "services/MigrationService";
 
-export const NavMigration = () => {
+export const NavMigration = ({ compact = false, onAction }) => {
     const [loading, setLoading] = useState(false);
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
     const [fileList, setFileList] = useState([]);
@@ -30,6 +30,9 @@ export const NavMigration = () => {
     };
 
     const handleOpenModal = () => {
+        if (onAction) {
+            onAction();
+        }
         setUploadModalOpen(true);
         setMigrationStatus(null);
         checkMigrationStatus();
@@ -75,7 +78,8 @@ export const NavMigration = () => {
                 icon={loading ? <LoadingOutlined spin /> : <DatabaseOutlined />}
                 onClick={handleOpenModal}
                 disabled={loading}
-                style={{ marginTop: 12, height: 48, marginLeft: 8 }}
+                block={compact}
+                style={compact ? { height: 40 } : { marginTop: 12, height: 48, marginLeft: 8 }}
             >
                 Миграция
             </Button>

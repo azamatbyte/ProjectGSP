@@ -122,7 +122,7 @@ exports.uploadExcel = async (req, res) => {
 
     const expiredDate = new Date();
     expiredDate.setMonth(expiredDate.getMonth() + form_reg_check?.month);
-    for (let i = 1; i < 40; i++) {
+    for (let i = 1; i < maxRecords; i++) {
       try {
         const row = excelData[i]; // Get row data
         if (!row[2] || !row[1]) {
@@ -302,23 +302,44 @@ exports.uploadExcel = async (req, res) => {
           (
             CASE 
               WHEN "firstName" IS NOT NULL AND ${data?.firstName} IS NOT NULL
-                   AND TRIM("firstName") != '' AND TRIM(${data?.firstName}) != ''
-              THEN (1 - (levenshtein(LOWER("firstName"), LOWER(${data?.firstName}))::numeric
-                / GREATEST(char_length("firstName"), char_length(${data?.firstName}))))
+                   AND regexp_replace(lower(trim("firstName")), '[[:space:]]+', ' ', 'g') != ''
+                   AND regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g') != ''
+              THEN (1 - (levenshtein(
+                regexp_replace(lower(trim("firstName")), '[[:space:]]+', ' ', 'g'),
+                regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g')
+              )::numeric
+                / GREATEST(
+                  char_length(regexp_replace(lower(trim("firstName")), '[[:space:]]+', ' ', 'g')),
+                  char_length(regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g'))
+                )))
               ELSE 0.5
             END +
             CASE 
               WHEN "lastName" IS NOT NULL AND ${data?.lastName} IS NOT NULL
-                   AND TRIM("lastName") != '' AND TRIM(${data?.lastName}) != ''
-              THEN (1 - (levenshtein(LOWER("lastName"), LOWER(${data?.lastName}))::numeric
-                / GREATEST(char_length("lastName"), char_length(${data?.lastName}))))
+                   AND regexp_replace(lower(trim("lastName")), '[[:space:]]+', ' ', 'g') != ''
+                   AND regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g') != ''
+              THEN (1 - (levenshtein(
+                regexp_replace(lower(trim("lastName")), '[[:space:]]+', ' ', 'g'),
+                regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g')
+              )::numeric
+                / GREATEST(
+                  char_length(regexp_replace(lower(trim("lastName")), '[[:space:]]+', ' ', 'g')),
+                  char_length(regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g'))
+                )))
               ELSE 0.5
             END +
             CASE 
               WHEN "fatherName" IS NOT NULL AND ${data?.fatherName} IS NOT NULL
-                   AND TRIM("fatherName") != '' AND TRIM(${data?.fatherName}) != ''
-              THEN (1 - (levenshtein(LOWER("fatherName"), LOWER(${data?.fatherName}))::numeric
-                / GREATEST(char_length("fatherName"), char_length(${data?.fatherName}))))
+                   AND regexp_replace(lower(trim("fatherName")), '[[:space:]]+', ' ', 'g') != ''
+                   AND regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g') != ''
+              THEN (1 - (levenshtein(
+                regexp_replace(lower(trim("fatherName")), '[[:space:]]+', ' ', 'g'),
+                regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g')
+              )::numeric
+                / GREATEST(
+                  char_length(regexp_replace(lower(trim("fatherName")), '[[:space:]]+', ' ', 'g')),
+                  char_length(regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g'))
+                )))
               ELSE 0.5
             END
           ) / 3 * 100
@@ -331,23 +352,44 @@ exports.uploadExcel = async (req, res) => {
         (
           CASE 
             WHEN "firstName" IS NOT NULL AND ${data?.firstName} IS NOT NULL
-                 AND "firstName" != '' AND ${data?.firstName} != ''
-            THEN (1 - (levenshtein(LOWER("firstName"), LOWER(${data?.firstName}))::numeric
-              / GREATEST(char_length("firstName"), char_length(${data?.firstName}))))
+                 AND regexp_replace(lower(trim("firstName")), '[[:space:]]+', ' ', 'g') != ''
+                 AND regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g') != ''
+            THEN (1 - (levenshtein(
+              regexp_replace(lower(trim("firstName")), '[[:space:]]+', ' ', 'g'),
+              regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g')
+            )::numeric
+              / GREATEST(
+                char_length(regexp_replace(lower(trim("firstName")), '[[:space:]]+', ' ', 'g')),
+                char_length(regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g'))
+              )))
             ELSE 0.5
           END +
           CASE 
             WHEN "lastName" IS NOT NULL AND ${data?.lastName} IS NOT NULL
-                 AND "lastName" != '' AND ${data?.lastName} != ''
-            THEN (1 - (levenshtein(LOWER("lastName"), LOWER(${data?.lastName}))::numeric
-              / GREATEST(char_length("lastName"), char_length(${data?.lastName}))))
+                 AND regexp_replace(lower(trim("lastName")), '[[:space:]]+', ' ', 'g') != ''
+                 AND regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g') != ''
+            THEN (1 - (levenshtein(
+              regexp_replace(lower(trim("lastName")), '[[:space:]]+', ' ', 'g'),
+              regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g')
+            )::numeric
+              / GREATEST(
+                char_length(regexp_replace(lower(trim("lastName")), '[[:space:]]+', ' ', 'g')),
+                char_length(regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g'))
+              )))
             ELSE 0.5
           END +
           CASE 
             WHEN "fatherName" IS NOT NULL AND ${data?.fatherName} IS NOT NULL
-                 AND "fatherName" != '' AND ${data?.fatherName} != ''
-            THEN (1 - (levenshtein(LOWER("fatherName"), LOWER(${data?.fatherName}))::numeric
-              / GREATEST(char_length("fatherName"), char_length(${data?.fatherName}))))
+                 AND regexp_replace(lower(trim("fatherName")), '[[:space:]]+', ' ', 'g') != ''
+                 AND regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g') != ''
+            THEN (1 - (levenshtein(
+              regexp_replace(lower(trim("fatherName")), '[[:space:]]+', ' ', 'g'),
+              regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g')
+            )::numeric
+              / GREATEST(
+                char_length(regexp_replace(lower(trim("fatherName")), '[[:space:]]+', ' ', 'g')),
+                char_length(regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g'))
+              )))
             ELSE 0.5
           END
         ) / 3
@@ -380,23 +422,44 @@ exports.uploadExcel = async (req, res) => {
           (
             CASE 
               WHEN r."firstName" IS NOT NULL AND ${data?.firstName} IS NOT NULL
-                   AND TRIM(r."firstName") != '' AND TRIM(${data?.firstName}) != ''
-              THEN (1 - (levenshtein(LOWER(r."firstName"), LOWER(${data?.firstName}))::numeric
-                / GREATEST(char_length(r."firstName"), char_length(${data?.firstName}))))
+                   AND regexp_replace(lower(trim(r."firstName")), '[[:space:]]+', ' ', 'g') != ''
+                   AND regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g') != ''
+              THEN (1 - (levenshtein(
+                regexp_replace(lower(trim(r."firstName")), '[[:space:]]+', ' ', 'g'),
+                regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g')
+              )::numeric
+                / GREATEST(
+                  char_length(regexp_replace(lower(trim(r."firstName")), '[[:space:]]+', ' ', 'g')),
+                  char_length(regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g'))
+                )))
               ELSE 0.5
             END +
             CASE 
               WHEN r."lastName" IS NOT NULL AND ${data?.lastName} IS NOT NULL
-                   AND TRIM(r."lastName") != '' AND TRIM(${data?.lastName}) != ''
-              THEN (1 - (levenshtein(LOWER(r."lastName"), LOWER(${data?.lastName}))::numeric
-                / GREATEST(char_length(r."lastName"), char_length(${data?.lastName}))))
+                   AND regexp_replace(lower(trim(r."lastName")), '[[:space:]]+', ' ', 'g') != ''
+                   AND regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g') != ''
+              THEN (1 - (levenshtein(
+                regexp_replace(lower(trim(r."lastName")), '[[:space:]]+', ' ', 'g'),
+                regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g')
+              )::numeric
+                / GREATEST(
+                  char_length(regexp_replace(lower(trim(r."lastName")), '[[:space:]]+', ' ', 'g')),
+                  char_length(regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g'))
+                )))
               ELSE 0.5
             END +
             CASE 
               WHEN r."fatherName" IS NOT NULL AND ${data?.fatherName} IS NOT NULL
-                   AND TRIM(r."fatherName") != '' AND TRIM(${data?.fatherName}) != ''
-              THEN (1 - (levenshtein(LOWER(r."fatherName"), LOWER(${data?.fatherName}))::numeric
-                / GREATEST(char_length(r."fatherName"), char_length(${data?.fatherName}))))
+                   AND regexp_replace(lower(trim(r."fatherName")), '[[:space:]]+', ' ', 'g') != ''
+                   AND regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g') != ''
+              THEN (1 - (levenshtein(
+                regexp_replace(lower(trim(r."fatherName")), '[[:space:]]+', ' ', 'g'),
+                regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g')
+              )::numeric
+                / GREATEST(
+                  char_length(regexp_replace(lower(trim(r."fatherName")), '[[:space:]]+', ' ', 'g')),
+                  char_length(regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g'))
+                )))
               ELSE 0.5
             END
           ) / 3 * 100
@@ -414,23 +477,44 @@ exports.uploadExcel = async (req, res) => {
         (
           CASE 
             WHEN r."firstName" IS NOT NULL AND ${data?.firstName} IS NOT NULL
-                 AND r."firstName" != '' AND ${data?.firstName} != ''
-            THEN (1 - (levenshtein(LOWER(r."firstName"), LOWER(${data?.firstName}))::numeric
-              / GREATEST(char_length(r."firstName"), char_length(${data?.firstName}))))
+                 AND regexp_replace(lower(trim(r."firstName")), '[[:space:]]+', ' ', 'g') != ''
+                 AND regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g') != ''
+            THEN (1 - (levenshtein(
+              regexp_replace(lower(trim(r."firstName")), '[[:space:]]+', ' ', 'g'),
+              regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g')
+            )::numeric
+              / GREATEST(
+                char_length(regexp_replace(lower(trim(r."firstName")), '[[:space:]]+', ' ', 'g')),
+                char_length(regexp_replace(lower(trim(${data?.firstName})), '[[:space:]]+', ' ', 'g'))
+              )))
             ELSE 0.5
           END +
           CASE 
             WHEN r."lastName" IS NOT NULL AND ${data?.lastName} IS NOT NULL
-                 AND r."lastName" != '' AND ${data?.lastName} != ''
-            THEN (1 - (levenshtein(LOWER(r."lastName"), LOWER(${data?.lastName}))::numeric
-              / GREATEST(char_length(r."lastName"), char_length(${data?.lastName}))))
+                 AND regexp_replace(lower(trim(r."lastName")), '[[:space:]]+', ' ', 'g') != ''
+                 AND regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g') != ''
+            THEN (1 - (levenshtein(
+              regexp_replace(lower(trim(r."lastName")), '[[:space:]]+', ' ', 'g'),
+              regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g')
+            )::numeric
+              / GREATEST(
+                char_length(regexp_replace(lower(trim(r."lastName")), '[[:space:]]+', ' ', 'g')),
+                char_length(regexp_replace(lower(trim(${data?.lastName})), '[[:space:]]+', ' ', 'g'))
+              )))
             ELSE 0.5
           END +
           CASE 
             WHEN r."fatherName" IS NOT NULL AND ${data?.fatherName} IS NOT NULL
-                 AND r."fatherName" != '' AND ${data?.fatherName} != ''
-            THEN (1 - (levenshtein(LOWER(r."fatherName"), LOWER(${data?.fatherName}))::numeric
-              / GREATEST(char_length(r."fatherName"), char_length(${data?.fatherName}))))
+                 AND regexp_replace(lower(trim(r."fatherName")), '[[:space:]]+', ' ', 'g') != ''
+                 AND regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g') != ''
+            THEN (1 - (levenshtein(
+              regexp_replace(lower(trim(r."fatherName")), '[[:space:]]+', ' ', 'g'),
+              regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g')
+            )::numeric
+              / GREATEST(
+                char_length(regexp_replace(lower(trim(r."fatherName")), '[[:space:]]+', ' ', 'g')),
+                char_length(regexp_replace(lower(trim(${data?.fatherName})), '[[:space:]]+', ' ', 'g'))
+              )))
             ELSE 0.5
           END
         ) / 3
@@ -748,6 +832,35 @@ exports.uploadExcel = async (req, res) => {
  *               status:
  *                 type: string
  *                 description: Filter by status
+ *               found_status:
+ *                 type: string
+ *                 enum: [found, not_found]
+ *                 description: Filter by found status
+ *               sortField:
+ *                 type: string
+ *                 description: Legacy single-column sort field
+ *               sortOrder:
+ *                 type: string
+ *                 enum: [ASC, DESC, asc, desc]
+ *                 description: Legacy single-column sort direction
+ *               sortFields:
+ *                 type: array
+ *                 description: Multi-column sorting format (globalSearch style)
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     field:
+ *                       type: string
+ *                     order:
+ *                       type: string
+ *                       enum: [ASC, DESC, asc, desc]
+ *               sort:
+ *                 oneOf:
+ *                   - type: object
+ *                     description: Register-list style single sort (for example regNumber ascending)
+ *                   - type: array
+ *                     description: Register-list style multi sort (for example regNumber ascending then fullName descending)
+ *                 description: Compatibility sort format from /register/list
  *     responses:
  *       200:
  *         description: Successfully retrieved list of temporary data
@@ -784,9 +897,113 @@ exports.uploadExcel = async (req, res) => {
  *       500:
  *         description: Internal server error
  */
+const TEMPORARY_DATA_SORTABLE_FIELDS = new Set([
+  "createdAt",
+  "updatedAt",
+  "order",
+  "form_reg",
+  "regNumber",
+  "regDate",
+  "fullName",
+  "firstName",
+  "lastName",
+  "fatherName",
+  "birthDate",
+  "birthYear",
+  "birthPlace",
+  "workplace",
+  "position",
+  "model",
+  "residence",
+  "accessStatus",
+  "recordNumber",
+  "pinfl",
+  "status",
+  "found_status",
+  "migration_status",
+  "action_status",
+  "executorId",
+  "initiatorId",
+]);
+
+const normalizeSortDirection = (direction) =>
+  typeof direction === "string" && direction.toUpperCase() === "DESC"
+    ? "desc"
+    : "asc";
+
+const normalizeTemporaryDataOrderBy = ({
+  sortFields,
+  sortField,
+  sortOrder,
+  sort,
+}) => {
+  const entries = [];
+
+  const pushSortEntry = (field, direction) => {
+    if (typeof field !== "string" || !field.trim()) return;
+    const normalizedField = field.trim();
+    if (!TEMPORARY_DATA_SORTABLE_FIELDS.has(normalizedField)) return;
+    entries.push({ [normalizedField]: normalizeSortDirection(direction) });
+  };
+
+  if (Array.isArray(sortFields) && sortFields.length > 0) {
+    sortFields.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      pushSortEntry(item.field, item.order);
+    });
+  } else if (sortField) {
+    pushSortEntry(sortField, sortOrder);
+  }
+
+  const parseSortObject = (obj) => {
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+    const pair = Object.entries(obj);
+    if (pair.length !== 1) return;
+
+    const [field, directionOrObj] = pair[0];
+    let direction = directionOrObj;
+    if (
+      directionOrObj &&
+      typeof directionOrObj === "object" &&
+      typeof directionOrObj.sort === "string"
+    ) {
+      direction = directionOrObj.sort;
+    }
+
+    pushSortEntry(field, direction);
+  };
+
+  if (Array.isArray(sort)) {
+    sort.forEach(parseSortObject);
+  } else {
+    parseSortObject(sort);
+  }
+
+  const uniqueEntries = [];
+  const seenFields = new Set();
+  entries.forEach((entry) => {
+    const field = Object.keys(entry)[0];
+    if (!field || seenFields.has(field)) return;
+    seenFields.add(field);
+    uniqueEntries.push(entry);
+  });
+
+  return uniqueEntries.length > 0 ? uniqueEntries : [{ createdAt: "asc" }];
+};
+
 exports.getTemporaryDataList = async (req, res) => {
   try {
-    let { id, status, found_status, pageNumber = 1, pageSize = 10 } = req.body;
+    let {
+      id,
+      status,
+      found_status,
+      pageNumber = 1,
+      pageSize = 10,
+      sortFields,
+      sortField,
+      sortOrder,
+      sort,
+    } = req.body || {};
 
     pageNumber = parseInt(pageNumber, 10);
     pageSize = parseInt(pageSize, 10);
@@ -821,38 +1038,152 @@ exports.getTemporaryDataList = async (req, res) => {
       filters.AND.push({ found_status: { equals: false } });
     }
 
+    const orderBy = normalizeTemporaryDataOrderBy({
+      sortFields,
+      sortField,
+      sortOrder,
+      sort,
+    });
+
     console.log(filters);
 
-
-    const temporaryData = await prisma.temporaryData.findMany({
-      where: filters,
-      skip: (pageNumber - 1) * pageSize,
-      take: pageSize,
-      include: {
-        executor: {
-          select: {
-            id: true,
-            first_name: true,
-            last_name: true,
-            username: true,
-          },
-        },
-        Initiator: {
-          select: {
-            id: true,
-            first_name: true,
-            last_name: true,
-          },
+    const includeRelations = {
+      executor: {
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+          username: true,
         },
       },
-      orderBy: {
-        createdAt: "asc",
+      Initiator: {
+        select: {
+          id: true,
+          first_name: true,
+          last_name: true,
+        },
       },
-    });
+    };
 
-    const totalData = await prisma.temporaryData.count({
-      where: filters,
-    });
+    const hasBirthDateSort = orderBy.some((entry) => Object.prototype.hasOwnProperty.call(entry, "birthDate"));
+
+    const getEffectiveBirthDateSortValue = (record) => {
+      if (record?.birthDate) {
+        const parsedBirthDate = new Date(record.birthDate);
+        if (!Number.isNaN(parsedBirthDate.getTime())) {
+          return parsedBirthDate.getTime();
+        }
+      }
+
+      if (record?.birthYear !== null && record?.birthYear !== undefined) {
+        const birthYearInt = parseInt(record.birthYear, 10);
+        if (!Number.isNaN(birthYearInt)) {
+          // Year-only records are sorted as end-of-year dates.
+          return Date.UTC(birthYearInt, 11, 31, 23, 59, 59, 999);
+        }
+      }
+
+      return null;
+    };
+
+    const normalizeComparableValue = (value) => {
+      if (value instanceof Date) return value.getTime();
+      if (typeof value === "string") return value.toLocaleLowerCase();
+      return value;
+    };
+
+    let temporaryData = [];
+    let totalData = 0;
+
+    if (hasBirthDateSort) {
+      const sortSelect = { id: true, birthDate: true, birthYear: true };
+      for (const entry of orderBy) {
+        const field = Object.keys(entry)[0];
+        if (field) sortSelect[field] = true;
+      }
+
+      const allForSort = await prisma.temporaryData.findMany({
+        where: filters,
+        select: sortSelect,
+      });
+
+      allForSort.sort((a, b) => {
+        for (const entry of orderBy) {
+          const field = Object.keys(entry)[0];
+          const direction = entry[field];
+          let cmp = 0;
+
+          if (field === "birthDate") {
+            const av = getEffectiveBirthDateSortValue(a);
+            const bv = getEffectiveBirthDateSortValue(b);
+
+            // Keep records without both birthDate and birthYear at the end for both ASC and DESC.
+            if (av === null && bv === null) {
+              cmp = 0;
+            } else if (av === null) {
+              cmp = 1;
+            } else if (bv === null) {
+              cmp = -1;
+            } else {
+              cmp = av < bv ? -1 : av > bv ? 1 : 0;
+              if (direction === "desc") {
+                cmp = -cmp;
+              }
+            }
+          } else {
+            const avRaw = a[field];
+            const bvRaw = b[field];
+
+            if (avRaw === null || avRaw === undefined) {
+              cmp = bvRaw === null || bvRaw === undefined ? 0 : 1;
+            } else if (bvRaw === null || bvRaw === undefined) {
+              cmp = -1;
+            } else {
+              const av = normalizeComparableValue(avRaw);
+              const bv = normalizeComparableValue(bvRaw);
+              cmp = av < bv ? -1 : av > bv ? 1 : 0;
+              if (cmp !== 0 && direction === "desc") {
+                cmp = -cmp;
+              }
+            }
+          }
+
+          if (cmp !== 0) return cmp;
+        }
+
+        // Deterministic tie-breaker for stable pagination.
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      });
+
+      totalData = allForSort.length;
+      const offset = (pageNumber - 1) * pageSize;
+      const pageIds = allForSort.slice(offset, offset + pageSize).map((item) => item.id);
+
+      if (pageIds.length > 0) {
+        const unordered = await prisma.temporaryData.findMany({
+          where: { id: { in: pageIds } },
+          include: includeRelations,
+        });
+        const pos = new Map(pageIds.map((id, index) => [id, index]));
+        unordered.sort((a, b) => pos.get(a.id) - pos.get(b.id));
+        temporaryData = unordered;
+      }
+    } else {
+      const [rows, count] = await prisma.$transaction([
+        prisma.temporaryData.findMany({
+          where: filters,
+          skip: (pageNumber - 1) * pageSize,
+          take: pageSize,
+          include: includeRelations,
+          orderBy,
+        }),
+        prisma.temporaryData.count({
+          where: filters,
+        }),
+      ]);
+      temporaryData = rows;
+      totalData = count;
+    }
 
     const totalPages = Math.ceil(totalData / pageSize);
 

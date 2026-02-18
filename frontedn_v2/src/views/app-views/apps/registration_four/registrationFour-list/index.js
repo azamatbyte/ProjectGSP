@@ -158,6 +158,13 @@ const Index = (props) => {
         pageSize: 10,
       }),
   });
+  const [sortedColumns, setSortedColumns] = useState(() => {
+    try {
+      return JSON.parse(searchParams.get("sort") || "[]");
+    } catch (error) {
+      return [];
+    }
+  });
 
   const [loading, setLoading] = useState(true);
   const [form] = Form.useForm();
@@ -287,11 +294,16 @@ const Index = (props) => {
 
   const updateSearchParams = useCallback(() => {
     const params = new URLSearchParams(location.search);
-    params.set("pageNumber", search.pageNumber.toString());
-    params.set("pageSize", search.pageSize.toString());
+    params.set("pageNumber", String(pageNumber));
+    params.set("pageSize", String(pageSize));
     params.set("search", JSON.stringify(search));
+    if (sortedColumns.length > 0) {
+      params.set("sort", JSON.stringify(sortedColumns));
+    } else {
+      params.delete("sort");
+    }
     navigate(`${location.pathname}?${params.toString()}`, { replace: true });
-  }, [location.search, location.pathname, navigate, search]);
+  }, [location.search, location.pathname, navigate, pageNumber, pageSize, search, sortedColumns]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -328,7 +340,18 @@ const Index = (props) => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await RegistrationFourService.getList(search, pageNumber, pageSize);
+      const sortFields = sortedColumns
+        .filter((entry) => entry && typeof entry.field === "string" && entry.field)
+        .map((entry) => ({
+          field: entry.field,
+          order: String(entry.order || "ASC").toUpperCase() === "DESC" ? "DESC" : "ASC",
+        }));
+      const res = await RegistrationFourService.getList(
+        search,
+        pageNumber,
+        pageSize,
+        sortFields
+      );
 
       // Wait for all async operations to complete
       const updatedData = await Promise.all(
@@ -360,7 +383,28 @@ const Index = (props) => {
     } finally {
       setLoading(false);
     }
-  }, [search, pageNumber, pageSize]);
+  }, [search, pageNumber, pageSize, sortedColumns]);
+
+  const handleTableChange = useCallback((pagination, filters, sorter) => {
+    const sorters = Array.isArray(sorter) ? sorter : [sorter];
+    const newSorted = sorters
+      .filter((item) => item?.order)
+      .map((item) => ({
+        field: item.field,
+        order: item.order === "ascend" ? "ASC" : "DESC",
+      }));
+    setSortedColumns(newSorted);
+    setPageNumber(1);
+    setSearch((prev) => ({ ...prev, pageNumber: 1 }));
+  }, []);
+
+  const sortOrderMap = useMemo(() => {
+    const map = {};
+    sortedColumns.forEach((item) => {
+      map[item.field] = item.order === "ASC" ? "ascend" : "descend";
+    });
+    return map;
+  }, [sortedColumns]);
 
   useEffect(() => {
     updateSearchParams();
@@ -462,6 +506,9 @@ const Index = (props) => {
     {
       title: t("№"),
       dataIndex: "order",
+      sorter: { multiple: 1 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.order || null,
     },
     {
       title: <UnorderedListOutlined />,
@@ -476,7 +523,9 @@ const Index = (props) => {
       title: t("full_name"),
       dataIndex: "fullName",
       width: "10%",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "fullName"),
+      sorter: { multiple: 2 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.fullName || null,
       render: (fullName) => (
         <Tooltip title={fullName}>
           <span style={{
@@ -501,7 +550,6 @@ const Index = (props) => {
     {
       title: t("birth_date"),
       dataIndex: "birthDate",
-      // sorter: (a, b) => new Date(a.birthDate) - new Date(b.birthDate),
       render: (_, elm) => (
         <>
           {elm?.birthDate !== null &&
@@ -517,13 +565,17 @@ const Index = (props) => {
     {
       title: t("birth_place"),
       dataIndex: "birthPlace",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "birthPlace"),
+      sorter: { multiple: 3 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.birthPlace || null,
     },
     {
       title: t("reg_number"),
       dataIndex: "regNumber",
       width: "2%",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "regNumber"),
+      sorter: { multiple: 4 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.regNumber || null,
       render: (regNumber) => (
         <p style={{ textAlign: "center" }}>{regNumber ? regNumber : <></>}</p>
       ),
@@ -531,7 +583,9 @@ const Index = (props) => {
     {
       title: t("status"),
       dataIndex: "status",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "status"),
+      sorter: { multiple: 5 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.status || null,
       render: (status) => (
         <Tag color={statusMap[status]}>
           {select_options.find((option) => option.value === status)?.label}
@@ -712,7 +766,9 @@ const Index = (props) => {
     {
       title: t("found_status"),
       dataIndex: "found_status",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "found_status"),
+      sorter: { multiple: 6 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.found_status || null,
       render: (found_status) => (
         <>{found_status ? t("found") : t("not_found")}</>
       ),
@@ -747,7 +803,9 @@ const Index = (props) => {
     {
       title: t("work_place"),
       dataIndex: "workplace",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "workplace"),
+      sorter: { multiple: 7 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.workplace || null,
       render: (workplace, elm) => {
         if (workplace) {
           if (elm?.position) {
@@ -763,7 +821,9 @@ const Index = (props) => {
     {
       title: t("residence"),
       dataIndex: "residence",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "residence"),
+      sorter: { multiple: 8 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.residence || null,
       render: (residence) => (
         <p>
           {residence?.length > 100
@@ -803,6 +863,9 @@ const Index = (props) => {
     {
       title: t("updated_at"),
       dataIndex: "updatedAt",
+      sorter: { multiple: 9 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.updatedAt || null,
       render: (updatedAt) => (
         <>{updatedAt ? getDateString(updatedAt) : t("unknown")}</>
       ),
@@ -2033,6 +2096,7 @@ const Index = (props) => {
           //   preserveSelectedRowKeys: false,
           //   ...rowSelection,
           // }}
+          onChange={handleTableChange}
           pagination={false}
         />
         <Row
@@ -2058,10 +2122,11 @@ const Index = (props) => {
               onShowSizeChange={(current, size) => {
                 setPageSize(size);
                 setPageNumber(1);
+                setSearch((prev) => ({ ...prev, pageNumber: 1, pageSize: size }));
               }}
               onChange={(page, pageSize) => {
                 setPageNumber(page);
-                setSearch({ ...search, pageNumber: page, pageSize: pageSize });
+                setSearch((prev) => ({ ...prev, pageNumber: page, pageSize }));
                 setPageSize(pageSize);
               }}
             />

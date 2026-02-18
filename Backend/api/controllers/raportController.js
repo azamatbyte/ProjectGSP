@@ -27,6 +27,117 @@ const role = require("../middleware/role");
 // Initialize Prisma Client
 const prisma = require('../../db/database');
 
+const createPageBreakSection = () => ({
+  properties: {},
+  children: [new Paragraph({ children: [new TextRun({ break: 2 })] })],
+});
+
+const buildCombinedDocument = (documents, { addPageBreakBetween = false } = {}) => {
+  const validDocuments = documents.filter(
+    (doc) => Array.isArray(doc?.sections) && doc.sections.length > 0
+  );
+
+  if (!validDocuments.length) {
+    return null;
+  }
+
+  const sections = [];
+  validDocuments.forEach((doc, index) => {
+    sections.push(...doc.sections);
+    if (addPageBreakBetween && index < validDocuments.length - 1) {
+      sections.push(createPageBreakSection());
+    }
+  });
+
+  return new Document({ sections });
+};
+
+const getPsychoRaportTypes = (raportTypes, name) => {
+  const allRaportTypes = Array.isArray(raportTypes) ? raportTypes : [];
+  const type3RaportTypes = allRaportTypes.filter((item) =>
+    String(item?.link || "").includes("type3")
+  );
+  const type2RaportTypes = allRaportTypes.filter((item) =>
+    String(item?.link || "").includes("type2")
+  );
+
+  const fallbackByLink = type3RaportTypes.length
+    ? type3RaportTypes
+    : type2RaportTypes.length
+      ? type2RaportTypes
+      : allRaportTypes;
+
+  const preferredCodesByType = {
+    type6: ["nd", "nd1"],
+    type7: ["nd", "nd2"],
+  };
+  const preferredCodes = preferredCodesByType[name];
+  if (!preferredCodes?.length) {
+    return fallbackByLink;
+  }
+
+  const selectedByCode = fallbackByLink.filter((item) =>
+    preferredCodes.includes(String(item?.code || "").toLowerCase())
+  );
+
+  return selectedByCode.length ? selectedByCode : fallbackByLink;
+};
+
+const selectRaportTypesByCodeOrFallback = async ({
+  code,
+  name,
+  fallbackLinks = ["type2", "type1"],
+}) => {
+  const normalizedCode = String(code || "").trim();
+  const normalizedName = String(name || "").trim();
+  let raportTypes = [];
+
+  if (normalizedCode) {
+    raportTypes = await prisma.raportTypes.findMany({
+      where: {
+        code: {
+          contains: normalizedCode,
+          mode: "insensitive",
+        },
+      },
+    });
+  }
+
+  if (!raportTypes.length && normalizedName) {
+    raportTypes = await prisma.raportTypes.findMany({
+      where: {
+        OR: [
+          { link: { contains: normalizedName, mode: "insensitive" } },
+          { name: { contains: normalizedName, mode: "insensitive" } },
+          { code: { contains: normalizedName, mode: "insensitive" } },
+        ],
+      },
+    });
+  }
+
+  if (!raportTypes.length) {
+    for (const link of fallbackLinks) {
+      raportTypes = await prisma.raportTypes.findMany({
+        where: {
+          link: {
+            contains: link,
+            mode: "insensitive",
+          },
+        },
+      });
+      if (raportTypes.length) {
+        break;
+      }
+    }
+  }
+
+  if (!raportTypes.length) {
+    raportTypes = await prisma.raportTypes.findMany();
+  }
+
+  return raportTypes;
+};
+
 /**
  * @swagger
  * /api/v1/raport/create:
@@ -1361,8 +1472,17 @@ exports.generateSP = async (req, res) => {
         ],
       },
     });
+    if (!raportTypes?.length) {
+      return res
+        .status(404)
+        .json({ code: 404, message: "raport type not found" });
+    }
 
     const documents = [];
+    const hasType3RaportType = raportTypes.some((item) =>
+      String(item?.link || "").includes("type3")
+    );
+    const ndRaportCodes = ["nd", "nd1", "nd2"];
     for (let i = 0; i < raportTypes?.length; i++) {
       if (
         raportTypes[i]?.link.includes("type1") &&
@@ -1423,12 +1543,22 @@ exports.generateSP = async (req, res) => {
           )
         );
       } else if (
-        raportTypes[i]?.link.includes("type3") &&
+        (
+          (hasType3RaportType && raportTypes[i]?.link.includes("type3")) ||
+          (!hasType3RaportType && raportTypes[i]?.link.includes("type2"))
+        ) &&
         (name === "type7" || name === "type6")
       ) {
         if (
           name === "type7" &&
-          (raportTypes[i]?.code === "nd" || raportTypes[i]?.code === "nd2")
+          (
+            raportTypes[i]?.code === "nd" ||
+            raportTypes[i]?.code === "nd2" ||
+            (
+              !hasType3RaportType &&
+              !ndRaportCodes.includes(String(raportTypes[i]?.code || "").toLowerCase())
+            )
+          )
         ) {
           documents.push(
             generatePsychoRaport(
@@ -1451,7 +1581,14 @@ exports.generateSP = async (req, res) => {
           );
         } else if (
           name === "type6" &&
-          (raportTypes[i]?.code === "nd" || raportTypes[i]?.code === "nd1")
+          (
+            raportTypes[i]?.code === "nd" ||
+            raportTypes[i]?.code === "nd1" ||
+            (
+              !hasType3RaportType &&
+              !ndRaportCodes.includes(String(raportTypes[i]?.code || "").toLowerCase())
+            )
+          )
         ) {
           documents.push(
             generatePsychoRaport(
@@ -1475,31 +1612,14 @@ exports.generateSP = async (req, res) => {
         }
       }
     }
-    let combinedDoc;
-
-    if (name === "type7" || name === "type6") {
-      combinedDoc = new Document({
-        sections: [...documents[0].sections, ...documents[1].sections],
-      });
-    } else {
-      combinedDoc = new Document({
-        sections: [
-          ...documents[0].sections,
-          {
-            properties: {},
-            children: [
-              new Paragraph({ children: [new TextRun({ break: 2 })] }), // Page break
-            ],
-          },
-          ...documents[1].sections,
-          {
-            properties: {},
-            children: [
-              new Paragraph({ children: [new TextRun({ break: 2 })] }), // Page break
-            ],
-          },
-          ...documents[2].sections,
-        ],
+    const isPsychoReport = name === "type7" || name === "type6";
+    const combinedDoc = buildCombinedDocument(documents, {
+      addPageBreakBetween: !isPsychoReport,
+    });
+    if (!combinedDoc) {
+      return res.status(404).json({
+        code: 404,
+        message: "No matching raport templates found",
       });
     }
 
@@ -1765,50 +1885,31 @@ exports.generateOPRaport = async (req, res) => {
     });
 
     const documents = [];
-    for (let i = 0; i < raportTypes?.length; i++) {
-      if (
-        name === "type6" &&
-        (raportTypes[i]?.code === "nd" || raportTypes[i]?.code === "nd2")
-      ) {
-        documents.push(
-          generatePsychoRaportList(
-            raportTypes[i]?.organization,
-            data,
-            raportTypes[i]?.requested_organization,
-            formattedDate,
-            executor,
-            executor_phone,
-            initiator,
-            data[0]?.regNumber ? data[0]?.regNumber : "",
-            executorList,
-            raportTypes[i]?.notes ? raportTypes[i]?.notes : ""
-          )
-        );
-      } else if (
-        name === "type7" &&
-        (raportTypes[i]?.code === "nd" || raportTypes[i]?.code === "nd1")
-      ) {
-        documents.push(
-          generatePsychoRaportList(
-            raportTypes[i]?.organization,
-            data,
-            raportTypes[i]?.requested_organization,
-            formattedDate,
-            executor,
-            executor_phone,
-            initiator,
-            data[0]?.regNumber ? data[0]?.regNumber : "",
-            executorList,
-            raportTypes[i]?.notes ? raportTypes[i]?.notes : ""
-          )
-        );
-      }
-    }
-    let combinedDoc;
-
-    if (name === "type6" || name === "type7") {
-      combinedDoc = new Document({
-        sections: [...documents[0].sections, ...documents[1].sections],
+    const psychoRaportTypes =
+      name === "type6" || name === "type7"
+        ? getPsychoRaportTypes(raportTypes, name)
+        : [];
+    psychoRaportTypes.forEach((raportType) => {
+      documents.push(
+        generatePsychoRaportList(
+          raportType?.organization,
+          data,
+          raportType?.requested_organization,
+          formattedDate,
+          executor,
+          executor_phone,
+          initiator,
+          data[0]?.regNumber ? data[0]?.regNumber : "",
+          executorList,
+          raportType?.notes ? raportType?.notes : ""
+        )
+      );
+    });
+    const combinedDoc = buildCombinedDocument(documents);
+    if (!combinedDoc) {
+      return res.status(404).json({
+        code: 404,
+        message: "No matching raport templates found",
       });
     }
 
@@ -2039,6 +2140,11 @@ exports.generateMalumotnomaList = async (req, res) => {
         ],
       },
     });
+    if (!raportTypes?.length) {
+      return res
+        .status(404)
+        .json({ code: 404, message: "raport type not found" });
+    }
 
     const type_of_raport =
       name === "type8"
@@ -2061,11 +2167,13 @@ exports.generateMalumotnomaList = async (req, res) => {
         raportTypes[0]?.notes ? raportTypes[0]?.notes : ""
       )
     );
-    let combinedDoc;
-
-    combinedDoc = new Document({
-      sections: [...documents[0].sections],
-    });
+    const combinedDoc = buildCombinedDocument(documents);
+    if (!combinedDoc) {
+      return res.status(404).json({
+        code: 404,
+        message: "No matching raport templates found",
+      });
+    }
 
     // Ikkala hujjatning bo'limlarini birlashtirish
 
@@ -2293,11 +2401,7 @@ exports.generateAVR = async (req, res) => {
 
     const documents = [];
 
-    const raportTypes = await prisma.raportTypes.findMany({
-      where: {
-        AND: [{ code: { contains: code } }],
-      },
-    });
+    const raportTypes = await selectRaportTypesByCodeOrFallback({ code, name });
 
     if (!raportTypes?.length) {
       return res
@@ -2371,9 +2475,13 @@ exports.generateAVR = async (req, res) => {
     });
 
     // Ikkala hujjatning bo'limlarini birlashtirish
-    const combinedDoc = new Document({
-      sections: [...documents[0].sections],
-    });
+    const combinedDoc = buildCombinedDocument(documents);
+    if (!combinedDoc) {
+      return res.status(404).json({
+        code: 404,
+        message: "No matching raport templates found",
+      });
+    }
     // Hujjat buferini yaratish
     const buffer = await Packer.toBuffer(combinedDoc);
 
@@ -2574,11 +2682,7 @@ exports.generateUPK = async (req, res) => {
 
     const documents = [];
 
-    const raportTypes = await prisma.raportTypes.findMany({
-      where: {
-        AND: [{ code: { contains: code } }],
-      },
-    });
+    const raportTypes = await selectRaportTypesByCodeOrFallback({ code, name });
 
     if (!raportTypes?.length) {
       return res
@@ -2618,9 +2722,13 @@ exports.generateUPK = async (req, res) => {
     });
 
     // Ikkala hujjatning bo'limlarini birlashtirish
-    const combinedDoc = new Document({
-      sections: [...documents[0].sections],
-    });
+    const combinedDoc = buildCombinedDocument(documents);
+    if (!combinedDoc) {
+      return res.status(404).json({
+        code: 404,
+        message: "No matching raport templates found",
+      });
+    }
     // Hujjat buferini yaratish
     const buffer = await Packer.toBuffer(combinedDoc);
 
@@ -2826,11 +2934,7 @@ exports.generateMalumotnoma = async (req, res) => {
 
     const documents = [];
 
-    const raportTypes = await prisma.raportTypes.findMany({
-      where: {
-        AND: [{ code: { contains: code } }],
-      },
-    });
+    const raportTypes = await selectRaportTypesByCodeOrFallback({ code, name });
 
     if (!raportTypes?.length) {
       return res
@@ -2879,9 +2983,13 @@ exports.generateMalumotnoma = async (req, res) => {
     });
 
     // Ikkala hujjatning bo'limlarini birlashtirish
-    const combinedDoc = new Document({
-      sections: [...documents[0].sections],
-    });
+    const combinedDoc = buildCombinedDocument(documents);
+    if (!combinedDoc) {
+      return res.status(404).json({
+        code: 404,
+        message: "No matching raport templates found",
+      });
+    }
     // Hujjat buferini yaratish
     const buffer = await Packer.toBuffer(combinedDoc);
 

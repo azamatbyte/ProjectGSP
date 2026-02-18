@@ -1,4 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Prisma } = require("@prisma/client");
 const { RelativeSchema } = require("../helpers/validator");
 const { v4: uuidv4, validate: isUuid } = require("uuid");
 const { MODEL_TYPE } = require("../helpers/constants");
@@ -404,77 +404,87 @@ exports.searchRelatives = async (req, res) => {
       });
     }
 
+    const normalizeNameSearchTerm = (value) => {
+      if (value === null || value === undefined) return null;
+      const term = String(value).replace(/%/g, "").replace(/\*/g, "%").trim();
+      return term === "" ? null : term;
+    };
+
+    const normalizedFirstName = normalizeNameSearchTerm(firstName);
+    const normalizedLastName = normalizeNameSearchTerm(lastName);
+    const normalizedFatherName = normalizeNameSearchTerm(fatherName);
+
     // console.log(firstName);
     console.log(req.body);
     // console.log(JSON.parse(query));
 
+    const andConditions = [
+      regNumber
+        ? {
+          regNumber: {
+            contains: regNumber
+              .replace(/%/g, "")
+              .replace(/\*/g, "%")
+              .trim(),
+            mode: "insensitive",
+          },
+        }
+        : {},
+      birthPlace
+        ? {
+          birthPlace: {
+            contains: birthPlace
+              .replace(/%/g, "")
+              .replace(/\*/g, "%")
+              .trim(),
+            mode: "insensitive",
+          },
+        }
+        : {},
+      workplace
+        ? {
+          workplace: {
+            contains: workplace
+              .replace(/%/g, "")
+              .replace(/\*/g, "%")
+              .trim(),
+            mode: "insensitive",
+          },
+        }
+        : {},
+      model ? { model: { equals: model } } : {},
+    ].filter(Boolean);
+
+    if (normalizedFirstName || normalizedLastName || normalizedFatherName) {
+      const nameSqlConditions = [];
+
+      if (normalizedFirstName) {
+        nameSqlConditions.push(
+          Prisma.sql`lower(trim(coalesce("firstName", ''))) LIKE '%' || lower(trim(${normalizedFirstName})) || '%'`
+        );
+      }
+      if (normalizedLastName) {
+        nameSqlConditions.push(
+          Prisma.sql`lower(trim(coalesce("lastName", ''))) LIKE '%' || lower(trim(${normalizedLastName})) || '%'`
+        );
+      }
+      if (normalizedFatherName) {
+        nameSqlConditions.push(
+          Prisma.sql`lower(trim(coalesce("fatherName", ''))) LIKE '%' || lower(trim(${normalizedFatherName})) || '%'`
+        );
+      }
+
+      const matchingNameIds = await prisma.$queryRaw`
+        SELECT "id"
+        FROM "Relatives"
+        WHERE ${Prisma.join(nameSqlConditions, Prisma.sql` AND `)}
+      `;
+
+      andConditions.push({ id: { in: matchingNameIds.map((item) => item.id) } });
+    }
+
     const filters = {
-      AND: [
-        firstName
-          ? {
-            firstName: {
-              contains: firstName
-                .replace(/%/g, "")
-                .replace(/\*/g, "%")
-                .trim(),
-              mode: "insensitive",
-            },
-          }
-          : {},
-        lastName
-          ? {
-            lastName: {
-              contains: lastName.replace(/%/g, "").replace(/\*/g, "%").trim(),
-              mode: "insensitive",
-            },
-          }
-          : {},
-        fatherName
-          ? {
-            fatherName: {
-              contains: fatherName
-                .replace(/%/g, "")
-                .replace(/\*/g, "%")
-                .trim(),
-              mode: "insensitive",
-            },
-          }
-          : {},
-        regNumber
-          ? {
-            regNumber: {
-              contains: regNumber
-                .replace(/%/g, "")
-                .replace(/\*/g, "%")
-                .trim(),
-              mode: "insensitive",
-            },
-          }
-          : {},
-        birthPlace
-          ? {
-            birthPlace: {
-              contains: birthPlace
-                .replace(/%/g, "")
-                .replace(/\*/g, "%")
-                .trim(),
-              mode: "insensitive",
-            },
-          }
-          : {},
-        workplace
-          ? {
-            workplace: {
-              contains: workplace
-                .replace(/%/g, "")
-                .replace(/\*/g, "%")
-                .trim(),
-              mode: "insensitive",
-            },
-          }
-          : {},
-        model ? { model: { equals: model } } : {},
-      ].filter(Boolean),
+      AND: andConditions,
     };
 
     console.log(filters);
@@ -504,6 +514,26 @@ exports.searchRelatives = async (req, res) => {
     // Cyrillic-friendly ordering for name fields using Intl.Collator
     const nameSortableFields = new Set(["fullName", "firstName", "lastName", "fatherName"]);
     const hasNameSort = sortEntries.some(e => nameSortableFields.has(e.field));
+    const hasBirthDateSort = sortEntries.some((e) => e.field === "birthDate");
+
+    const getEffectiveBirthDateSortValue = (record) => {
+      if (record?.birthDate) {
+        const parsedBirthDate = new Date(record.birthDate);
+        if (!Number.isNaN(parsedBirthDate.getTime())) {
+          return parsedBirthDate.getTime();
+        }
+      }
+
+      if (record?.birthYear !== null && record?.birthYear !== undefined) {
+        const birthYearInt = parseInt(record.birthYear, 10);
+        if (!Number.isNaN(birthYearInt)) {
+          // Year-only records are sorted as end-of-year dates.
+          return Date.UTC(birthYearInt, 11, 31, 23, 59, 59, 999);
+        }
+      }
+
+      return null;
+    };
 
     const includeRelations = {
       registration: {
@@ -532,10 +562,14 @@ exports.searchRelatives = async (req, res) => {
     let totalRelatives;
     let relatives;
 
-    if (sortEntries.length > 0 && hasNameSort) {
-      // In-memory Cyrillic-aware multi-key sort
+    if (sortEntries.length > 0 && (hasNameSort || hasBirthDateSort)) {
+      // In-memory sort for Cyrillic names and birthDate fallback to birthYear.
       const toSelect = { id: true };
       for (const e of sortEntries) toSelect[e.field] = true;
+      if (hasBirthDateSort) {
+        toSelect.birthDate = true;
+        toSelect.birthYear = true;
+      }
       const allForSort = await prisma.relatives.findMany({
         where: filters,
         select: toSelect,
@@ -549,17 +583,42 @@ exports.searchRelatives = async (req, res) => {
 
       allForSort.sort((a, b) => {
         for (const entry of sortEntries) {
-          const av = (a[entry.field] || "").toString();
-          const bv = (b[entry.field] || "").toString();
-          let cmp;
-          if (nameSortableFields.has(entry.field)) {
-            cmp = collator.compare(av, bv);
+          let cmp = 0;
+
+          if (entry.field === "birthDate") {
+            const av = getEffectiveBirthDateSortValue(a);
+            const bv = getEffectiveBirthDateSortValue(b);
+
+            // Keep records without both birthDate and birthYear at the end for both ASC and DESC.
+            if (av === null && bv === null) {
+              cmp = 0;
+            } else if (av === null) {
+              cmp = 1;
+            } else if (bv === null) {
+              cmp = -1;
+            } else {
+              cmp = av < bv ? -1 : av > bv ? 1 : 0;
+              if (entry.direction === "desc") {
+                cmp = -cmp;
+              }
+            }
           } else {
-            cmp = av < bv ? -1 : av > bv ? 1 : 0;
+            const av = (a[entry.field] || "").toString();
+            const bv = (b[entry.field] || "").toString();
+            if (nameSortableFields.has(entry.field)) {
+              cmp = collator.compare(av, bv);
+            } else {
+              cmp = av < bv ? -1 : av > bv ? 1 : 0;
+            }
+            if (cmp !== 0 && entry.direction === "desc") {
+              cmp = -cmp;
+            }
           }
-          if (cmp !== 0) return entry.direction === "desc" ? -cmp : cmp;
+
+          if (cmp !== 0) return cmp;
         }
-        return 0;
+        // Deterministic tie-breaker for stable pagination.
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
       });
 
       totalRelatives = allForSort.length;

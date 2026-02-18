@@ -22,6 +22,7 @@ import NavConclusion from "../NavConclusion";
 import ProviderComponent from "providerComponent";
 import NavBackup from "../NavBackup";
 import NavMigration from "../NavMigration";
+import NavActionsMenu from "../NavActionsMenu";
 
 export const HeaderNav = props => {
 
@@ -113,17 +114,25 @@ export const HeaderNav = props => {
 							</div>
 						}
 					</NavEdge>
-					<NavEdge left>
-						<ProviderComponent rolePermission={["superAdmin"]}>
-							<NavBackup />
-						</ProviderComponent>
-						{user?.username === 'admin01' && <NavMigration />}
-					</NavEdge>
+					{!isMobile && (
+						<NavEdge left>
+							<ProviderComponent rolePermission={["superAdmin"]}>
+								<NavBackup />
+							</ProviderComponent>
+							{user?.username === "admin01" && <NavMigration />}
+						</NavEdge>
+					)}
 
 					<NavEdge right>
-						<NavConclusion mode={navMode} />
-						<NavOrder mode={navMode} />
-						<NavReserve mode={navMode} />
+						{isMobile ? (
+							<NavActionsMenu mode={navMode} />
+						) : (
+							<>
+								<NavConclusion mode={navMode} />
+								<NavOrder mode={navMode} />
+								<NavReserve mode={navMode} />
+							</>
+						)}
 						<NavLanguage mode={navMode} />
 						<NavPanel direction={direction} mode={navMode} />
 						<NavProfile mode={navMode} />

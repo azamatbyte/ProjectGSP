@@ -10,6 +10,10 @@ const { getEnv } = require('../../config/env');
 const env = getEnv();
 
 const isWindows = process.platform === 'win32';
+const PROD_UPLOAD_FILE_SIZE_LIMIT = 500 * 1024 * 1024; // 500MB
+const DEV_UPLOAD_FILE_SIZE_LIMIT = 2 * 1024 * 1024 * 1024; // 2GB
+const uploadFileSizeLimit =
+    env.NODE_ENV === 'production' ? PROD_UPLOAD_FILE_SIZE_LIMIT : DEV_UPLOAD_FILE_SIZE_LIMIT;
 
 // Configure multer for Access file uploads
 const storage = multer.diskStorage({
@@ -48,43 +52,17 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 500 * 1024 * 1024 } // 500MB max
+    limits: { fileSize: uploadFileSizeLimit }
 });
 
-/**
- * @swagger
- * /api/v1/migration/upload:
- *   post:
- *     tags: [Migration]
- *     summary: Upload Access database and run migration
- *     description: Upload an Access (.accdb) file and migrate all data to PostgreSQL
- *     security:
- *       - apiKeyAuth: []
- *     consumes:
- *       - multipart/form-data
- *     requestBody:
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: Access database file (.accdb or .mdb)
- *     responses:
- *       200:
- *         description: Migration completed successfully
- *       400:
- *         description: No file uploaded or invalid file type
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - superAdmin access required
- *       500:
- *         description: Migration failed
- */
-router.post('/upload', verifyToken, permissionCheck("superAdmin"), upload.single('file'), async (req, res) => {
+// Dedicated upload middleware for NavMigration modal.
+const uploadModal = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: { fileSize: uploadFileSizeLimit }
+});
+
+async function handleMigrationUpload(req, res) {
     try {
         if (!req.file) {
             return res.status(400).json({
@@ -125,7 +103,102 @@ router.post('/upload', verifyToken, permissionCheck("superAdmin"), upload.single
             message: err.message || 'Migration failed'
         });
     }
-});
+}
+
+function handleUploadMiddleware(uploadMiddleware, req, res, next) {
+    uploadMiddleware(req, res, (err) => {
+        if (!err) {
+            return next();
+        }
+
+        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+            const maxSizeMb = Math.floor(uploadFileSizeLimit / (1024 * 1024));
+            return res.status(413).json({
+                code: 413,
+                message: `File too large. Maximum allowed size is ${maxSizeMb}MB for NODE_ENV=${env.NODE_ENV}.`
+            });
+        }
+
+        return res.status(400).json({
+            code: 400,
+            message: err.message || 'Upload failed'
+        });
+    });
+}
+
+/**
+ * @swagger
+ * /api/v1/migration/upload:
+ *   post:
+ *     tags: [Migration]
+ *     summary: Upload Access database and run migration
+ *     description: Upload an Access (.accdb) file and migrate all data to PostgreSQL
+ *     security:
+ *       - apiKeyAuth: []
+ *     consumes:
+ *       - multipart/form-data
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Access database file (.accdb or .mdb)
+ *     responses:
+ *       200:
+ *         description: Migration completed successfully
+ *       400:
+ *         description: No file uploaded or invalid file type
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - superAdmin access required
+ *       500:
+ *         description: Migration failed
+ */
+router.post('/upload', verifyToken, permissionCheck("superAdmin"), (req, res, next) => {
+    handleUploadMiddleware(upload.single('file'), req, res, next);
+}, handleMigrationUpload);
+
+/**
+ * @swagger
+ * /api/v1/migration/upload-modal:
+ *   post:
+ *     tags: [Migration]
+ *     summary: Upload Access database from NavMigration modal and run migration
+ *     description: Upload limit is 2GB in development and 500MB in production (from Backend .env NODE_ENV).
+ *     security:
+ *       - apiKeyAuth: []
+ *     consumes:
+ *       - multipart/form-data
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Access database file (.accdb or .mdb)
+ *     responses:
+ *       200:
+ *         description: Migration completed successfully
+ *       400:
+ *         description: No file uploaded or invalid file type
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - superAdmin access required
+ *       500:
+ *         description: Migration failed
+ */
+router.post('/upload-modal', verifyToken, permissionCheck("superAdmin"), (req, res, next) => {
+    handleUploadMiddleware(uploadModal.single('file'), req, res, next);
+}, handleMigrationUpload);
 
 /**
  * @swagger

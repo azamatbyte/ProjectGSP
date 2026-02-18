@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { MEDIA_QUERIES } from "constants/ThemeConstant";
 
 const NavEdge = styled.div(({left, right}) => {
 
@@ -12,7 +13,10 @@ const NavEdge = styled.div(({left, right}) => {
 		return {
 			marginLeft: "auto",
 			padding: "0 1rem",
-			display: "flex"
+			display: "flex",
+			[`@media ${MEDIA_QUERIES.TABLET}`]: {
+				padding: "0 0.5rem"
+			}
 		};
 	}
 

@@ -3,7 +3,7 @@ import Request from "utils/request";
 const MigrationService = {};
 
 MigrationService.uploadMigration = function (file) {
-    return Request.fileUpload("migration/upload", file);
+    return Request.fileUpload("migration/upload-modal", file);
 };
 
 MigrationService.getMigrationStatus = function () {

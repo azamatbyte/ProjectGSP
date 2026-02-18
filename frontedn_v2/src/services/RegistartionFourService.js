@@ -10,8 +10,12 @@ RegistrationFourService.createManual = function (data) {
 	return Request.postRequest("registerFour/upload-manual", data);
 };
 
-RegistrationFourService.getList = function (search=null, pageNumber=1, pageSize=10) {
-	return Request.postRequest("registerFour/list",{...search, pageNumber, pageSize});
+RegistrationFourService.getList = function (search=null, pageNumber=1, pageSize=10, sortFields=[]) {
+	const body = { ...search, pageNumber, pageSize };
+	if (Array.isArray(sortFields) && sortFields.length > 0) {
+		body.sortFields = sortFields;
+	}
+	return Request.postRequest("registerFour/list", body);
 };
 
 RegistrationFourService.getIdsOfList = function (search=null) {

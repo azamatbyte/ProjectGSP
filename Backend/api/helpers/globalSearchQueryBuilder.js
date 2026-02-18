@@ -51,6 +51,34 @@ function buildTextFilter(column, value, excludeStatus = false, exactMatch = fals
 }
 
 /**
+ * Builds a normalized text filter for person-name fields.
+ * Compares using lower(trim(...)) so case and edge spaces are ignored,
+ * while internal spaces stay significant.
+ * @param {string} column - The column name (with table alias)
+ * @param {string} value - The search value
+ * @param {boolean} excludeStatus - If true, exclude matches; if false, include matches
+ * @param {boolean} exactMatch - If true, use exact match (=); if false, use LIKE
+ * @returns {string|null} - The SQL condition
+ */
+function buildTrimmedNameFilter(column, value, excludeStatus = false, exactMatch = false) {
+    if (!value) return null;
+
+    const sanitized = sanitizeValue(processSearchTerm(value));
+    if (!sanitized) return null;
+
+    const normalizedColumn = `lower(trim(coalesce(${column}, '')))`;
+    const normalizedValue = `lower(trim('${sanitized}'))`;
+    const condition = exactMatch
+        ? `${normalizedColumn} = ${normalizedValue}`
+        : `${normalizedColumn} LIKE '%' || ${normalizedValue} || '%'`;
+
+    if (excludeStatus) {
+        return `NOT (${condition})`;
+    }
+    return condition;
+}
+
+/**
  * Builds a date range filter condition
  * @param {string} column - The column name
  * @param {Date|string} startDate - Start of date range
@@ -134,11 +162,20 @@ function buildWhereConditions(params, tableAlias = "r", regAlias = null) {
     const conditions = [];
     const reg = regAlias || tableAlias;
 
-    // Text filters
-    const textFilters = [
+    // Name filters use lower(trim(...)) normalization.
+    const nameFilters = [
         { column: `${tableAlias}."firstName"`, value: params.firstName, status: params.firstNameStatus },
         { column: `${tableAlias}."lastName"`, value: params.lastName, status: params.lastNameStatus },
         { column: `${tableAlias}."fatherName"`, value: params.fatherName, status: params.fatherNameStatus },
+    ];
+
+    for (const filter of nameFilters) {
+        const condition = buildTrimmedNameFilter(filter.column, filter.value, filter.status);
+        if (condition) conditions.push(condition);
+    }
+
+    // Text filters
+    const textFilters = [
         { column: `${tableAlias}."birthPlace"`, value: params.birthPlace, status: params.birthPlaceStatus },
         { column: `${tableAlias}."workplace"`, value: params.workPlace, status: params.workPlaceStatus },
         { column: `${tableAlias}."position"`, value: params.position, status: params.positionStatus },
@@ -232,7 +269,12 @@ const SORT_FIELD_MAP = {
     form_reg_log: { expr: 'LOWER(form_reg_log)', type: 'text' },
     relationdegree: { expr: 'LOWER(relationDegree)', type: 'text' },
     full_name: { expr: 'LOWER(full_name)', type: 'text' },
-    birth_date: { expr: 'birth_date', type: 'date' },
+    birth_date: {
+        // For year-only records use end-of-year to keep chronological ordering consistent.
+        expr: 'COALESCE(birth_date, CASE WHEN birth_year BETWEEN 1 AND 9999 THEN make_timestamp(birth_year, 12, 31, 23, 59, 59) END)',
+        type: 'date',
+        nulls: 'last',
+    },
     reg_date: { expr: 'reg_date', type: 'date' },
     reg_end_date: { expr: 'reg_end_date', type: 'date' },
     complete_status: { expr: 'LOWER(complete_status)', type: 'text' },
@@ -275,7 +317,9 @@ function buildOrderByClause(sortFields, sortOrder) {
             const mapping = SORT_FIELD_MAP[fieldKey];
             if (!mapping) return null;
             const direction = (e.order || 'ASC').toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-            const nullsHandling = direction === 'ASC' ? 'NULLS LAST' : 'NULLS FIRST';
+            const nullsHandling = mapping.nulls === 'last'
+                ? 'NULLS LAST'
+                : (direction === 'ASC' ? 'NULLS LAST' : 'NULLS FIRST');
             return `${mapping.expr} ${direction} ${nullsHandling}`;
         })
         .filter(Boolean);

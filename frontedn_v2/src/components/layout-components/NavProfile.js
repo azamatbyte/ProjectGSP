@@ -27,7 +27,7 @@ const Profile = styled.div(() => ({
 const UserInfo = styled("div")`
 	padding-left: ${SPACER[2]};
 
-	@media ${MEDIA_QUERIES.MOBILE} {
+	@media ${MEDIA_QUERIES.TABLET} {
 		display: none
 	}
 `;

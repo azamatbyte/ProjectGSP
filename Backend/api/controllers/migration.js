@@ -20,7 +20,6 @@ const env = getEnv();
 // Configuration
 // ============================================================
 const OLEDB_PROVIDER = env.OLEDB_PROVIDER;
-const BATCH_SIZE = env.BATCH_SIZE;
 
 // PowerShell helper scripts (Windows only)
 const SCHEMA_SCRIPT = path.join(__dirname, "../../scripts/_ps_schema.ps1");
@@ -119,6 +118,13 @@ function parseValues(input) {
     return result.length > 0 ? result : null;
 }
 
+function normalizeOptionalText(value) {
+    if (value === null || value === undefined) return null;
+    const normalized = String(value).trim();
+    if (!normalized || normalized === '-') return null;
+    return normalized;
+}
+
 function expiredDateFunc(regDate, regEndDate, formLength) {
     const thresholdDate = new Date('2010-01-01');
     const registrationDate = new Date(regDate);
@@ -201,8 +207,9 @@ function mapRecordToRegistrationData(record, initiatorId, executorId, formId, no
         workplace: record['Место работы и должность'] == '-' ? null : record['Место работы и должность']?.split(',')[0]?.trim(),
         position: record['Место работы и должность'] == '-' ? null : record['Место работы и должность']?.split(',')[1]?.trim(),
         accessStatus,
-        notes: record['Примечания'] ? String(record['Примечания']).trim() : null,
-        externalNotes: notes ? String(notes).trim() : null,
+        notes: normalizeOptionalText(record['Примечания']),
+        additionalNotes: normalizeOptionalText(notes?.additionalNotes),
+        externalNotes: normalizeOptionalText(notes?.externalNotes),
         or_tab: initiatorId,
         executorId,
         whoAdd: executorId,
@@ -233,8 +240,9 @@ function mapRecordToRegistration4Data(record, initiatorId, executorId, formId, n
         workplace: record['Место работы'] == '-' ? null : record['Место работы']?.split(',')[0]?.trim(),
         position: record['Место работы'] == '-' ? null : record['Место работы']?.split(',')[1]?.trim(),
         accessStatus,
-        notes: record['Компроматериалы'] ? String(record['Компроматериалы']).trim() : null,
-        externalNotes: notes ? String(notes).trim() : null,
+        notes: normalizeOptionalText(record['Компроматериалы']),
+        additionalNotes: normalizeOptionalText(notes?.additionalNotes),
+        externalNotes: normalizeOptionalText(notes?.externalNotes),
         or_tab: initiatorId,
         executorId,
         whoAdd: executorId,
@@ -260,7 +268,9 @@ function mapRecordToRelativeData(record, relationDegree, relationId, initiatorId
         residence: record["Место жительства"] == "-" ? null : record["Место жительства"],
         workplace: record["Место работы и должность"] == "-" ? null : (record["Место работы и должность"] || record["Место работы"])?.split(",")[0]?.trim(),
         position: record["Место работы и должность"] == "-" ? null : (record["Место работы и должность"] || record["Место работы"])?.split(",")[1]?.trim(),
-        notes: record["Примечания"] == "-" ? null : record["Примечания"],
+        notes: normalizeOptionalText(record["Примечание"] ?? record["Примечания"]),
+        additionalNotes: normalizeOptionalText(record["Примечание(доп)"] ?? record["Примечания(доп)"]),
+        accessStatus: normalizeOptionalText(record["Статус доступа"]),
         or_tab: initiatorId,
         model: model,
         status_analysis: status_analysis,
@@ -492,88 +502,67 @@ function csvValueToTyped(rawVal, adoType) {
 }
 
 async function streamAndInsertFromMdbTools(pg, table, accessPath) {
-    return new Promise((resolve, reject) => {
-        const proc = spawn("mdb-export", ["-D", "%Y-%m-%dT%H:%M:%S", "-b", "strip", accessPath, table.name]);
-        proc.stdout.setEncoding("utf8");
-        proc.stderr.setEncoding("utf8");
-        const rl = createInterface({ input: proc.stdout });
-        let headers = null;
-        let buffer = [];
-        let inserted = 0;
-        let error = null;
-        let lineNum = 0;
-        let pendingLine = null;
-        let flushing = false;
-        let closed = false;
+    const proc = spawn("mdb-export", ["-D", "%Y-%m-%dT%H:%M:%S", "-b", "strip", accessPath, table.name]);
+    proc.stdout.setEncoding("utf8");
+    proc.stderr.setEncoding("utf8");
 
-        async function flushBuffer() {
-            if (buffer.length === 0) return;
-            const batch = buffer;
-            buffer = [];
-            flushing = true;
-            try {
-                await insertBatch(pg, table.name, table.columns, batch);
-                inserted += batch.length;
-                printProgress(inserted, table.rows);
-            } catch (err) {
-                error = err;
-                proc.kill();
-            }
-            flushing = false;
-        }
+    const rl = createInterface({ input: proc.stdout });
+    let stderr = "";
+    proc.stderr.on("data", (d) => (stderr += d));
 
-        rl.on("line", (line) => {
-            if (error) return;
+    const closePromise = new Promise((resolve, reject) => {
+        proc.on("close", resolve);
+        proc.on("error", reject);
+    });
 
+    let headers = null;
+    let inserted = 0;
+    let lineNum = 0;
+    let pendingLine = null;
+
+    try {
+        for await (const line of rl) {
             let result;
             if (pendingLine !== null) {
                 pendingLine += "\n" + line;
                 result = parseCsvLine(pendingLine);
-                if (!result.complete) return;
+                if (!result.complete) continue;
                 pendingLine = null;
             } else {
                 lineNum++;
                 if (lineNum === 1) {
                     headers = parseCsvLine(line).values;
-                    return;
+                    continue;
                 }
                 result = parseCsvLine(line);
                 if (!result.complete) {
                     pendingLine = line;
-                    return;
+                    continue;
                 }
             }
 
-            try {
-                const record = {};
-                for (let i = 0; i < headers.length && i < result.values.length; i++) {
-                    const col = table.columns.find((c) => c.name === headers[i]);
-                    record[headers[i]] = csvValueToTyped(result.values[i], col ? col.adoType : 202);
-                }
-                buffer.push(record);
-            } catch (e) { return; }
-
-            if (buffer.length >= BATCH_SIZE) {
-                rl.pause();
-                flushBuffer().then(() => { if (!error && !closed) rl.resume(); }).catch((err) => { error = err; proc.kill(); });
+            const record = {};
+            for (let i = 0; i < headers.length && i < result.values.length; i++) {
+                const col = table.columns.find((c) => c.name === headers[i]);
+                record[headers[i]] = csvValueToTyped(result.values[i], col ? col.adoType : 202);
             }
-        });
+            await insertOneRow(pg, table.name, table.columns, record);
+            inserted++;
+            printProgress(inserted, table.rows);
+        }
 
-        let stderr = "";
-        proc.stderr.on("data", (d) => (stderr += d));
-        proc.on("close", async (code) => {
-            closed = true;
-            try {
-                while (flushing) await sleep(50);
-                if (!error) await flushBuffer();
-            } catch (err) { error = err; }
-            if (error) return reject(error);
-            if (code !== 0 && inserted === 0) return reject(new Error(`mdb-export exit ${code}: ${stderr}`));
-            console.log("");
-            resolve(inserted);
-        });
-        proc.on("error", reject);
-    });
+        const code = await closePromise;
+        if (code !== 0 && inserted === 0) {
+            throw new Error(`mdb-export exit ${code}: ${stderr}`);
+        }
+        console.log("");
+        return inserted;
+    } catch (err) {
+        proc.kill();
+        throw err;
+    } finally {
+        rl.close();
+    }
 }
 
 async function connectTempPgWithRetry(maxRetries = 30) {
@@ -612,101 +601,75 @@ async function createTempPgTable(pg, table) {
     await pg.query(`CREATE TABLE ${tableName} (\n${colDefs.join(",\n")}\n)`);
 }
 
-async function insertBatch(pg, tableName, columns, rows) {
-    if (rows.length === 0) return;
-    const MAX_PARAMS = 60000;
-    const colCount = columns.length;
-    const chunkSize = Math.min(rows.length, Math.max(1, Math.floor(MAX_PARAMS / colCount)));
+function normalizeColumnValue(col, val) {
+    if (val === null || val === undefined) {
+        return null;
+    }
+    if (col.adoType === 11) {
+        return val === true || val === -1 || val === 1;
+    }
+    if (col.adoType === 128 || col.adoType === 204 || col.adoType === 205) {
+        return typeof val === "string" ? Buffer.from(val, "base64") : val;
+    }
+    return val;
+}
+
+async function insertOneRow(pg, tableName, columns, row) {
     const pgTableName = pgId(tableName);
     const pgColNames = columns.map((c) => pgId(c.name)).join(", ");
-
-    for (let offset = 0; offset < rows.length; offset += chunkSize) {
-        const chunk = rows.slice(offset, offset + chunkSize);
-        const valueClauses = [];
-        const params = [];
-        let idx = 1;
-        for (const row of chunk) {
-            const placeholders = [];
-            for (const col of columns) {
-                placeholders.push(`$${idx++}`);
-                let val = row[col.name];
-                if (val === null || val === undefined) {
-                    params.push(null);
-                } else if (col.adoType === 11) {
-                    params.push(val === true || val === -1 || val === 1);
-                } else if (col.adoType === 128 || col.adoType === 204 || col.adoType === 205) {
-                    params.push(typeof val === "string" ? Buffer.from(val, "base64") : val);
-                } else {
-                    params.push(val);
-                }
-            }
-            valueClauses.push(`(${placeholders.join(", ")})`);
-        }
-        const sql = `INSERT INTO ${pgTableName} (${pgColNames}) VALUES ${valueClauses.join(", ")}`;
-        await pg.query(sql, params);
-    }
+    const placeholders = columns.map((_, idx) => `$${idx + 1}`).join(", ");
+    const params = columns.map((col) => normalizeColumnValue(col, row[col.name]));
+    const sql = `INSERT INTO ${pgTableName} (${pgColNames}) VALUES (${placeholders})`;
+    await pg.query(sql, params);
 }
 
 async function streamAndInsertFromPowerShell(pg, table, connStr) {
-    return new Promise((resolve, reject) => {
-        const ps = spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", STREAM_SCRIPT, "-ConnStr", connStr, "-TableName", table.name], { stdio: ["ignore", "pipe", "pipe"] });
-        ps.stdout.setEncoding("utf8");
-        ps.stderr.setEncoding("utf8");
-        const rl = createInterface({ input: ps.stdout });
-        let buffer = [];
-        let inserted = 0;
-        let error = null;
-        let flushing = false;
-        let closed = false;
+    const ps = spawn("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", STREAM_SCRIPT, "-ConnStr", connStr, "-TableName", table.name], { stdio: ["ignore", "pipe", "pipe"] });
+    ps.stdout.setEncoding("utf8");
+    ps.stderr.setEncoding("utf8");
 
-        async function flushBuffer() {
-            if (buffer.length === 0) return;
-            const batch = buffer;
-            buffer = [];
-            flushing = true;
-            try {
-                await insertBatch(pg, table.name, table.columns, batch);
-                inserted += batch.length;
-                printProgress(inserted, table.rows);
-            } catch (err) {
-                error = err;
-                ps.kill();
-            }
-            flushing = false;
-        }
+    const rl = createInterface({ input: ps.stdout });
+    let stderr = "";
+    ps.stderr.on("data", (d) => (stderr += d));
 
-        rl.on("line", (line) => {
-            if (error) return;
-            if (line.startsWith("DONE:")) return;
-            if (line.startsWith("STREAM_ERROR:")) {
-                error = new Error(line.substring(13));
-                return;
-            }
-            if (!line.startsWith("{")) return;
-            try {
-                buffer.push(JSON.parse(line));
-            } catch { return; }
-            if (buffer.length >= BATCH_SIZE) {
-                rl.pause();
-                flushBuffer().then(() => { if (!error && !closed) rl.resume(); }).catch((err) => { error = err; ps.kill(); });
-            }
-        });
-
-        let stderr = "";
-        ps.stderr.on("data", (d) => (stderr += d));
-        ps.on("close", async (code) => {
-            closed = true;
-            try {
-                while (flushing) await sleep(50);
-                if (!error) await flushBuffer();
-            } catch (err) { error = err; }
-            if (error) return reject(error);
-            if (code !== 0 && inserted === 0) return reject(new Error(`Stream exit ${code}: ${stderr}`));
-            console.log("");
-            resolve(inserted);
-        });
+    const closePromise = new Promise((resolve, reject) => {
+        ps.on("close", resolve);
         ps.on("error", reject);
     });
+
+    let inserted = 0;
+    try {
+        for await (const line of rl) {
+            if (line.startsWith("DONE:")) continue;
+            if (line.startsWith("STREAM_ERROR:")) {
+                throw new Error(line.substring(13));
+            }
+            if (!line.startsWith("{")) continue;
+
+            let record;
+            try {
+                record = JSON.parse(line);
+            } catch {
+                continue;
+            }
+
+            await insertOneRow(pg, table.name, table.columns, record);
+            inserted++;
+            printProgress(inserted, table.rows);
+        }
+
+        const code = await closePromise;
+        if (code !== 0 && inserted === 0) {
+            throw new Error(`Stream exit ${code}: ${stderr}`);
+        }
+        console.log("");
+        return inserted;
+    } catch (err) {
+        ps.kill();
+        throw err;
+    } finally {
+        rl.close();
+    }
 }
 
 async function migrateAccessToTempDb(accessPath) {
@@ -856,9 +819,131 @@ async function createDefaultAdminsAndServices() {
         await prisma.accessStatus.create({ data: { name: "СНЯТ ОТКАЗ", adminId: admin.id, status: true } });
 
         // Create raport types
-        await prisma.raportTypes.create({ data: { name: "МВД", code: "osu_mvd", code_ru: "osu_mvd", code_uz: "osu_mvd", organization: "МВД Республики Узбекистан", requested_organization: "ГСБП Республики Узбекистан", signed_fio: "И.И.Иванов", signed_position: "Генеральный директор", link: "type1", notes: "Р", executorId: admin.id } });
-        await prisma.raportTypes.create({ data: { name: "ОСУ", code: "osu_sgb", code_ru: "osu_sgb", code_uz: "osu_sgb", organization: "СГБ Республики Узбекистан", requested_organization: "ГСБП Республики Узбекистан", signed_fio: "И.И.Иванов", signed_position: "Генеральный директор", link: "type2", notes: "no name, no request_organization", executorId: admin.id } });
-        await prisma.raportTypes.create({ data: { name: "ГСБП", code: "osu_sgb", code_ru: "osu_sgb", code_uz: "osu_sgb", organization: "ГСБП Республики Узбекистан", requested_organization: "ГСБП Республики Узбекистан", signed_fio: "И.И.Иванов", signed_position: "Генеральный директор", link: "type2", notes: "no name, no request_organization", executorId: admin.id } });
+        await prisma.raportTypes.create({
+            data: {
+                name: "Т А Л А Б Н О М А",
+                code: "osu_mvd",
+                code_ru: "osu_mvd",
+                code_uz: "osu_mvd",
+                organization: "МВД Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "type1",
+                notes: "Р",
+                executorId: admin.id,
+
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "Т А Л А Б Н О М А",
+                code: "osu_sgb",
+                code_ru: "osu_sgb",
+                code_uz: "osu_sgb",
+                organization: "СГБ Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "type2",
+                notes: "no name, no request_organization",
+                executorId: admin.id,
+
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "Т А Л А Б Н О М А",
+                code: "osu_sgb",
+                code_ru: "osu_sgb",
+                code_uz: "osu_sgb",
+                organization: "ГСБП Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "type2",
+                notes: "no name, no request_organization",
+                executorId: admin.id,
+
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "СЛУЖЕБНАЯ ЗАПИСКА",
+                code: "avr",
+                code_ru: "avr",
+                code_uz: "avr",
+                organization: "СГБ Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "Р",
+                notes: "проверка по учетам",
+                executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "Т А Л А Б Н О М А",
+                code: "upk",
+                code_ru: "upk",
+                code_uz: "upk",
+                organization: "УПК ПВ",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "Р",
+                notes: "проверка по учетам",
+                executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "MA'LUMONOMA",
+                code: "type8",
+                code_ru: "mlm",
+                code_uz: "mlm",
+                organization: "Ўзбекистон Республикаси ПДХХ",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "Р",
+                notes: "bad",
+                executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "MA'LUMONOMA",
+                code: "type9",
+                code_ru: "mlm",
+                code_uz: "mlm",
+                organization: "ГСБП Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "Р",
+                notes: "good",
+                executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "ND",
+                code: "nd",
+                code_ru: "nd",
+                code_uz: "nd",
+                organization: "Директору Ташкентского городского филиала РСНПМЦН",
+                requested_organization:
+                    "ГОСУДАРСТВЕННАЯ СЛУЖБА БЕЗОПАСНОСТИ ПРИ ПРЕЗИДЕНТЕ РЕСПУБЛИКИ УЗБЕКИСТАН",
+                link: "type3",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                notes: "В связи с возникшей необходимостью просим проверить по имеющимся учетам следующих лиц;должн подразделения",
+
+                executorId: admin.id,
+            },
+        });
 
         await prisma.registration.create({ data: { fullName: "Неизвестно", firstName: "Неизвестно", lastName: "Неизвестно", fatherName: "Неизвестно", regNumber: "Неизвестно", regDate: "2025-01-01T00:00:00.000Z", notes: "Неизвестно", executorId: admin.id } });
         await prisma.registration.create({ data: { fullName: "Неизвестно1", form_reg: "Р", firstName: "Неизвестно1", lastName: "Неизвестно1", fatherName: "Неизвестно1", regNumber: "Неизвестно1", regDate: "2024-01-01T00:00:00.000Z", notes: "Неизвестно1", executorId: admin.id } });
@@ -871,8 +956,6 @@ async function createDefaultAdminsAndServices() {
 }
 
 async function migrateRegistrations(table) {
-    const batchSize = 1000;
-    let offset = 0;
     console.log(`Migrating registrations from [${table}]...`);
 
     const [unknownWorkplace, unknownInitiator, unknownExecutor, unknownForm] = await Promise.all([
@@ -882,49 +965,49 @@ async function migrateRegistrations(table) {
         prisma.form.create({ data: { name: "Неизвестно" } }).catch(() => prisma.form.findFirst({ where: { name: "Неизвестно" } })),
     ]);
 
-    let hasMoreData = true;
-    while (hasMoreData) {
-        const sourceQuery = `SELECT * FROM "${table}" LIMIT ${batchSize} OFFSET ${offset}`;
-        const sourceData = (await sourcePool.query(sourceQuery)).rows;
-        if (sourceData.length === 0) { hasMoreData = false; break; }
+    const sourceQuery = `SELECT * FROM "${table}"`;
+    const sourceData = (await sourcePool.query(sourceQuery)).rows;
+    let processed = 0;
 
-        for (const record of sourceData) {
-            try {
-                const [executor, formId, initiator] = await Promise.all([
-                    findOrCreateExecutor(record["Исполнитель"] || false, unknownExecutor),
-                    findOrCreateForm(record["Форма допуска"] || unknownForm, unknownForm),
-                    findOrCreateInitiator(record["О/р"] || false, unknownInitiator),
-                ]);
-                await findOrCreateWorkplace(record["Место работы и должность"] || unknownWorkplace, unknownWorkplace);
-                const notes = (record["Примечания(доп)"] === "-" || record["Примечания(доп)"] === null ? "" : record["Примечания(доп)"]) + (record["Примечания 1 (доп)"] === "-" || record["Примечания 1 (доп)"] === null ? "" : record["Примечания 1 (доп)"]);
-                let completeStatus = completeStatusReg(record["Дата регистрации"], record["Окончание проверки"], record);
-                let expiredDate = expiredDateForm(record["Дата регистрации"], record["Окончание проверки"]);
-                let expired = expiredDateFunc(record["Дата регистрации"], record["Окончание проверки"], formId?.length);
-                let accessStatus = getAccessStatus(record["Допуск"], record);
-                if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; }
-                if (completeStatus === "COMPLETED") { expiredDate = null; }
-                if (!(accessStatus == "ДОПУСК" || accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
+    for (const record of sourceData) {
+        try {
+            const [executor, formId, initiator] = await Promise.all([
+                findOrCreateExecutor(record["Исполнитель"] || false, unknownExecutor),
+                findOrCreateForm(record["Форма допуска"] || unknownForm, unknownForm),
+                findOrCreateInitiator(record["О/р"] || false, unknownInitiator),
+            ]);
+            await findOrCreateWorkplace(record["Место работы и должность"] || unknownWorkplace, unknownWorkplace);
+            const notes = {
+                additionalNotes: normalizeOptionalText(record["Примечания(доп)"]),
+                externalNotes: normalizeOptionalText(record["Примечания 1 (доп)"]),
+            };
+            let completeStatus = completeStatusReg(record["Дата регистрации"], record["Окончание проверки"], record);
+            let expiredDate = expiredDateForm(record["Дата регистрации"], record["Окончание проверки"]);
+            let expired = expiredDateFunc(record["Дата регистрации"], record["Окончание проверки"], formId?.length);
+            let accessStatus = getAccessStatus(record["Допуск"], record);
+            if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; }
+            if (completeStatus === "COMPLETED") { expiredDate = null; }
+            if (!(accessStatus == "ДОПУСК" || accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
 
-                const registration = await prisma.registration.create({
-                    data: mapRecordToRegistrationData(record, initiator?.id || null, executor?.id || null, formId?.name || null, notes, completeStatus, expiredDate, expired, accessStatus, formLog(formId?.name, record)),
+            const registration = await prisma.registration.create({
+                data: mapRecordToRegistrationData(record, initiator?.id || null, executor?.id || null, formId?.name || null, notes, completeStatus, expiredDate, expired, accessStatus, formLog(formId?.name, record)),
+            });
+
+            const formValues = parseValues(record["Форма допуска"]);
+            if (formValues) {
+                await prisma.registrationLog.create({
+                    data: { registrationId: registration.id, fieldName: "form_reg", oldValue: formValues, newValue: formId?.name, createdAt: record["Дата регистрации"] ? new Date(record["Дата регистрации"] + "Z") : null, executorId: executor.id },
                 });
-
-                const formValues = parseValues(record["Форма допуска"]);
-                if (formValues) {
-                    await prisma.registrationLog.create({
-                        data: { registrationId: registration.id, fieldName: "form_reg", oldValue: formValues, newValue: formId?.name, createdAt: record["Дата регистрации"] ? new Date(record["Дата регистрации"] + "Z") : null, executorId: executor.id },
-                    });
-                }
-            } catch (err) { console.error(`Failed to process registration:`, err.message); }
+            }
+        } catch (err) { console.error(`Failed to process registration:`, err.message); }
+        processed++;
+        if (processed % 1000 === 0 || processed === sourceData.length) {
+            console.log(`  Processed ${processed} registrations...`);
         }
-        console.log(`  Processed ${offset + sourceData.length} registrations...`);
-        offset += batchSize;
     }
 }
 
 async function migrateRegistrations4(table) {
-    const batchSize = 1000;
-    let offset = 0;
     console.log(`Migrating form-4 registrations from [${table}]...`);
 
     const [unknownWorkplace, unknownInitiator, unknownExecutor, unknownForm] = await Promise.all([
@@ -934,41 +1017,41 @@ async function migrateRegistrations4(table) {
         prisma.form.findFirst({ where: { name: "Неизвестно" } }),
     ]);
 
-    let hasMoreData = true;
-    while (hasMoreData) {
-        const sourceQuery = `SELECT * FROM "${table}" LIMIT ${batchSize} OFFSET ${offset}`;
-        const sourceData = (await sourcePool.query(sourceQuery)).rows;
-        if (sourceData.length === 0) { hasMoreData = false; break; }
+    const sourceQuery = `SELECT * FROM "${table}"`;
+    const sourceData = (await sourcePool.query(sourceQuery)).rows;
+    let processed = 0;
 
-        for (const record of sourceData) {
-            try {
-                const [executor, formId, initiator] = await Promise.all([
-                    findOrCreateExecutor(record["Исполнитель"] || false, unknownExecutor),
-                    findOrCreateForm4(),
-                    findOrCreateInitiator(record["О/р"] || false, unknownInitiator),
-                ]);
-                const notes = (record["Примечания(доп)"] === "-" || record["Примечания(доп)"] === null ? "" : record["Примечания(доп)"]);
-                let completeStatus = completeStatusReg4(record["Дата регистрации"], record["Дата окончания"], record);
-                let expiredDate = expiredDateForm(record["Дата регистрации"], record["Дата окончания"]);
-                let expired = expiredDateFunc(record["Дата регистрации"], record["Дата окончания"], formId?.length);
-                let accessStatus = getAccessStatus4(record["Допуск"], record);
-                if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; }
-                if (completeStatus === "COMPLETED") { expiredDate = null; }
-                if (!(accessStatus == "ДОПУСК" || accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
+    for (const record of sourceData) {
+        try {
+            const [executor, formId, initiator] = await Promise.all([
+                findOrCreateExecutor(record["Исполнитель"] || false, unknownExecutor),
+                findOrCreateForm4(),
+                findOrCreateInitiator(record["О/р"] || false, unknownInitiator),
+            ]);
+            const notes = {
+                additionalNotes: normalizeOptionalText(record["Компроматериалы1"]) || normalizeOptionalText(record["Примечания(доп)"]),
+                externalNotes: normalizeOptionalText(record["Отк 1"]),
+            };
+            let completeStatus = completeStatusReg4(record["Дата регистрации"], record["Дата окончания"], record);
+            let expiredDate = expiredDateForm(record["Дата регистрации"], record["Дата окончания"]);
+            let expired = expiredDateFunc(record["Дата регистрации"], record["Дата окончания"], formId?.length);
+            let accessStatus = getAccessStatus4(record["Допуск"], record);
+            if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; }
+            if (completeStatus === "COMPLETED") { expiredDate = null; }
+            if (!(accessStatus == "ДОПУСК" || accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
 
-                await prisma.registration.create({
-                    data: mapRecordToRegistration4Data(record, initiator?.id || null, executor?.id || null, formId?.name || null, notes, completeStatus, expiredDate, expired, accessStatus, formLog(formId?.name, record)),
-                });
-            } catch (err) { console.error(`Failed to process form-4 registration:`, err.message); }
+            await prisma.registration.create({
+                data: mapRecordToRegistration4Data(record, initiator?.id || null, executor?.id || null, formId?.name || null, notes, completeStatus, expiredDate, expired, accessStatus, formLog(formId?.name, record)),
+            });
+        } catch (err) { console.error(`Failed to process form-4 registration:`, err.message); }
+        processed++;
+        if (processed % 1000 === 0 || processed === sourceData.length) {
+            console.log(`  Processed ${processed} form-4 registrations...`);
         }
-        console.log(`  Processed ${offset + sourceData.length} form-4 registrations...`);
-        offset += batchSize;
     }
 }
 
 async function migrateRelatives() {
-    const batchSize = 1000;
-    let offset = 0;
     console.log("Migrating relatives...");
 
     const unknownRelationDegree = await prisma.relationDegree.create({ data: { name: "Сам" } }).catch(() => prisma.relationDegree.findFirst({ where: { name: "Сам" } }));
@@ -976,74 +1059,70 @@ async function migrateRelatives() {
     const unknownInitiator = await prisma.initiator.findFirst({ where: { notes: "Неизвестно" } });
     const unknownExecutor = await prisma.admin.findFirst({ where: { photo: "Неизвестно" } });
 
-    let hasMoreData = true;
-    while (hasMoreData) {
-        const result = (await sourcePool.query(`SELECT * FROM "Родственники" LIMIT ${batchSize} OFFSET ${offset}`)).rows;
-        if (result.length === 0) { hasMoreData = false; break; }
+    const result = (await sourcePool.query(`SELECT * FROM "\u0420\u043e\u0434\u0441\u0442\u0432\u0435\u043d\u043d\u0438\u043a\u0438"`)).rows;
+    let processed = 0;
 
-        for (const record of result) {
-            try {
-                const initiator = record["О/р"] ? await findOrCreateInitiator(record["О/р"], unknownInitiator) : unknownInitiator;
-                const registration = await prisma.registration.findFirst({ where: { regNumber: record["Регистрационный номер и гриф секр"] } }) || await prisma.registration.findFirst({ where: { fullName: "Неизвестно", firstName: "Неизвестно", lastName: "Неизвестно" } });
-                const relationDegree = record["Степень родства"] ? await findOrCreateRelationDegree(record["Степень родства"], unknownRelationDegree) : unknownRelationDegree;
-                const executor = record["Исполнитель"] ? await findOrCreateExecutor(record["Исполнитель"]) : unknownExecutor;
-                await findOrCreateWorkplace(record["Место работы и должность"], unknownWorkplace);
+    for (const record of result) {
+        try {
+            const initiator = record["О/р"] ? await findOrCreateInitiator(record["О/р"], unknownInitiator) : unknownInitiator;
+            const registration = await prisma.registration.findFirst({ where: { regNumber: record["Регистрационный номер и гриф секр"] } }) || await prisma.registration.findFirst({ where: { fullName: "Неизвестно", firstName: "Неизвестно", lastName: "Неизвестно" } });
+            const relationDegree = record["Степень родства"] ? await findOrCreateRelationDegree(record["Степень родства"], unknownRelationDegree) : unknownRelationDegree;
+            const executor = record["Исполнитель"] ? await findOrCreateExecutor(record["Исполнитель"]) : unknownExecutor;
+            await findOrCreateWorkplace(record["Место работы и должность"], unknownWorkplace);
 
-                await prisma.relatives.create({
-                    data: {
-                        regNumber: record["Регистрационный номер и гриф секр"],
-                        relationDegree: relationDegree.name,
-                        registrationId: registration?.id || null,
-                        fullName: record["Фамилия,имя,отчество"]?.trim(),
-                        firstName: record["Фамилия,имя,отчество"]?.split(" ")[1]?.trim(),
-                        lastName: record["Фамилия,имя,отчество"]?.split(" ")[0]?.trim(),
-                        fatherName: record["Фамилия,имя,отчество"]?.split(" ").slice(2).join(" ").trim(),
-                        birthYear: record["Год рождения"] ? parseInt(record["Год рождения"], 10) : null,
-                        birthPlace: record["Место рождения"] == "-" ? null : record["Место рождения"],
-                        residence: record["Место жительства"] == "-" ? null : record["Место жительства"],
-                        workplace: record["Место работы и должность"] == "-" ? null : record["Место работы и должность"]?.split(",")[0]?.trim(),
-                        position: record["Место работы и должность"] == "-" ? null : record["Место работы и должность"]?.split(",")[1]?.trim(),
-                        notes: record["Примечание"] == "-" ? "" : record["Примечание"],
-                        additionalNotes: record["Примечание(доп)"] == null ? "" : record["Примечание(доп)"],
-                        or_tab: initiator.id,
-                        executorId: executor.id,
-                        whoAdd: executor.id,
-                        accessStatus: record["Статус доступа"],
-                    },
-                });
-            } catch (err) { console.error(`Failed to insert relative:`, err.message); }
+            await prisma.relatives.create({
+                data: {
+                    regNumber: record["Регистрационный номер и гриф секр"],
+                    relationDegree: relationDegree.name,
+                    registrationId: registration?.id || null,
+                    fullName: record["Фамилия,имя,отчество"]?.trim(),
+                    firstName: record["Фамилия,имя,отчество"]?.split(" ")[1]?.trim(),
+                    lastName: record["Фамилия,имя,отчество"]?.split(" ")[0]?.trim(),
+                    fatherName: record["Фамилия,имя,отчество"]?.split(" ").slice(2).join(" ").trim(),
+                    birthYear: record["Год рождения"] ? parseInt(record["Год рождения"], 10) : null,
+                    birthPlace: record["Место рождения"] == "-" ? null : record["Место рождения"],
+                    residence: record["Место жительства"] == "-" ? null : record["Место жительства"],
+                    workplace: record["Место работы и должность"] == "-" ? null : record["Место работы и должность"]?.split(",")[0]?.trim(),
+                    position: record["Место работы и должность"] == "-" ? null : record["Место работы и должность"]?.split(",")[1]?.trim(),
+                    notes: record["Примечание"] == "-" ? "" : record["Примечание"],
+                    additionalNotes: record["Примечание(доп)"] == null ? "" : record["Примечание(доп)"],
+                    or_tab: initiator.id,
+                    executorId: executor.id,
+                    whoAdd: executor.id,
+                    accessStatus: record["Статус доступа"],
+                },
+            });
+        } catch (err) { console.error(`Failed to insert relative:`, err.message); }
+        processed++;
+        if (processed % 1000 === 0 || processed === result.length) {
+            console.log(`  Processed ${processed} relatives...`);
         }
-        console.log(`  Processed ${offset + result.length} relatives...`);
-        offset += batchSize;
     }
 }
 
 async function migrateRelativesWithoutAnalysis() {
-    const batchSize = 1000;
-    let offset = 0;
     console.log("Migrating relatives without analysis...");
 
     const unknownRelationDegree = await getOrCreateUnknownRelationDegree();
     const unknownWorkplace = await getOrCreateUnknownWorkplace();
     const unknownInitiator = await getOrCreateUnknownInitiator();
 
-    let hasMoreData = true;
-    while (hasMoreData) {
-        const result = (await sourcePool.query(`SELECT * FROM "Родственники без СП" LIMIT ${batchSize} OFFSET ${offset}`)).rows;
-        if (result.length === 0) { hasMoreData = false; break; }
+    const result = (await sourcePool.query(`SELECT * FROM "\u0420\u043e\u0434\u0441\u0442\u0432\u0435\u043d\u043d\u0438\u043a\u0438 \u0431\u0435\u0437 \u0421\u041f"`)).rows;
+    let processed = 0;
 
-        for (const record of result) {
-            try {
-                const initiator = record["О/р"] ? await findOrCreateInitiator(record["О/р"], unknownInitiator) : unknownInitiator;
-                const registration = await prisma.registration.findFirst({ where: { regNumber: record["Регистрационный номер и гриф секр"] } }) || await prisma.registration.findFirst({ where: { fullName: "Неизвестно", firstName: "Неизвестно", lastName: "Неизвестно" } });
-                const relationDegree = record["Степень родства"] ? await findOrCreateRelationDegree(record["Степень родства"], unknownRelationDegree) : unknownRelationDegree;
-                await findOrCreateWorkplace(record["Место работы и должность"], unknownWorkplace);
+    for (const record of result) {
+        try {
+            const initiator = record["О/р"] ? await findOrCreateInitiator(record["О/р"], unknownInitiator) : unknownInitiator;
+            const registration = await prisma.registration.findFirst({ where: { regNumber: record["Регистрационный номер и гриф секр"] } }) || await prisma.registration.findFirst({ where: { fullName: "Неизвестно", firstName: "Неизвестно", lastName: "Неизвестно" } });
+            const relationDegree = record["Степень родства"] ? await findOrCreateRelationDegree(record["Степень родства"], unknownRelationDegree) : unknownRelationDegree;
+            await findOrCreateWorkplace(record["Место работы и должность"], unknownWorkplace);
 
-                await prisma.relatives.create({ data: mapRecordToRelativeData(record, relationDegree.name, registration.id, initiator.id) });
-            } catch (err) { console.error(`Failed to insert relative without analysis:`, err.message); }
+            await prisma.relatives.create({ data: mapRecordToRelativeData(record, relationDegree.name, registration?.id || null, initiator.id) });
+        } catch (err) { console.error(`Failed to insert relative without analysis:`, err.message); }
+        processed++;
+        if (processed % 1000 === 0 || processed === result.length) {
+            console.log(`  Processed ${processed} relatives without analysis...`);
         }
-        console.log(`  Processed ${offset + result.length} relatives without analysis...`);
-        offset += batchSize;
     }
 }
 
@@ -1077,7 +1156,8 @@ async function runMigration(accessFilePath) {
     console.log(`Access DB : ${accessFilePath}`);
     console.log(`Temp DB   : access_migration`);
     console.log(`Prod DB   : ${env.DATABASE_URL}`);
-    console.log(`Batch Size: ${BATCH_SIZE}\n`);
+    console.log("Phase 1   : immediate row inserts (no batching)");
+    console.log("Phase 2   : full-table reads (no LIMIT/OFFSET)\n");
 
     try {
         // Phase 1: Access -> Temporary PostgreSQL

@@ -17,8 +17,12 @@ const NavItem = styled("div")`
     padding: 0 1rem;
     color: ${props => isDark(props.mode) ?  GRAY_SCALE.GRAY : rgba(GRAY_SCALE.WHITE, 0.85) };
 
+    @media ${MEDIA_QUERIES.TABLET} {
+		padding: 0 0.5rem;
+	}
+
     @media ${MEDIA_QUERIES.MOBILE} {
-		padding: 0 0.75rem;
+		padding: 0 0.375rem;
 	}
 
     .ant-badge {
