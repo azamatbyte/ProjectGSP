@@ -31,14 +31,14 @@ const Routes = () => {
 				/>
 				{permissionProtectedRouters.map((route, index) => {
 					return (
-						<Route 
-							key={route.key + index} 
+						<Route
+							key={route.key + index}
 							path={route.path}
 							element={
 								<AppRoute
-									routeKey={route.key} 
+									routeKey={route.key}
 									component={route.component}
-									{...route.meta} 
+									{...route.meta}
 								/>
 							}
 						/>
@@ -46,25 +46,26 @@ const Routes = () => {
 				})}
 				<Route
 					path="*"
-					element={isResolvingRole ? <Loading cover="content" /> : <Navigate to="/" replace />}
+					element={isResolvingRole ? <Loading cover="content" /> : <Navigate to="/auth/error-page-1" replace />}
 				/>
 			</Route>
 			<Route path="/" element={<PublicRoute />}>
 				{publicRoutes.map(route => {
 					return (
-						<Route 
-							key={route.path} 
+						<Route
+							key={route.path}
 							path={route.path}
 							element={
 								<AppRoute
-									routeKey={route.key} 
+									routeKey={route.key}
 									component={route.component}
-									{...route.meta} 
+									{...route.meta}
 								/>
 							}
-						/ >
+						/>
 					);
 				})}
+				<Route path="*" element={<Navigate to="/auth/error-page-1" replace />} />
 			</Route>
 		</RouterRoutes>
 	);

@@ -9,12 +9,6 @@ export const publicRoutes = [
         component: React.lazy(() => import("views/auth-views/authentication/login")),
     },
     {
-        key: "login-1",
-        role: ["all"],
-        path: `${AUTH_PREFIX_PATH}/login-1`,
-        component: React.lazy(() => import("views/auth-views/authentication/login-1")),
-    },
-    {
         key: "forgot-password",
         role: ["all"],
         path: `${AUTH_PREFIX_PATH}/forgot-password`,
@@ -40,18 +34,6 @@ export const protectedRoutes = [
         role: ["admin", "superAdmin"],
         path: `${APP_PREFIX_PATH}/default`,
         component: React.lazy(() => import("views/app-views/dashboards/default")),
-    },
-    {
-        key: "dashboard.analytic",
-        role: ["admin", "superAdmin"],
-        path: `${APP_PREFIX_PATH}/dashboards/analytic`,
-        component: React.lazy(() => import("views/app-views/dashboards/analytic")),
-    },
-    {
-        key: "dashboard.sales",
-        role: ["admin", "superAdmin"],
-        path: `${APP_PREFIX_PATH}/dashboards/sales`,
-        component: React.lazy(() => import("views/app-views/dashboards/sales")),
     },
     {
         key: "apps",
