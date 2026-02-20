@@ -40,6 +40,14 @@ StatisticsService.finishedRegistrationPercentage = function (data) {
   return Request.postRequest("statistics/finished_registration_percentage", data);
 };
 
+StatisticsService.getSimilarityThreshold = function (data = {}) {
+  return Request.postRequest("statistics/similarity_threshold", data);
+};
+
+StatisticsService.updateSimilarityThreshold = function (data) {
+  return Request.postRequest("statistics/similarity_threshold_update", data);
+};
+
 StatisticsService.latestTransactions = function (data) {
   return Request.postRequest("statistics/latest_transactions", data);
 };

@@ -15,6 +15,8 @@ const {
   getIdsOfList,
   exportSverka,
   exportSverkaMain,
+  getUploadExcelProgress,
+  cancelUploadExcel,
 } = require("../controllers/registerFourController");
 const {
   verifyToken,
@@ -23,6 +25,8 @@ const {
 const router = express.Router();
 
 router.post("/upload-excel", verifyToken, permissionCheck("admin"), uploadExcel);
+router.get("/upload-excel-progress/:jobId", verifyToken, permissionCheck("admin"), getUploadExcelProgress);
+router.post("/upload-excel-cancel/:jobId", verifyToken, permissionCheck("admin"), cancelUploadExcel);
 router.post("/list", verifyToken, permissionCheck("admin"), getTemporaryDataList);
 router.post("/getIdsOfList", verifyToken, permissionCheck("admin"), getIdsOfList);
 router.post("/export", verifyToken, permissionCheck("admin"), exportTemporaryDataToExcel);

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Row, Col, Avatar, Dropdown, Table, Tag, Select, message } from "antd";
+import { Row, Col, Avatar, Dropdown, Table, Tag, Select, Slider, Button, message } from "antd";
 import ChartWidget from "components/shared-components/ChartWidget";
 import GoalWidget from "components/shared-components/GoalWidget";
 import Card from "components/shared-components/Card";
@@ -28,6 +28,9 @@ const DEFAULT_TREND_YEAR_RANGE = 5;
 const TREND_MONTH_RANGE_OPTIONS = [3, 6, 9, 12, 18, 24];
 const TREND_YEAR_RANGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const LATEST_TABLE_DEFAULT_PAGE_SIZE = 5;
+const SIMILARITY_THRESHOLD_DEFAULT = 75;
+const SIMILARITY_THRESHOLD_MIN = 50;
+const SIMILARITY_THRESHOLD_MAX = 100;
 
 const CardDropdown = ({ items }) => {
 
@@ -54,12 +57,19 @@ export const DefaultDashboard = () => {
   const [finishedPercentage, setFinishedPercentage] = useState(0);
   const [finishedCount, setFinishedCount] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
+  const [similarityThreshold, setSimilarityThreshold] = useState(SIMILARITY_THRESHOLD_DEFAULT);
+  const [similarityThresholdDraft, setSimilarityThresholdDraft] = useState(SIMILARITY_THRESHOLD_DEFAULT);
+  const [similarityThresholdMin, setSimilarityThresholdMin] = useState(SIMILARITY_THRESHOLD_MIN);
+  const [similarityThresholdMax, setSimilarityThresholdMax] = useState(SIMILARITY_THRESHOLD_MAX);
+  const [similarityThresholdLoading, setSimilarityThresholdLoading] = useState(false);
+  const [similarityThresholdSaving, setSimilarityThresholdSaving] = useState(false);
   const [latestRows, setLatestRows] = useState([]);
   const [latestLoading, setLatestLoading] = useState(false);
   const [latestPageNumber, setLatestPageNumber] = useState(1);
   const [latestPageSize, setLatestPageSize] = useState(LATEST_TABLE_DEFAULT_PAGE_SIZE);
   const [latestTotal, setLatestTotal] = useState(0);
   const { direction } = useSelector(state => state.theme);
+  const { role } = useSelector(state => state.auth);
 
   const axisOptions = [
     { value: "MONTH", label: t("dashboard_axis_month") },
@@ -467,6 +477,126 @@ export const DefaultDashboard = () => {
   useEffect(() => {
     let cancelled = false;
 
+    const loadSimilarityThreshold = async () => {
+      setSimilarityThresholdLoading(true);
+      try {
+        const response = await StatisticsService.getSimilarityThreshold({});
+        if (cancelled) return;
+
+        const data = response?.data?.data || {};
+        const nextMin = Number(data?.min);
+        const nextMax = Number(data?.max);
+        const safeMin = Number.isInteger(nextMin) ? nextMin : SIMILARITY_THRESHOLD_MIN;
+        const safeMax = Number.isInteger(nextMax) ? nextMax : SIMILARITY_THRESHOLD_MAX;
+        const minValue = Math.min(safeMin, safeMax);
+        const maxValue = Math.max(safeMin, safeMax);
+
+        const nextThreshold = Number(data?.threshold_percent);
+        const safeThreshold = Number.isInteger(nextThreshold)
+          ? Math.min(maxValue, Math.max(minValue, nextThreshold))
+          : SIMILARITY_THRESHOLD_DEFAULT;
+
+        setSimilarityThresholdMin(minValue);
+        setSimilarityThresholdMax(maxValue);
+        setSimilarityThreshold(safeThreshold);
+        setSimilarityThresholdDraft(safeThreshold);
+      } catch (error) {
+        if (!cancelled) {
+          setSimilarityThresholdMin(SIMILARITY_THRESHOLD_MIN);
+          setSimilarityThresholdMax(SIMILARITY_THRESHOLD_MAX);
+          setSimilarityThreshold(SIMILARITY_THRESHOLD_DEFAULT);
+          setSimilarityThresholdDraft(SIMILARITY_THRESHOLD_DEFAULT);
+          message.error(t("dashboard_similarity_threshold_load_error"));
+        }
+      } finally {
+        if (!cancelled) {
+          setSimilarityThresholdLoading(false);
+        }
+      }
+    };
+
+    loadSimilarityThreshold();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
+  const canEditSimilarityThreshold = role === "superAdmin";
+  const hasSimilarityThresholdChanges = similarityThresholdDraft !== similarityThreshold;
+  const thresholdInfoStyle = {
+    marginTop: 8,
+    padding: "8px 10px",
+    borderRadius: 8,
+    background: "rgba(62, 121, 247, 0.08)",
+    transition: "opacity 220ms ease, transform 220ms ease, box-shadow 220ms ease",
+    opacity: similarityThresholdLoading ? 0.72 : 1,
+    transform: hasSimilarityThresholdChanges ? "translateY(-1px)" : "translateY(0px)",
+    boxShadow: hasSimilarityThresholdChanges
+      ? "0 6px 14px rgba(62, 121, 247, 0.14)"
+      : "0 2px 8px rgba(62, 121, 247, 0.08)",
+  };
+  const thresholdControlStyle = {
+    marginTop: 8,
+    overflow: "hidden",
+    maxHeight: canEditSimilarityThreshold ? 240 : 0,
+    opacity: canEditSimilarityThreshold ? 1 : 0,
+    transform: canEditSimilarityThreshold ? "translateY(0px)" : "translateY(4px)",
+    transition: "max-height 260ms ease, opacity 220ms ease, transform 220ms ease",
+  };
+  const thresholdButtonStyle = {
+    transition: "transform 180ms ease, box-shadow 180ms ease",
+    transform: hasSimilarityThresholdChanges ? "translateY(0px)" : "translateY(1px)",
+    boxShadow: hasSimilarityThresholdChanges
+      ? "0 4px 10px rgba(24, 144, 255, 0.22)"
+      : "none",
+  };
+
+  const handleSimilarityThresholdSave = async () => {
+    if (!canEditSimilarityThreshold) {
+      return;
+    }
+
+    const nextThreshold = Number(similarityThresholdDraft);
+    if (!Number.isInteger(nextThreshold)) {
+      message.error(t("dashboard_similarity_threshold_save_error"));
+      return;
+    }
+
+    const normalizedThreshold = Math.min(
+      similarityThresholdMax,
+      Math.max(similarityThresholdMin, nextThreshold)
+    );
+
+    if (normalizedThreshold === similarityThreshold) {
+      return;
+    }
+
+    setSimilarityThresholdSaving(true);
+    try {
+      const response = await StatisticsService.updateSimilarityThreshold({
+        threshold_percent: normalizedThreshold,
+      });
+      const data = response?.data?.data || {};
+
+      const updatedThreshold = Number(data?.threshold_percent);
+      const safeThreshold = Number.isInteger(updatedThreshold)
+        ? Math.min(similarityThresholdMax, Math.max(similarityThresholdMin, updatedThreshold))
+        : normalizedThreshold;
+
+      setSimilarityThreshold(safeThreshold);
+      setSimilarityThresholdDraft(safeThreshold);
+      message.success(t("dashboard_similarity_threshold_save_success"));
+    } catch (error) {
+      message.error(t("dashboard_similarity_threshold_save_error"));
+    } finally {
+      setSimilarityThresholdSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
     const loadTrendData = async () => {
       if (!Array.isArray(trendForms) || trendForms.length === 0) {
         setTrendRows([]);
@@ -604,7 +734,53 @@ export const DefaultDashboard = () => {
             value={finishedPercentage}
             size={140}
             subtitle={t("dashboard_finished_target_subtitle", { percentage: finishedPercentage })}
-            extra={t("dashboard_finished_target_counts", { finished: finishedCount, total: totalCount })}
+            extra={(
+              <div>
+                <div>{t("dashboard_finished_target_counts", { finished: finishedCount, total: totalCount })}</div>
+                <div style={thresholdInfoStyle}>
+                  {t("dashboard_similarity_threshold_label", { percentage: similarityThreshold })}
+                </div>
+                <div style={thresholdControlStyle}>
+                  {canEditSimilarityThreshold ? (
+                    <div>
+                    <div className="text-muted font-size-sm mb-1">
+                      {t("dashboard_similarity_threshold_hint", {
+                        min: similarityThresholdMin,
+                        max: similarityThresholdMax,
+                      })}
+                    </div>
+                    <Slider
+                      min={similarityThresholdMin}
+                      max={similarityThresholdMax}
+                      step={1}
+                      value={similarityThresholdDraft}
+                      disabled={similarityThresholdLoading || similarityThresholdSaving}
+                      onChange={(value) => {
+                        const numericValue = Array.isArray(value) ? value[0] : value;
+                        setSimilarityThresholdDraft(numericValue);
+                      }}
+                    />
+                    <div className="d-flex justify-content-end mt-2">
+                      <Button
+                        size="small"
+                        type="primary"
+                        style={thresholdButtonStyle}
+                        loading={similarityThresholdSaving}
+                        disabled={
+                          similarityThresholdLoading ||
+                          similarityThresholdSaving ||
+                          !hasSimilarityThresholdChanges
+                        }
+                        onClick={handleSimilarityThresholdSave}
+                      >
+                        {t("dashboard_similarity_threshold_save")}
+                      </Button>
+                    </div>
+                  </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
             cardStyle={{ minHeight: SIDE_CARD_MIN_HEIGHT }}
             cardBodyStyle={{ padding: "12px" }}
           />

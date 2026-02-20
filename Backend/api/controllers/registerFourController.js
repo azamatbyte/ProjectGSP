@@ -12,9 +12,194 @@ const {
 const safeString = require("../helpers/safeString");
 const compareDates = require("../helpers/compareDates");
 const { getDateDayString, getDateStringWithFormat } = require("../helpers/time");
+const {
+  getRegister4SimilarityThresholdPercent,
+  toRegister4SimilarityThresholdRatio,
+} = require("../helpers/register4SimilarityThreshold");
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
+
+const uploadExcelJobs = new Map();
+const UPLOAD_EXCEL_JOB_TTL_MS = 15 * 60 * 1000;
+const TERMINAL_UPLOAD_EXCEL_STATUSES = new Set(["completed", "failed", "cancelled"]);
+
+const buildUploadExcelError = (statusCode, message) => {
+  const error = new Error(message);
+  error.httpStatusCode = statusCode;
+  return error;
+};
+
+const createUploadExcelJob = (userId) => {
+  const jobId = uuidv4();
+  const now = new Date();
+
+  uploadExcelJobs.set(jobId, {
+    jobId,
+    userId,
+    status: "queued",
+    phase: "server_processing",
+    progressPercent: 0,
+    processedRows: 0,
+    totalRows: 0,
+    remainingRows: 0,
+    message: "Queued for processing",
+    error: null,
+    totalPeople: 0,
+    cancelRequested: false,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return jobId;
+};
+
+const setUploadExcelJobState = (jobId, patch = {}) => {
+  if (!jobId) {
+    return null;
+  }
+
+  const current = uploadExcelJobs.get(jobId);
+  if (!current) {
+    return null;
+  }
+
+  const next = {
+    ...current,
+    ...patch,
+    updatedAt: new Date(),
+  };
+
+  uploadExcelJobs.set(jobId, next);
+  return next;
+};
+
+const scheduleUploadExcelJobCleanup = (jobId) => {
+  if (!jobId) {
+    return;
+  }
+
+  setTimeout(() => {
+    uploadExcelJobs.delete(jobId);
+  }, UPLOAD_EXCEL_JOB_TTL_MS);
+};
+
+const isUploadExcelJobCancellationRequested = (jobId) => {
+  if (!jobId) {
+    return false;
+  }
+
+  const job = uploadExcelJobs.get(jobId);
+  return Boolean(job?.cancelRequested);
+};
+
+const updateUploadExcelJobProgress = (jobId, processedRows, totalRows) => {
+  if (!jobId) {
+    return;
+  }
+
+  const safeTotalRows = Number.isFinite(totalRows) ? Math.max(totalRows, 0) : 0;
+  const safeProcessedRows = Number.isFinite(processedRows)
+    ? Math.max(Math.min(processedRows, safeTotalRows || processedRows), 0)
+    : 0;
+
+  const progressPercent = safeTotalRows > 0
+    ? Math.min(100, Math.floor((safeProcessedRows / safeTotalRows) * 100))
+    : 0;
+
+  setUploadExcelJobState(jobId, {
+    status: "processing",
+    phase: "server_processing",
+    progressPercent,
+    processedRows: safeProcessedRows,
+    totalRows: safeTotalRows,
+    remainingRows: safeTotalRows > 0 ? Math.max(safeTotalRows - safeProcessedRows, 0) : 0,
+    message: "Processing upload",
+  });
+};
+
+const sanitizeUploadExcelJob = (job) => ({
+  jobId: job.jobId,
+  status: job.status,
+  phase: job.phase,
+  progressPercent: job.progressPercent,
+  processedRows: job.processedRows,
+  totalRows: job.totalRows,
+  remainingRows: job.remainingRows,
+  message: job.message,
+  error: job.error,
+  totalPeople: job.totalPeople,
+  createdAt: job.createdAt,
+  updatedAt: job.updatedAt,
+});
+
+const completeUploadExcelJob = (jobId, payload = {}) => {
+  setUploadExcelJobState(jobId, {
+    status: "completed",
+    phase: "finalizing",
+    progressPercent: 100,
+    remainingRows: 0,
+    message: payload.message || "Completed",
+    error: null,
+    totalPeople: payload.totalPeople || 0,
+  });
+  scheduleUploadExcelJobCleanup(jobId);
+};
+
+const failUploadExcelJob = (jobId, errorMessage = "Internal Server Error") => {
+  setUploadExcelJobState(jobId, {
+    status: "failed",
+    phase: "finalizing",
+    message: "Processing failed",
+    error: errorMessage,
+  });
+  scheduleUploadExcelJobCleanup(jobId);
+};
+
+const cancelUploadExcelJobState = (jobId, payload = {}) => {
+  setUploadExcelJobState(jobId, {
+    status: "cancelled",
+    phase: "finalizing",
+    message: payload.message || "Upload cancelled",
+    error: null,
+    progressPercent: payload.progressPercent,
+    totalPeople: payload.totalPeople || 0,
+  });
+  scheduleUploadExcelJobCleanup(jobId);
+};
+
+const createAsyncUploadExcelResponse = (jobId) => {
+  let statusCode = 200;
+
+  return {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(payload) {
+      if (statusCode >= 400 || payload?.code >= 400) {
+        failUploadExcelJob(jobId, payload?.message || "Internal Server Error");
+        return payload;
+      }
+
+      if (payload?.cancelled || payload?.code === 499) {
+        cancelUploadExcelJobState(jobId, {
+          message: payload?.message || "Upload cancelled",
+          totalPeople: payload?.totalPeople || 0,
+          progressPercent: payload?.progressPercent ?? undefined,
+        });
+        return payload;
+      }
+
+      completeUploadExcelJob(jobId, {
+        message: payload?.message || "OK",
+        totalPeople: payload?.totalPeople || 0,
+      });
+
+      return payload;
+    },
+  };
+};
 
 /**
  * @swagger
@@ -53,9 +238,62 @@ const prisma = require('../../db/database');
  *         description: "Internal server error"
  */
 exports.uploadExcel = async (req, res) => {
+  const isInternalJobRequest = Boolean(req.uploadJobInternal);
+  const asyncMode = !isInternalJobRequest && String(req.query?.async || "").toLowerCase() === "true";
+
+  if (asyncMode) {
+    const jobId = createUploadExcelJob(req.userId);
+
+    setImmediate(async () => {
+      const backgroundReq = {
+        body: { ...req.body },
+        query: { ...(req.query || {}), async: "false" },
+        userId: req.userId,
+        uploadJobId: jobId,
+        uploadJobInternal: true,
+      };
+
+      try {
+        await exports.uploadExcel(backgroundReq, createAsyncUploadExcelResponse(jobId));
+      } catch (error) {
+        failUploadExcelJob(jobId, error?.message || "Internal Server Error");
+      }
+    });
+
+    return res.status(202).json({
+      code: 202,
+      jobId,
+      status: "queued",
+    });
+  }
+
+  const jobId = req.uploadJobId || null;
   let uploadsPath = null; // Track file path for cleanup
 
   try {
+    if (jobId) {
+      setUploadExcelJobState(jobId, {
+        status: "processing",
+        phase: "server_processing",
+        progressPercent: 0,
+        processedRows: 0,
+        totalRows: 0,
+        remainingRows: 0,
+        message: "Starting processing",
+        error: null,
+      });
+
+      if (isUploadExcelJobCancellationRequested(jobId)) {
+        return res.json({
+          code: 499,
+          message: "Upload cancelled",
+          totalPeople: 0,
+          cancelled: true,
+          progressPercent: 0,
+        });
+      }
+    }
+
     let {
       filePath,
       form_reg = "4",
@@ -67,7 +305,7 @@ exports.uploadExcel = async (req, res) => {
     } = req.body;
 
     if (!filePath || !filePath.endsWith(".xlsx")) {
-      return res.status(400).json({ code: 400, message: "Invalid Excel file" });
+      throw buildUploadExcelError(400, "Invalid Excel file");
     }
 
     const fileName = filePath.split("/").pop(); // Excel fayl nomini olish
@@ -78,7 +316,7 @@ exports.uploadExcel = async (req, res) => {
     uploadsPath = path.join(currentDir, `../../uploads/${fileName}`);
 
     if (!fs.existsSync(uploadsPath)) {
-      return res.status(404).json({ code: 404, message: "File not found" });
+      throw buildUploadExcelError(404, "File not found");
     }
 
     // Read the file
@@ -91,6 +329,21 @@ exports.uploadExcel = async (req, res) => {
 
     let count = 0; // Total valid records
     const maxRecords = 7062;
+    const effectiveMaxRecords = Math.min(maxRecords, excelData.length);
+    const totalRows = Math.max(0, effectiveMaxRecords - 1);
+    let cancelled = false;
+
+    if (jobId) {
+      setUploadExcelJobState(jobId, {
+        status: "processing",
+        phase: "server_processing",
+        progressPercent: 0,
+        processedRows: 0,
+        totalRows,
+        remainingRows: totalRows,
+        message: "Processing upload",
+      });
+    }
 
     await prisma.temporaryData.deleteMany({
       where: {
@@ -105,9 +358,7 @@ exports.uploadExcel = async (req, res) => {
     });
 
     if (!initiator) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Initiator not found" });
+      throw buildUploadExcelError(400, "Initiator not found");
     }
 
     const form_reg_check = await prisma.form.findFirst({
@@ -117,16 +368,30 @@ exports.uploadExcel = async (req, res) => {
     });
 
     if (!form_reg_check) {
-      return res.status(400).json({ code: 400, message: "Form reg not found" });
+      throw buildUploadExcelError(400, "Form reg not found");
     }
 
     const expiredDate = new Date();
     expiredDate.setMonth(expiredDate.getMonth() + form_reg_check?.month);
-    for (let i = 1; i < maxRecords; i++) {
+    const register4SimilarityThresholdPercent = await getRegister4SimilarityThresholdPercent();
+    const register4SimilarityThresholdRatio = toRegister4SimilarityThresholdRatio(
+      register4SimilarityThresholdPercent
+    );
+    for (let i = 1; i < effectiveMaxRecords; i++) {
+      if (isUploadExcelJobCancellationRequested(jobId)) {
+        cancelled = true;
+        setUploadExcelJobState(jobId, {
+          phase: "finalizing",
+          message: "Cancelling upload",
+        });
+        break;
+      }
+
       try {
         const row = excelData[i]; // Get row data
-        if (!row[2] || !row[1]) {
+        if (!row?.[2] || !row?.[1]) {
           console.log("row", row);
+          updateUploadExcelJobProgress(jobId, i, totalRows);
           continue;
         }
 
@@ -393,7 +658,7 @@ exports.uploadExcel = async (req, res) => {
             ELSE 0.5
           END
         ) / 3
-      ) > 0.75
+      ) > ${register4SimilarityThresholdRatio}
 
     UNION ALL
 
@@ -518,7 +783,7 @@ exports.uploadExcel = async (req, res) => {
             ELSE 0.5
           END
         ) / 3
-      ) > 0.75
+      ) > ${register4SimilarityThresholdRatio}
   )
   SELECT * FROM combined_results
   ORDER BY similarity_percentage DESC
@@ -751,8 +1016,10 @@ exports.uploadExcel = async (req, res) => {
         });
 
         count++;
+        updateUploadExcelJobProgress(jobId, i, totalRows);
       } catch (error) {
         console.error("Error processing Excel file:", error);
+        updateUploadExcelJobProgress(jobId, i, totalRows);
       }
       // Stop if we reach the max limit
       if (count >= maxRecords) {
@@ -761,7 +1028,9 @@ exports.uploadExcel = async (req, res) => {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 5000)); // 5 sekund kutish
+    if (!cancelled) {
+      await new Promise((resolve) => setTimeout(resolve, 5000)); // 5 sekund kutish
+    }
 
     // Delete the Excel file after successful processing
     try {
@@ -772,6 +1041,16 @@ exports.uploadExcel = async (req, res) => {
     } catch (deleteError) {
       console.error("Error deleting Excel file:", deleteError);
       // Don't return error here as the main process was successful
+    }
+
+    if (cancelled) {
+      return res.json({
+        code: 499,
+        message: "Upload cancelled",
+        totalPeople: count,
+        cancelled: true,
+        progressPercent: totalRows > 0 ? Math.min(100, Math.floor((count / totalRows) * 100)) : 0,
+      });
     }
 
     return res.json({
@@ -792,10 +1071,70 @@ exports.uploadExcel = async (req, res) => {
       console.error("Error deleting Excel file after error:", deleteError);
     }
 
+    const statusCode = error?.httpStatusCode || 500;
+    const errorMessage = error?.message || "Internal Server Error";
+
     return res
-      .status(500)
-      .json({ code: 500, message: "Internal Server Error" });
+      .status(statusCode)
+      .json({ code: statusCode, message: errorMessage });
   }
+};
+
+exports.getUploadExcelProgress = async (req, res) => {
+  const { jobId } = req.params;
+  const job = uploadExcelJobs.get(jobId);
+
+  if (!job || job.userId !== req.userId) {
+    return res.status(404).json({
+      code: 404,
+      message: "Upload job not found",
+    });
+  }
+
+  return res.json({
+    code: 200,
+    data: sanitizeUploadExcelJob(job),
+  });
+};
+
+exports.cancelUploadExcel = async (req, res) => {
+  const { jobId } = req.params;
+  const job = uploadExcelJobs.get(jobId);
+
+  if (!job || job.userId !== req.userId) {
+    return res.status(404).json({
+      code: 404,
+      message: "Upload job not found",
+    });
+  }
+
+  if (TERMINAL_UPLOAD_EXCEL_STATUSES.has(job.status)) {
+    return res.json({
+      code: 200,
+      status: "already_finished",
+      data: sanitizeUploadExcelJob(job),
+    });
+  }
+
+  const immediateCancel = job.status === "queued";
+  const nextStatus = immediateCancel ? "cancelled" : job.status;
+
+  const updatedJob = setUploadExcelJobState(jobId, {
+    cancelRequested: true,
+    status: nextStatus,
+    phase: immediateCancel ? "finalizing" : job.phase,
+    message: immediateCancel ? "Upload cancelled" : "Cancelling upload",
+  });
+
+  if (immediateCancel) {
+    scheduleUploadExcelJobCleanup(jobId);
+  }
+
+  return res.json({
+    code: 200,
+    status: immediateCancel ? "cancelled" : "cancelling",
+    data: sanitizeUploadExcelJob(updatedJob || job),
+  });
 };
 
 /**
@@ -2738,13 +3077,7 @@ exports.save = async (req, res) => {
         .status(404)
         .json({ code: 404, message: "Temporary data not found" });
     }
-
-    if (temporaryData?.found_status) {
-      return res
-        .status(400)
-        .json({ code: 400, message: "Temporary data is already found" });
-    }
-
+    
     if (
       !(
         temporaryData?.registrationSimilarity.find(
@@ -3648,6 +3981,10 @@ exports.addManualRegistration = async (req, res) => {
     // Similarity search
     data.registrationSimilarity = [];
     data.registration_four_similarity = [];
+    const register4SimilarityThresholdPercent = await getRegister4SimilarityThresholdPercent();
+    const register4SimilarityThresholdRatio = toRegister4SimilarityThresholdRatio(
+      register4SimilarityThresholdPercent
+    );
 
     // Enable pg_trgm extension
     await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`);
@@ -3729,7 +4066,7 @@ exports.addManualRegistration = async (req, res) => {
             ELSE 0.5
           END
         ) / 3
-      ) > 0.75
+      ) > ${register4SimilarityThresholdRatio}
 
     UNION ALL
 
@@ -3812,7 +4149,7 @@ exports.addManualRegistration = async (req, res) => {
             ELSE 0.5
           END
         ) / 3
-      ) > 0.75
+      ) > ${register4SimilarityThresholdRatio}
   )
   SELECT * FROM combined_results
   ORDER BY similarity_percentage DESC

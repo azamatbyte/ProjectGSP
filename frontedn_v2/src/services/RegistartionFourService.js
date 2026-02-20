@@ -5,6 +5,17 @@ const RegistrationFourService = {};
 RegistrationFourService.create = function (data) {
 	return Request.postRequest("registerFour/upload-excel", data);
 };
+RegistrationFourService.createAsync = function (data, config = {}) {
+	return Request.postRequest("registerFour/upload-excel?async=true", data, config);
+};
+
+RegistrationFourService.getUploadProgress = function (jobId) {
+	return Request.getRequest(`registerFour/upload-excel-progress/${jobId}`);
+};
+
+RegistrationFourService.cancelUploadJob = function (jobId) {
+	return Request.postRequest(`registerFour/upload-excel-cancel/${jobId}`, {});
+};
 
 RegistrationFourService.createManual = function (data) {
 	return Request.postRequest("registerFour/upload-manual", data);

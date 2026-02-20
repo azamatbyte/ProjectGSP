@@ -528,6 +528,12 @@
     "dashboard_finished_target_title": "Завершенные регистрации",
     "dashboard_finished_target_subtitle": "Процент завершения регистрации: {{percentage}}%",
     "dashboard_finished_target_counts": "Завершено {{finished}} из {{total}} регистраций",
+    "dashboard_similarity_threshold_label": "Порог совпадения: {{percentage}}%",
+    "dashboard_similarity_threshold_hint": "Супер администратор может изменить порог от {{min}}% до {{max}}%",
+    "dashboard_similarity_threshold_save": "Сохранить порог",
+    "dashboard_similarity_threshold_save_success": "Порог совпадения обновлен",
+    "dashboard_similarity_threshold_save_error": "Не удалось обновить порог совпадения",
+    "dashboard_similarity_threshold_load_error": "Не удалось загрузить порог совпадения",
     "dashboard_latest_title": "Последние операции",
     "dashboard_latest_column_customer": "Проверяемое лицо",
     "dashboard_latest_column_registered": "Зарегистрировано",
@@ -536,4 +542,18 @@
     "dashboard_otk1_title": "Топ ОТКАЗ-1 по организациям",
     "dashboard_otk1_years_label": "Лет",
     "dashboard_otk1_loading_error": "Не удалось загрузить данные ОТКАЗ-1"
+    ,"uploading_file": "Загрузка файла"
+    ,"processing_file": "Обработка файла"
+    ,"finalizing_upload": "Завершение загрузки"
+    ,"upload_cancelled": "Загрузка отменена"
+    ,"cancel_upload": "Отменить загрузку"
+    ,"retry_upload": "Повторить загрузку"
+    ,"cancelling_upload": "Отмена загрузки..."
+    ,"upload_progress_unavailable": "Прогресс загрузки недоступен. Повторите попытку."
+    ,"cancel_upload_before_close": "Сначала отмените текущую загрузку."
+    ,"done_percent": "Готово"
+    ,"left_percent": "Осталось"
+    ,"rows_done": "Обработано строк"
+    ,"rows_left": "Осталось строк"
+    ,"upload_processing_started": "Файл принят. Начата обработка."
 }

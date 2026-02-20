@@ -11,7 +11,8 @@ import {
   DatePicker,
   Pagination,
   Tag,
-  Tooltip
+  Tooltip,
+  Progress,
 } from "antd";
 import {
   UploadOutlined,
@@ -51,6 +52,7 @@ import {
 } from "store/slices/uploadDataSlice";
 import { SESSION_TYPES } from "utils/sessions";
 import RegistrationService from "services/RegistrationService";
+import axios from "axios";
 const { Option } = Select;
 
 const parseLocalDate = (input) => {
@@ -103,11 +105,11 @@ const fetchForms = async (searchText) => {
   }
 };
 
-export const handleUpload = async (file) => {
+export const handleUpload = async (file, config = {}) => {
   const formData = new FormData();
   formData.append("file", file);
   try {
-    const response = await UploadService.postImage(formData);
+    const response = await UploadService.postImage(formData, config);
     return response;
   } catch (error) {
     console.error("Image upload failed:", error);
@@ -130,6 +132,19 @@ const beforeUpload = (file, t) => {
 
   return isJpgOrPng && isLt2M;
 };
+
+const createInitialUploadProgressState = () => ({
+  status: "idle",
+  phase: "idle",
+  percent: 0,
+  processedRows: 0,
+  totalRows: 0,
+  remainingRows: 0,
+  message: "",
+  error: "",
+  jobId: null,
+  isCancelling: false,
+});
 
 const Index = (props) => {
   const [searchParams] = useSearchParams();
@@ -184,12 +199,32 @@ const Index = (props) => {
   const [deployModalVisible, setDeployModalVisible] = useState(false);
   const [birthPlaceSearchRef, setBirthPlaceSearchRef] = useState("");
   const [searchValue, setSearchValue] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(createInitialUploadProgressState);
 
   const formRef = useRef(null);
   const manualModalFormRef = useRef(null);
+  const uploadPollTimeoutRef = useRef(null);
+  const uploadCancelSourceRef = useRef(null);
 
   dayjs.extend(customParseFormat);
   dayjs.extend(utc);
+
+  const stopUploadPolling = useCallback(() => {
+    if (uploadPollTimeoutRef.current) {
+      clearTimeout(uploadPollTimeoutRef.current);
+      uploadPollTimeoutRef.current = null;
+    }
+  }, []);
+
+  const resetUploadProgress = useCallback(() => {
+    stopUploadPolling();
+    setUploadProgress(createInitialUploadProgressState());
+  }, [stopUploadPolling]);
+
+  const isTransferUploading = uploadProgress.status === "uploading";
+  const isServerProcessing = ["queued", "processing", "finalizing"].includes(uploadProgress.status);
+  const isUploadBusy = isTransferUploading || isServerProcessing || uploadProgress.isCancelling;
+  const canRetryUpload = ["failed", "cancelled"].includes(uploadProgress.status);
 
   // Focus on reg_number input and set first form option when manual modal opens
   useEffect(() => {
@@ -230,6 +265,16 @@ const Index = (props) => {
     }
   }, [modalVisible]);
 
+  useEffect(() => {
+    return () => {
+      stopUploadPolling();
+      if (uploadCancelSourceRef.current) {
+        uploadCancelSourceRef.current.cancel("component_unmounted");
+        uploadCancelSourceRef.current = null;
+      }
+    };
+  }, [stopUploadPolling]);
+
   const fileUploadProps = {
     name: "file",
     multiple: false,
@@ -238,22 +283,103 @@ const Index = (props) => {
     uploadLoading: false,
 
     customRequest: async ({ file, onSuccess, onError }) => {
+      if (uploadCancelSourceRef.current) {
+        uploadCancelSourceRef.current.cancel("new_upload_started");
+      }
+
+      const cancelSource = axios.CancelToken.source();
+      uploadCancelSourceRef.current = cancelSource;
+
+      setUploadProgress((prev) => ({
+        ...prev,
+        status: "uploading",
+        phase: "upload_transfer",
+        percent: 0,
+        processedRows: 0,
+        totalRows: 0,
+        remainingRows: 0,
+        message: t("uploading_file"),
+        error: "",
+        isCancelling: false,
+      }));
+
       try {
-        const isUploaded = await handleUpload(file);
+        const isUploaded = await handleUpload(file, {
+          cancelToken: cancelSource.token,
+          onUploadProgress: (event) => {
+            const total = event?.total || 0;
+            if (total > 0) {
+              const percent = Math.min(
+                100,
+                Math.round((event.loaded / total) * 100)
+              );
+              setUploadProgress((prev) => ({
+                ...prev,
+                status: "uploading",
+                phase: "upload_transfer",
+                percent,
+                message: t("uploading_file"),
+              }));
+            }
+          },
+        });
+
         if (isUploaded) {
           onSuccess(null, file);
           fileUploadProps.uploadedImg = isUploaded?.data?.link;
           setUploadedFileName(file?.name);
           fileUploadProps.uploadLoading = false;
+          uploadCancelSourceRef.current = null;
+          setUploadProgress((prev) => ({
+            ...prev,
+            status: "uploaded",
+            phase: "upload_transfer",
+            percent: 100,
+            message: t("excel_file_uploaded_successfully"),
+            error: "",
+            isCancelling: false,
+          }));
           message.success(t("excel_file_uploaded_successfully"));
           form.setFieldsValue({ filePath: isUploaded?.data?.link });
         } else {
           onError(new Error(t("upload_failed")));
           fileUploadProps.uploadLoading = false;
+          uploadCancelSourceRef.current = null;
+          setUploadProgress((prev) => ({
+            ...prev,
+            status: "failed",
+            phase: "upload_transfer",
+            message: t("upload_failed"),
+            error: t("upload_failed"),
+            isCancelling: false,
+          }));
         }
       } catch (error) {
+        const cancelled = axios.isCancel(error);
         onError(error);
         fileUploadProps.uploadLoading = false;
+        uploadCancelSourceRef.current = null;
+
+        if (cancelled) {
+          setUploadProgress((prev) => ({
+            ...prev,
+            status: "cancelled",
+            phase: "upload_transfer",
+            message: t("upload_cancelled"),
+            error: "",
+            isCancelling: false,
+          }));
+          return;
+        }
+
+        setUploadProgress((prev) => ({
+          ...prev,
+          status: "failed",
+          phase: "upload_transfer",
+          message: t("upload_failed"),
+          error: error?.response?.data?.message || t("upload_failed"),
+          isCancelling: false,
+        }));
       }
     },
   };
@@ -872,50 +998,269 @@ const Index = (props) => {
     },
   ];
 
+  const handleUploadModalCancel = () => {
+    if (isUploadBusy) {
+      message.warning(t("cancel_upload_before_close"));
+      return;
+    }
+
+    setModalVisible(false);
+  };
+
+  const handleCancelUpload = async () => {
+    if (uploadProgress.isCancelling) {
+      return;
+    }
+
+    if (uploadProgress.status === "uploading" && uploadCancelSourceRef.current) {
+      setUploadProgress((prev) => ({
+        ...prev,
+        isCancelling: true,
+        message: t("cancelling_upload"),
+      }));
+      uploadCancelSourceRef.current.cancel("cancelled_by_user");
+      return;
+    }
+
+    if (uploadProgress.jobId && isServerProcessing) {
+      try {
+        setUploadProgress((prev) => ({
+          ...prev,
+          isCancelling: true,
+          message: t("cancelling_upload"),
+        }));
+        await RegistrationFourService.cancelUploadJob(uploadProgress.jobId);
+      } catch (error) {
+        const errorMessage = error?.response?.data?.message || t("upload_failed");
+        setUploadProgress((prev) => ({
+          ...prev,
+          isCancelling: false,
+          error: errorMessage,
+          message: prev.message,
+        }));
+        message.error(errorMessage);
+      }
+    }
+  };
+
+  const pollUploadExcelJob = useCallback(async (jobId) => {
+    try {
+      const response = await RegistrationFourService.getUploadProgress(jobId);
+      const progressData = response?.data?.data;
+
+      if (!progressData) {
+        throw new Error(t("upload_progress_unavailable"));
+      }
+
+      const nextStatus = progressData.status || "processing";
+      const nextPercent = Number.isFinite(progressData.progressPercent)
+        ? progressData.progressPercent
+        : 0;
+      const nextProcessedRows = Number.isFinite(progressData.processedRows)
+        ? progressData.processedRows
+        : 0;
+      const nextTotalRows = Number.isFinite(progressData.totalRows)
+        ? progressData.totalRows
+        : 0;
+      const nextRemainingRows = Number.isFinite(progressData.remainingRows)
+        ? progressData.remainingRows
+        : 0;
+
+      setUploadProgress((prev) => ({
+        ...prev,
+        jobId,
+        status: nextStatus,
+        phase: progressData.phase || prev.phase,
+        percent: nextPercent,
+        processedRows: nextProcessedRows,
+        totalRows: nextTotalRows,
+        remainingRows: nextRemainingRows,
+        message: progressData.message || prev.message,
+        error: progressData.error || "",
+        isCancelling: nextStatus === "cancelled" ? false : prev.isCancelling,
+      }));
+
+      if (nextStatus === "completed") {
+        stopUploadPolling();
+        dispatch(uploadSuccess());
+        message.success(t("data_uploaded_successfully"));
+        fetchData();
+        setLoadingExcel(false);
+        setModalVisible(false);
+        form.resetFields();
+        setUploadedFileName("");
+        resetUploadProgress();
+        return;
+      }
+
+      if (nextStatus === "failed") {
+        stopUploadPolling();
+        dispatch(uploadFailure());
+        setLoadingExcel(false);
+        setUploadProgress((prev) => ({
+          ...prev,
+          status: "failed",
+          message: progressData.message || t("upload_failed"),
+          error: progressData.error || t("upload_failed"),
+          isCancelling: false,
+        }));
+        return;
+      }
+
+      if (nextStatus === "cancelled") {
+        stopUploadPolling();
+        dispatch(uploadFailure());
+        setLoadingExcel(false);
+        setUploadProgress((prev) => ({
+          ...prev,
+          status: "cancelled",
+          message: progressData.message || t("upload_cancelled"),
+          error: "",
+          isCancelling: false,
+        }));
+        message.info(t("upload_cancelled"));
+        return;
+      }
+
+      uploadPollTimeoutRef.current = setTimeout(() => {
+        pollUploadExcelJob(jobId);
+      }, 700);
+    } catch (error) {
+      stopUploadPolling();
+      dispatch(uploadFailure());
+      setLoadingExcel(false);
+      setUploadProgress((prev) => ({
+        ...prev,
+        status: "failed",
+        message: t("upload_failed"),
+        error: error?.response?.data?.message || t("upload_progress_unavailable"),
+        isCancelling: false,
+      }));
+    }
+  }, [dispatch, fetchData, form, resetUploadProgress, stopUploadPolling, t]);
+
   const handleAddData = async () => {
-    // try {
+    if (loadingExcel || isServerProcessing) {
+      return;
+    }
+
     setLoadingExcel(true);
-    form.validateFields().then(async (values) => {
-      // setModalVisible(false);
+
+    try {
+      const values = await form.validateFields();
       dispatch(uploadStart());
+      stopUploadPolling();
+
       const payload = {
         ...values,
         regDate: values?.regDate
           ? dayjs(values.regDate).utc().startOf("day").toISOString()
           : null,
       };
-      // const result = await uploadData(values);
-      // console.log("result", result);
-      // if(result.status === 200){
-      //   message.success("Data uploaded successfully");
-      //   form.resetFields();
-      // }
-      RegistrationFourService.create(payload)
-        .then((uploadData) => {
-          if (uploadData?.status === 200) {
-            dispatch(uploadSuccess());
-            message.success(t("data_uploaded_successfully"));
-            fetchData();
-            setLoadingExcel(false);
-            setModalVisible(false);
-            form.resetFields();
-          }
-        })
-        .catch((error) => {
-          dispatch(uploadFailure());
-          message.error(t("error_fetching_data_relatives"));
-          fetchData();
-          setLoadingExcel(false);
-        });
-    });
-    // } catch (error) {
-    //   console.log("errordata", error);
-    //   message.error("error_fetching_data_relatives");
-    // } finally {
-    //   fetchData();
-    //   setLoadingExcel(false);
-    // }
+
+      setUploadProgress((prev) => ({
+        ...prev,
+        status: "queued",
+        phase: "server_processing",
+        percent: 0,
+        processedRows: 0,
+        totalRows: 0,
+        remainingRows: 0,
+        message: t("upload_processing_started"),
+        error: "",
+        isCancelling: false,
+      }));
+
+      const uploadData = await RegistrationFourService.createAsync(payload);
+      const jobId = uploadData?.data?.jobId;
+
+      if (uploadData?.status === 202 && jobId) {
+        setUploadProgress((prev) => ({
+          ...prev,
+          jobId,
+          status: "queued",
+          phase: "server_processing",
+          message: t("upload_processing_started"),
+          error: "",
+        }));
+        pollUploadExcelJob(jobId);
+        return;
+      }
+
+      if (uploadData?.status === 200) {
+        dispatch(uploadSuccess());
+        message.success(t("data_uploaded_successfully"));
+        fetchData();
+        setLoadingExcel(false);
+        setModalVisible(false);
+        form.resetFields();
+        setUploadedFileName("");
+        resetUploadProgress();
+        return;
+      }
+
+      throw new Error(t("upload_failed"));
+    } catch (error) {
+      setLoadingExcel(false);
+
+      if (error?.errorFields) {
+        return;
+      }
+
+      dispatch(uploadFailure());
+
+      setUploadProgress((prev) => ({
+        ...prev,
+        status: "failed",
+        phase: "server_processing",
+        message: t("upload_failed"),
+        error: error?.response?.data?.message || t("error_fetching_data_relatives"),
+        isCancelling: false,
+      }));
+
+      message.error(error?.response?.data?.message || t("error_fetching_data_relatives"));
+    }
   };
+
+  const retryUpload = () => {
+    if (!canRetryUpload) {
+      return;
+    }
+
+    handleAddData();
+  };
+
+  const uploadPercentDone = Math.max(0, Math.min(100, Number(uploadProgress.percent) || 0));
+  const uploadPercentLeft = Math.max(0, 100 - uploadPercentDone);
+  const uploadProgressVisible = uploadProgress.status !== "idle";
+  const uploadProgressBarStatus = uploadProgress.status === "failed"
+    ? "exception"
+    : uploadProgress.status === "cancelled"
+      ? "normal"
+      : "active";
+  const uploadProgressTagColor = uploadProgress.status === "failed"
+    ? "red"
+    : uploadProgress.status === "cancelled"
+      ? "orange"
+      : uploadProgress.status === "completed"
+        ? "green"
+        : "blue";
+
+  const uploadProgressStatusText = uploadProgress.status === "uploading"
+    ? t("uploading_file")
+    : uploadProgress.status === "queued"
+      ? t("upload_processing_started")
+      : uploadProgress.status === "processing"
+        ? t("processing_file")
+        : uploadProgress.status === "finalizing"
+          ? t("finalizing_upload")
+          : uploadProgress.status === "uploaded"
+            ? t("excel_file_uploaded_successfully")
+            : uploadProgress.status === "cancelled"
+              ? t("upload_cancelled")
+              : uploadProgress.status === "failed"
+                ? t("upload_failed")
+                : t("data_uploaded_successfully");
 
   const exportExcel = async () => {
     try {
@@ -1118,7 +1463,11 @@ const Index = (props) => {
             <Col>
               <Button
                 type="primary"
-                onClick={() => setModalVisible(true)}
+                onClick={() => {
+                  resetUploadProgress();
+                  setUploadedFileName("");
+                  setModalVisible(true);
+                }}
                 icon={<PlusCircleOutlined />}
                 style={{ minWidth: "120px" }}
               >
@@ -1224,12 +1573,20 @@ const Index = (props) => {
         title={t("add_data")}
         open={modalVisible}
         confirmLoading={loadingExcel}
-        onCancel={() => setModalVisible(false)}
+        onCancel={handleUploadModalCancel}
         onOk={() => {
           handleAddData();
         }}
-        okButtonProps={{ tabIndex: 8 }}
-        cancelButtonProps={{ tabIndex: 9 }}
+        maskClosable={!isUploadBusy}
+        closable={!isUploadBusy}
+        okButtonProps={{
+          tabIndex: 8,
+          disabled: isUploadBusy && !canRetryUpload,
+        }}
+        cancelButtonProps={{
+          tabIndex: 9,
+          disabled: isUploadBusy,
+        }}
       >
         <Form layout="vertical" form={form}>
           <Form.Item
@@ -1449,11 +1806,54 @@ const Index = (props) => {
               name="filePath"
               action="/upload.do"
               listType="text"
+              disabled={isUploadBusy}
             >
               <Button icon={<UploadOutlined />} tabIndex={7}>{t("upload_file")}</Button>
             </Upload>
             {uploadedFileName && (
               <div style={{ marginTop: "10px" }}>{uploadedFileName}</div>
+            )}
+            {uploadProgressVisible && (
+              <div className="upload-progress-card">
+                <div className="upload-progress-header">
+                  <span>{uploadProgressStatusText}</span>
+                  <Tag color={uploadProgressTagColor}>{uploadPercentDone}%</Tag>
+                </div>
+                <Progress
+                  percent={uploadPercentDone}
+                  status={uploadProgressBarStatus}
+                  strokeColor={uploadProgress.status === "cancelled" ? "#faad14" : undefined}
+                />
+                <div className="upload-progress-meta">
+                  <span>{t("done_percent")}: {uploadPercentDone}%</span>
+                  <span>{t("left_percent")}: {uploadPercentLeft}%</span>
+                </div>
+                {uploadProgress.totalRows > 0 && (
+                  <div className="upload-progress-meta">
+                    <span>{t("rows_done")}: {uploadProgress.processedRows}</span>
+                    <span>{t("rows_left")}: {uploadProgress.remainingRows}</span>
+                  </div>
+                )}
+                {uploadProgress.error && (
+                  <div className="upload-progress-error">{uploadProgress.error}</div>
+                )}
+                <div className="upload-progress-actions">
+                  {isUploadBusy && (
+                    <Button
+                      danger
+                      onClick={handleCancelUpload}
+                      loading={uploadProgress.isCancelling}
+                    >
+                      {t("cancel_upload")}
+                    </Button>
+                  )}
+                  {canRetryUpload && (
+                    <Button type="primary" onClick={retryUpload}>
+                      {t("retry_upload")}
+                    </Button>
+                  )}
+                </div>
+              </div>
             )}
           </Form.Item>
           <Form.Item label={t("notes")} name="notes">

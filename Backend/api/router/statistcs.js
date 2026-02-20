@@ -9,6 +9,8 @@ const {
   countedRecords,
   formOverdueTrend,
   finishedRegistrationPercentage,
+  getSimilarityThreshold,
+  updateSimilarityThreshold,
   latestTransactions,
   topOtk1Workplaces,
 } = require("../controllers/statisticsController");
@@ -33,6 +35,9 @@ router.post("/counted_records", verifyToken, checkAdminAccess(3), countedRecords
 router.post("/form_overdue_trend", verifyToken, checkAdminAccess(3), formOverdueTrend);
 // finished registration percentage
 router.post("/finished_registration_percentage", verifyToken, checkAdminAccess(3), finishedRegistrationPercentage);
+// register4 similarity threshold
+router.post("/similarity_threshold", verifyToken, checkAdminAccess(3), getSimilarityThreshold);
+router.post("/similarity_threshold_update", verifyToken, checkAdminAccess(3), updateSimilarityThreshold);
 // latest transactions dashboard
 router.post("/latest_transactions", verifyToken, checkAdminAccess(3), latestTransactions);
 // top otk1 workplaces

@@ -18,7 +18,7 @@ export default class Request {
 
     static putRequest = (url, data) => axios.put(url, data);
 
-    static postRequest = (url, data) => axios.post(url, data);
+    static postRequest = (url, data, config = {}) => axios.post(url, data, config);
 
     static postRequestBlob = (url, data) => axios.post(url, data, {
         responseType: 'blob',

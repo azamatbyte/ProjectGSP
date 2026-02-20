@@ -20,6 +20,15 @@ const { getDateDayString, formatRussianDateTime } = require("../helpers/time");
 const safeString = require("../helpers/safeString");
 const { SERVER_URL } = require("../helpers/constants");
 const { group } = require("console");
+const {
+  REGISTER4_SIMILARITY_THRESHOLD_DEFAULT_PERCENT,
+  REGISTER4_SIMILARITY_THRESHOLD_MIN_PERCENT,
+  REGISTER4_SIMILARITY_THRESHOLD_MAX_PERCENT,
+  getRegister4SimilarityThresholdPercent,
+  setRegister4SimilarityThresholdPercent,
+  toRegister4SimilarityThresholdRatio,
+  validateRegister4SimilarityThresholdPercent,
+} = require("../helpers/register4SimilarityThreshold");
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
@@ -492,6 +501,83 @@ exports.finishedRegistrationPercentage = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.getSimilarityThreshold = async (req, res) => {
+  try {
+    const threshold_percent = await getRegister4SimilarityThresholdPercent();
+
+    return res.status(200).json({
+      code: 200,
+      message: "Similarity threshold fetched successfully",
+      data: {
+        threshold_percent,
+        threshold_ratio: toRegister4SimilarityThresholdRatio(threshold_percent),
+        min: REGISTER4_SIMILARITY_THRESHOLD_MIN_PERCENT,
+        max: REGISTER4_SIMILARITY_THRESHOLD_MAX_PERCENT,
+        default: REGISTER4_SIMILARITY_THRESHOLD_DEFAULT_PERCENT,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching similarity threshold:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.updateSimilarityThreshold = async (req, res) => {
+  try {
+    const currentAdmin = await prisma.admin.findUnique({
+      where: { id: req.userId },
+      select: { role: true },
+    });
+
+    if (!currentAdmin) {
+      return res.status(401).json({
+        code: 401,
+        message: "User not found",
+      });
+    }
+
+    if (currentAdmin.role !== "superAdmin") {
+      return res.status(403).json({
+        code: 403,
+        message: "Only superAdmin can update similarity threshold",
+      });
+    }
+
+    const { threshold_percent } = req.body || {};
+    const validation = validateRegister4SimilarityThresholdPercent(threshold_percent);
+    if (!validation.valid) {
+      return res.status(400).json({
+        code: 400,
+        message: validation.message,
+      });
+    }
+
+    const nextThresholdPercent = await setRegister4SimilarityThresholdPercent(validation.value);
+
+    return res.status(200).json({
+      code: 200,
+      message: "Similarity threshold updated successfully",
+      data: {
+        threshold_percent: nextThresholdPercent,
+        threshold_ratio: toRegister4SimilarityThresholdRatio(nextThresholdPercent),
+        min: REGISTER4_SIMILARITY_THRESHOLD_MIN_PERCENT,
+        max: REGISTER4_SIMILARITY_THRESHOLD_MAX_PERCENT,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating similarity threshold:", error);
+    return res.status(error.statusCode || 500).json({
+      code: error.statusCode || 500,
+      message: error.message || "Internal server error",
       error: error.message,
     });
   }

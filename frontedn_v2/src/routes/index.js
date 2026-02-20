@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Routes as RouterRoutes, Route, Navigate } from "react-router-dom";
-import { AUTHENTICATED_ENTRY } from "configs/AppConfig";
+import { getAuthenticatedEntryByRole } from "configs/AppConfig";
 import { protectedRoutes, publicRoutes } from "configs/RoutesConfig";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -12,6 +12,7 @@ const Routes = () => {
 
 	const { token, role } = useSelector(state => state.auth);
 	const isResolvingRole = Boolean(token) && !role;
+	const authenticatedEntry = getAuthenticatedEntryByRole(role);
 	const permissionProtectedRouters = useMemo(() => {
 		if (!role) {
 			return [];
@@ -22,7 +23,12 @@ const Routes = () => {
 	return (
 		<RouterRoutes>
 			<Route path="/" element={<ProtectedRoute />}>
-				<Route path="/" element={<Navigate replace to={AUTHENTICATED_ENTRY} />} />
+				<Route
+					path="/"
+					element={
+						isResolvingRole ? <Loading cover="content" /> : <Navigate replace to={authenticatedEntry} />
+					}
+				/>
 				{permissionProtectedRouters.map((route, index) => {
 					return (
 						<Route 

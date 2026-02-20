@@ -7,6 +7,7 @@ const compareDates = require("../helpers/compareDates");
 const e = require("express");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 const archiver = require("archiver");
 const multer = require("multer");
@@ -25,6 +26,38 @@ archiver.registerFormat('zip-encrypted', archiverZipEncrypted);
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
+
+function ensureWritableDirSync(dirPath) {
+  fs.mkdirSync(dirPath, { recursive: true });
+  fs.accessSync(dirPath, fs.constants.W_OK);
+  return dirPath;
+}
+
+function getBackupTempDir(...subPaths) {
+  const candidates = [];
+
+  if (process.platform === 'win32') {
+    candidates.push(path.join(process.env.PROGRAMDATA || 'C:\\ProgramData', 'GSPApp', 'temp'));
+  }
+
+  candidates.push(path.join(os.tmpdir(), 'gspapp', 'temp'));
+
+  let lastError = null;
+
+  for (const baseDir of candidates) {
+    try {
+      const writableBaseDir = ensureWritableDirSync(baseDir);
+      if (subPaths.length === 0) {
+        return writableBaseDir;
+      }
+      return ensureWritableDirSync(path.join(writableBaseDir, ...subPaths));
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Unable to resolve writable backup temp directory');
+}
 
 // Generate secure random password for ZIP encryption
 function generateSecurePassword(length = 16) {
@@ -4087,12 +4120,7 @@ exports.exportData = async (req, res) => {
 
     if (format === 'csv') {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const tempDir = path.join(__dirname, '../temp');
-
-      // Create temp directory if it doesn't exist
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
+      const tempDir = getBackupTempDir();
 
       // Create CSV files
       const registrationsCsvPath = path.join(tempDir, `registrations_${timestamp}.csv`);
@@ -4890,11 +4918,21 @@ exports.importData = async (req, res) => {
 };
 
 // Configure multer for file uploads
+const uploadStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    try {
+      cb(null, getBackupTempDir('uploads'));
+    } catch (error) {
+      cb(error);
+    }
+  }
+});
+
 const upload = multer({
-  dest: path.join(__dirname, '../temp/uploads'),
+  storage: uploadStorage,
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed' || file.originalname.endsWith('.zip')) {
+    if (file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed' || (file.originalname || '').toLowerCase().endsWith('.zip')) {
       cb(null, true);
     } else {
       cb(new Error('Only ZIP files are allowed'));
