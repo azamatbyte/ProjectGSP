@@ -372,6 +372,40 @@ DB_NAME=appdb
 $EnvTemplate | Set-Content -Path (Join-Path $BuildDir 'env.template') -Encoding utf8
 #endregion
 
+#region Convert logo PNG to ICO for installer
+function Convert-PngToIco {
+    param([string]$PngPath, [string]$IcoPath)
+    Add-Type -AssemblyName System.Drawing
+    $src = [System.Drawing.Image]::FromFile((Resolve-Path $PngPath).Path)
+    $bmp = New-Object System.Drawing.Bitmap(256, 256, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $g.DrawImage($src, 0, 0, 256, 256)
+    $g.Dispose(); $src.Dispose()
+    $pngStream = New-Object System.IO.MemoryStream
+    $bmp.Save($pngStream, [System.Drawing.Imaging.ImageFormat]::Png)
+    $bmp.Dispose()
+    $pngBytes = $pngStream.ToArray(); $pngStream.Dispose()
+    # Build ICO (Vista PNG-in-ICO: single 256x256 PNG-compressed entry)
+    $ms = New-Object System.IO.MemoryStream
+    $w  = New-Object System.IO.BinaryWriter($ms)
+    $w.Write([uint16]0); $w.Write([uint16]1); $w.Write([uint16]1)  # ICO header
+    $w.Write([byte]0); $w.Write([byte]0); $w.Write([byte]0); $w.Write([byte]0)  # dir: w,h,colors,reserved
+    $w.Write([uint16]1); $w.Write([uint16]32)                       # planes, bitcount
+    $w.Write([uint32]$pngBytes.Length); $w.Write([uint32]22)        # size, offset (6+16=22)
+    $w.Write($pngBytes, 0, $pngBytes.Length)
+    $w.Flush()
+    [System.IO.File]::WriteAllBytes($IcoPath, $ms.ToArray())
+    $w.Dispose(); $ms.Dispose()
+}
+
+Step 'Generating installer icon (PNG -> ICO)'
+$PngSrc = Join-Path $PSScriptRoot '..\..\frontedn_v2\public\img\gsbp_mini.png'
+$IcoDst = Join-Path $PSScriptRoot 'gsbp_mini.ico'
+Convert-PngToIco -PngPath $PngSrc -IcoPath $IcoDst
+Write-Host "Icon written: $IcoDst"
+#endregion
+
 #region Compile Installer
 Step 'Compiling installer with Inno Setup'
 & $IsccPath $IssFile "/O$($BuildDir)\$OutputDir"

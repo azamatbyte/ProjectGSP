@@ -24,7 +24,7 @@ SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
 WizardStyle=modern
-; SetupIconFile line removed - icon.png is not valid ICO format. Create an .ico file if needed.
+SetupIconFile=gsbp_mini.ico
 WizardImageFile=..\..\frontedn_v2\public\img\gsbp_mini.png
 WizardSmallImageFile=..\..\frontedn_v2\public\img\gsbp_mini.png
 WizardImageBackColor=$403020
@@ -101,6 +101,7 @@ Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"; IconFilename
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "GSP_APP_PATH"; ValueData: "{app}"; Components: backend; Flags: preservestringtype uninsdeletevalue
 
 [Messages]
+SetupWindowTitle=GSBP Комплекс 1.0
 ConfirmUninstall=Are you sure you want to uninstall {#MyAppName}?%n%nNote: Database and configuration files in %ProgramData%\GSPApp will NOT be deleted.%nTo completely remove all data, manually delete that folder after uninstall.
 WelcomeLabel2=This will install {#MyAppName} on your computer.%n%nThe application includes:%n- Backend server (Node.js + PostgreSQL)%n- Frontend application (КОМПЛЕКС)%n%nClick Next to continue.
 
