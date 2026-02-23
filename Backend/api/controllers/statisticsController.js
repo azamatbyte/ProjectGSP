@@ -604,6 +604,15 @@ exports.updateSimilarityThreshold = async (req, res) => {
  *               pageSize:
  *                 type: integer
  *                 example: 10
+ *               month:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 12
+ *                 example: 2
+ *               year:
+ *                 type: integer
+ *                 minimum: 1
+ *                 example: 2026
  *     responses:
  *       200:
  *         description: "Latest transactions fetched successfully"
@@ -614,7 +623,7 @@ exports.updateSimilarityThreshold = async (req, res) => {
  */
 exports.latestTransactions = async (req, res) => {
   try {
-    const { pageNumber, pageSize } = req.body || {};
+    const { pageNumber, pageSize, month, year, sortFields } = req.body || {};
 
     const parsedPageNumber = parsePositiveInt(pageNumber, 1);
     const parsedPageSize = parsePositiveInt(pageSize, 10);
@@ -626,43 +635,89 @@ exports.latestTransactions = async (req, res) => {
       });
     }
 
+    const hasMonth = !(month === undefined || month === null || month === "");
+    const hasYear = !(year === undefined || year === null || year === "");
+
+    if (hasMonth !== hasYear) {
+      return res.status(400).json({
+        code: 400,
+        message: "month and year must be provided together",
+      });
+    }
+
+    let parsedMonth = null;
+    let parsedYear = null;
+    let regDateWhere = undefined;
+
+    if (hasMonth && hasYear) {
+      parsedMonth = parsePositiveInt(month, null);
+      parsedYear = parsePositiveInt(year, null);
+
+      if (
+        parsedMonth === null ||
+        parsedYear === null ||
+        parsedMonth < 1 ||
+        parsedMonth > 12
+      ) {
+        return res.status(400).json({
+          code: 400,
+          message: "month must be between 1 and 12 and year must be a positive integer",
+        });
+      }
+
+      const periodStart = new Date(Date.UTC(parsedYear, parsedMonth - 1, 1, 0, 0, 0, 0));
+      const periodEnd = new Date(Date.UTC(parsedYear, parsedMonth, 0, 23, 59, 59, 999));
+
+      regDateWhere = {
+        not: null,
+        gte: periodStart,
+        lte: periodEnd,
+      };
+    }
+
     const safePageSize = Math.min(parsedPageSize, 100);
     const skip = (parsedPageNumber - 1) * safePageSize;
+    const allowedSortFields = new Set(["fullName", "registeredCount", "overdueCount", "lastLoginAt"]);
+    const normalizedSortFields = Array.isArray(sortFields)
+      ? sortFields
+        .map((item) => ({
+          field: typeof item?.field === "string" ? item.field.trim() : "",
+          order: String(item?.order || "ASC").toUpperCase() === "DESC" ? "DESC" : "ASC",
+        }))
+        .filter((item) => allowedSortFields.has(item.field))
+      : [];
 
-    const [admins, total] = await Promise.all([
-      prisma.admin.findMany({
-        select: {
-          id: true,
-          first_name: true,
-          last_name: true,
-          father_name: true,
-          photo: true,
-          status: true,
-          createdAt: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        skip,
-        take: safePageSize,
-      }),
-      prisma.admin.count(),
-    ]);
+    const admins = await prisma.admin.findMany({
+      select: {
+        id: true,
+        first_name: true,
+        last_name: true,
+        father_name: true,
+        photo: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+    const total = admins.length;
 
     const adminIds = admins.map((admin) => admin.id);
 
     let registeredGroups = [];
     let overdueGroups = [];
+    let lastLoginGroups = [];
 
     if (adminIds.length > 0) {
       const todayStartUTC = new Date();
       todayStartUTC.setUTCHours(0, 0, 0, 0);
 
-      [registeredGroups, overdueGroups] = await Promise.all([
+      [registeredGroups, overdueGroups, lastLoginGroups] = await Promise.all([
         prisma.registration.groupBy({
           by: ["executorId"],
           where: {
             executorId: { in: adminIds },
+            ...(regDateWhere ? { regDate: regDateWhere } : {}),
           },
           _count: {
             _all: true,
@@ -672,6 +727,7 @@ exports.latestTransactions = async (req, res) => {
           by: ["executorId"],
           where: {
             executorId: { in: adminIds },
+            ...(regDateWhere ? { regDate: regDateWhere } : {}),
             expired: {
               not: null,
               lt: todayStartUTC,
@@ -679,6 +735,15 @@ exports.latestTransactions = async (req, res) => {
           },
           _count: {
             _all: true,
+          },
+        }),
+        prisma.seans.groupBy({
+          by: ["adminId"],
+          where: {
+            adminId: { in: adminIds },
+          },
+          _max: {
+            createdAt: true,
           },
         }),
       ]);
@@ -698,6 +763,13 @@ exports.latestTransactions = async (req, res) => {
       }
     }
 
+    const lastLoginMap = new Map();
+    for (const group of lastLoginGroups) {
+      if (group.adminId) {
+        lastLoginMap.set(group.adminId, group?._max?.createdAt || null);
+      }
+    }
+
     const rows = admins.map((admin) => {
       const fullName = [admin?.last_name, admin?.first_name, admin?.father_name]
         .filter((part) => typeof part === "string" && part.trim() !== "")
@@ -706,24 +778,88 @@ exports.latestTransactions = async (req, res) => {
 
       return {
         id: admin.id,
+        createdAt: admin.createdAt,
         photo: admin?.photo || "",
+        lastName: typeof admin?.last_name === "string" ? admin.last_name.trim() : "",
         fullName: fullName || "-",
         registeredCount: registeredMap.get(admin.id) || 0,
         overdueCount: overdueMap.get(admin.id) || 0,
-        status: admin?.status || "inactive",
+        lastLoginAt: lastLoginMap.get(admin.id) || null,
       };
     });
+
+    if (normalizedSortFields.length > 0) {
+      const collator = new Intl.Collator(["ru", "uk", "kk", "uz", "en"], {
+        usage: "sort",
+        sensitivity: "base",
+        numeric: true,
+      });
+
+      const toTime = (value) => {
+        if (!value) return null;
+        const parsed = new Date(value).getTime();
+        return Number.isFinite(parsed) ? parsed : null;
+      };
+
+      const compareNullableNumber = (a, b) => {
+        if (a === null && b === null) return 0;
+        if (a === null) return 1;
+        if (b === null) return -1;
+        if (a < b) return -1;
+        if (a > b) return 1;
+        return 0;
+      };
+
+      rows.sort((a, b) => {
+        for (const sortEntry of normalizedSortFields) {
+          let cmp = 0;
+
+          if (sortEntry.field === "fullName") {
+            const aName = String(a?.lastName || a?.fullName || "");
+            const bName = String(b?.lastName || b?.fullName || "");
+            cmp = collator.compare(aName, bName);
+          } else if (sortEntry.field === "registeredCount") {
+            cmp = (Number(a?.registeredCount) || 0) - (Number(b?.registeredCount) || 0);
+          } else if (sortEntry.field === "overdueCount") {
+            cmp = (Number(a?.overdueCount) || 0) - (Number(b?.overdueCount) || 0);
+          } else if (sortEntry.field === "lastLoginAt") {
+            cmp = compareNullableNumber(toTime(a?.lastLoginAt), toTime(b?.lastLoginAt));
+          }
+
+          if (cmp !== 0) {
+            return sortEntry.order === "DESC" ? -cmp : cmp;
+          }
+        }
+
+        const createdCmp = compareNullableNumber(toTime(a?.createdAt), toTime(b?.createdAt));
+        if (createdCmp !== 0) return -createdCmp;
+
+        const aId = String(a?.id || "");
+        const bId = String(b?.id || "");
+        if (aId < bId) return -1;
+        if (aId > bId) return 1;
+        return 0;
+      });
+    }
+
+    const pagedRows = rows
+      .slice(skip, skip + safePageSize)
+      .map(({ createdAt, ...row }) => row);
 
     return res.status(200).json({
       code: 200,
       message: "Latest transactions fetched successfully",
       data: {
-        rows,
+        rows: pagedRows,
         pagination: {
           pageNumber: parsedPageNumber,
           pageSize: safePageSize,
           total,
           totalPages: Math.ceil(total / safePageSize),
+        },
+        filters: {
+          month: parsedMonth,
+          year: parsedYear,
         },
       },
     });

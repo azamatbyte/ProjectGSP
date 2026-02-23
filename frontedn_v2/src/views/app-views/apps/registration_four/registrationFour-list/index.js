@@ -52,7 +52,7 @@ import {
 } from "store/slices/uploadDataSlice";
 import { SESSION_TYPES } from "utils/sessions";
 import RegistrationService from "services/RegistrationService";
-import axios from "axios";
+import axios from "axios/dist/axios";
 const { Option } = Select;
 
 const parseLocalDate = (input) => {

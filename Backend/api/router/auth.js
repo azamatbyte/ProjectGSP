@@ -14,6 +14,7 @@ const {
   changeStatus,
   checkUsername,
   refreshToken,
+  logout,
   checkUsernameUpdate,
 } = require("../controllers/authController");
 const { verifyToken, permissionCheck } = require("../middleware/auth");
@@ -44,6 +45,7 @@ router.put("/update", verifyToken, permissionCheck("admin"), update);
 router.get("/list", verifyToken, permissionCheck("admin"), getList);
 
 router.post("/refreshToken", refreshToken);
+router.post("/logout", logout);
 
 router.post("/me", verifyToken, permissionCheck("admin"), getByToken);
 

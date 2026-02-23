@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from "axios/dist/axios";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { getStorage, getStorageR, setStorage, setStorageR, clearStorage } from "./storage";

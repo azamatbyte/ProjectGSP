@@ -477,9 +477,6 @@ const CartList = () => {
         regNumbers = selectedRowKeys.map((selectedId) =>
           list.find(item => item.id === selectedId)?.regNumber || null
         ).filter(regNumber => regNumber !== null);
-        // Remove duplicates while preserving order
-        const uniqueRegNumbers = Array.from(new Set(regNumbers));
-        console.log(regNumbers);
       } else {
         response = await RaportService.create({
           ids: [],
@@ -487,8 +484,9 @@ const CartList = () => {
           name: name,
           signListIds: selectedValues,
         });
+        regNumbers = list.map((item) => item?.regNumber).filter(regNumber => regNumber !== null);
       }
-      const fileName = regNumbers && regNumbers.length > 0
+      const fileName = (regNumbers && regNumbers.length > 0)
         ? `Заключение (${Array.from(new Set(regNumbers)).join(', ')})`
         : "Заключение";
       if (response?.status === 200) {
@@ -837,7 +835,7 @@ const CartList = () => {
               isModalVisibleSpecialAnalysis?.type ===
               "export_special_analysis"
                 ? handleExportRelativesSP(SESSION_TYPES.RAPORT, selectedValues)
-                : generateReport("Заключение", selectedValues)
+                : generateReport(`Заключение`, selectedValues)
             }
           >
             {t("ok")}

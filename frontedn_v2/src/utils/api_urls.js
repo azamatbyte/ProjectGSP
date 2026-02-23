@@ -6,6 +6,7 @@ export const host = process.env.REACT_APP_SITE_BACKEND || "";
 export const teacher_signin = "teachers/signin";
 export const refresh_token = "auth/refreshToken";
 export const auth_signin = "auth/signin";
+export const auth_logout = "auth/logout";
 export const get_user = "auth/me";
 export const teachers = "/teachers";
 export const students = "/students";

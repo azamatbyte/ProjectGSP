@@ -2354,6 +2354,7 @@ exports.exportSverka = async (req, res) => {
   try {
     const temporaryDataList = await prisma.temporaryData.findMany({
       where: { executorId: { equals: executorId } },
+      orderBy: { order: "asc" },
     });
     if (!temporaryDataList.length) {
       return res.status(404).json({ code: 404, message: "No data found" });
@@ -2578,7 +2579,7 @@ exports.exportSverka = async (req, res) => {
 
       // Set initial row values
       row.values = [
-        i + 1,
+        data.order || i + 1,
         data.lastName || "",
         data.firstName || "",
         data.fatherName || "",
@@ -3986,8 +3987,9 @@ exports.addManualRegistration = async (req, res) => {
       register4SimilarityThresholdPercent
     );
 
-    // Enable pg_trgm extension
+    // Enable required similarity extensions
     await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS pg_trgm;`);
+    await prisma.$executeRawUnsafe(`CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;`);
 
     // Perform similarity search
     const results = await prisma.$queryRaw`

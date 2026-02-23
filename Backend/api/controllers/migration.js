@@ -254,7 +254,7 @@ function mapRecordToRegistration4Data(record, initiatorId, executorId, formId, n
     };
 }
 
-function mapRecordToRelativeData(record, relationDegree, relationId, initiatorId, model = "relative", status_analysis = true) {
+function mapRecordToRelativeData(record, relationDegree, relationId, initiatorId, model = "relativeWithoutAnalysis", status_analysis = true) {
     return {
         regNumber: record["Регистрационный номер и гриф секр"] || record["Рег №"] || "",
         relationDegree: relationDegree,
@@ -1202,7 +1202,7 @@ async function migrateRelatives() {
             const registration = await prisma.registration.findFirst({ where: { regNumber: record["Регистрационный номер и гриф секр"] } }) || await prisma.registration.findFirst({ where: { fullName: "Неизвестно", firstName: "Неизвестно", lastName: "Неизвестно" } });
             const relationDegree = record["Степень родства"] ? await findOrCreateRelationDegree(record["Степень родства"], unknownRelationDegree) : unknownRelationDegree;
             const executor = record["Исполнитель"] ? await findOrCreateExecutor(record["Исполнитель"]) : unknownExecutor;
-            await findOrCreateWorkplace(record["Место работы и должность"], unknownWorkplace);
+            // await findOrCreateWorkplace(record["Место работы и должность"], unknownWorkplace);
 
             await prisma.relatives.create({
                 data: {
@@ -1249,7 +1249,7 @@ async function migrateRelativesWithoutAnalysis() {
             const initiator = record["О/р"] ? await findOrCreateInitiator(record["О/р"], unknownInitiator) : unknownInitiator;
             const registration = await prisma.registration.findFirst({ where: { regNumber: record["Регистрационный номер и гриф секр"] } }) || await prisma.registration.findFirst({ where: { fullName: "Неизвестно", firstName: "Неизвестно", lastName: "Неизвестно" } });
             const relationDegree = record["Степень родства"] ? await findOrCreateRelationDegree(record["Степень родства"], unknownRelationDegree) : unknownRelationDegree;
-            await findOrCreateWorkplace(record["Место работы и должность"], unknownWorkplace);
+            // await findOrCreateWorkplace(record["Место работы и должность"], unknownWorkplace);
 
             await prisma.relatives.create({ data: mapRecordToRelativeData(record, relationDegree.name, registration?.id || null, initiator.id) });
         } catch (err) { console.error(`Failed to insert relative without analysis:`, err.message); }

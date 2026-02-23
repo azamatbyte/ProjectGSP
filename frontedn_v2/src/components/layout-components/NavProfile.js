@@ -10,7 +10,6 @@ import Flex from "components/shared-components/Flex";
 import { signOut } from "store/slices/authSlice";
 import styled from "@emotion/styled";
 import { FONT_WEIGHT, MEDIA_QUERIES, SPACER, FONT_SIZES } from "constants/ThemeConstant";
-import { clearStorage } from "utils/storage";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
@@ -46,7 +45,6 @@ const MenuItemSignOut = (props) => {
 
 	const handleSignOut = () => {
 		dispatch(signOut());
-		clearStorage();
 		localStorage.removeItem("user");
 		navigate("/login");
 	};

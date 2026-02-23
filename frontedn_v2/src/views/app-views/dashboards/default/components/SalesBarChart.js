@@ -138,7 +138,7 @@ const SalesBarChart = ({ cardMinHeight = 430, height = 320, model = "registratio
 
   return (
     <Card
-      title={t("dashboard_otk1_title")}
+      title={model=="registration4"?t("dashboard_otk1_forms_title"):t("dashboard_otk1_title")}
       style={{ minHeight: cardMinHeight }}
       bodyStyle={{ padding: "12px 12px 8px" }}
       extra={

@@ -1,10 +1,14 @@
-import { auth_signin, get_user } from "utils/api_urls";
+import { auth_signin, auth_logout, get_user } from "utils/api_urls";
 import Request from "utils/request";
 
 const AuthService = {};
 
 AuthService.login = function (data) {
 	return Request.postRequest(auth_signin, data);
+};
+
+AuthService.logout = function (refreshToken) {
+	return Request.postRequest(auth_logout, { refreshToken });
 };
 
 AuthService.getByToken = function () {

@@ -283,8 +283,8 @@ exports.signin = async (req, res) => {
     }
     // If the password is invalid
     return res
-      .status(402)
-      .json({ code: 402, message: "Invalid credentials. Please try again." });
+      .status(401)
+      .json({ code: 401, message: "Invalid credentials. Please try again." });
   } catch (err) {
     console.error(err);
     return res.status(500).json({
@@ -1469,7 +1469,7 @@ exports.refreshToken = async (req, res) => {
       where: { id: refreshToken?.adminId, status: "active" },
     });
     if (!status || !checkAdmin) {
-      prisma.refreshToken.delete({ where: { id: refreshToken.id } });
+      await prisma.refreshToken.delete({ where: { id: refreshToken.id } });
 
       return res.status(403).json({
         code: 403,
@@ -1498,6 +1498,56 @@ exports.refreshToken = async (req, res) => {
         message: "Internal server error",
         error: err.message,
       });
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/auth/logout:
+ *   post:
+ *     summary: "Logout and revoke refresh token"
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *             example:
+ *               refreshToken: "your-refresh-token-here"
+ *     responses:
+ *       200:
+ *         description: "Logout successful"
+ *       400:
+ *         description: "Refresh token is required"
+ *       500:
+ *         description: "Internal server error"
+ */
+exports.logout = async (req, res) => {
+  const { refreshToken } = req.body || {};
+
+  if (!refreshToken) {
+    return res
+      .status(400)
+      .json({ code: 400, message: "Refresh token is required" });
+  }
+
+  try {
+    await prisma.refreshToken.deleteMany({
+      where: { token: refreshToken },
+    });
+
+    return res.status(200).json({ code: 200, message: "Logged out" });
+  } catch (err) {
+    console.error("Error during logout:", err);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: err.message,
+    });
   }
 };
 

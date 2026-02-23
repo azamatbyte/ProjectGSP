@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { AUTH_TOKEN } from "constants/AuthConstant";
 import AuthService from "services/AuthService";
-import { clearStorage, getStorage, setStorage, setStorageR } from "utils/storage";
+import { clearStorage, getStorage, getStorageR, setStorage, setStorageR } from "utils/storage";
 
 export const initialState = {
   loading: false,
@@ -50,6 +50,14 @@ export const signIn = createAsyncThunk("auth/login", async (data, { rejectWithVa
 // })
 
 export const signOut = createAsyncThunk("auth/signOut", async () => {
+  const refreshToken = getStorageR();
+  try {
+    if (refreshToken) {
+      await AuthService.logout(refreshToken);
+    }
+  } catch (err) {
+    // Ignore logout errors; local cleanup should still happen
+  }
   clearStorage();
   localStorage.removeItem(AUTH_TOKEN);
   return "response.data";

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Row, Col, Avatar, Dropdown, Table, Tag, Select, Slider, Button, message } from "antd";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Row, Col, Avatar, Dropdown, Table, Select, Slider, Button, message } from "antd";
 import ChartWidget from "components/shared-components/ChartWidget";
 import GoalWidget from "components/shared-components/GoalWidget";
 import Card from "components/shared-components/Card";
@@ -27,10 +27,20 @@ const DEFAULT_TREND_MONTH_RANGE = 12;
 const DEFAULT_TREND_YEAR_RANGE = 5;
 const TREND_MONTH_RANGE_OPTIONS = [3, 6, 9, 12, 18, 24];
 const TREND_YEAR_RANGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const LATEST_FILTER_YEAR_RANGE = 10;
 const LATEST_TABLE_DEFAULT_PAGE_SIZE = 5;
 const SIMILARITY_THRESHOLD_DEFAULT = 75;
 const SIMILARITY_THRESHOLD_MIN = 50;
 const SIMILARITY_THRESHOLD_MAX = 100;
+
+const formatLastLogin = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  const pad = (number) => String(number).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())} ${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
+};
 
 const CardDropdown = ({ items }) => {
 
@@ -68,6 +78,9 @@ export const DefaultDashboard = () => {
   const [latestPageNumber, setLatestPageNumber] = useState(1);
   const [latestPageSize, setLatestPageSize] = useState(LATEST_TABLE_DEFAULT_PAGE_SIZE);
   const [latestTotal, setLatestTotal] = useState(0);
+  const [latestMonth, setLatestMonth] = useState(() => new Date().getMonth() + 1);
+  const [latestYear, setLatestYear] = useState(() => new Date().getFullYear());
+  const [latestSortedColumns, setLatestSortedColumns] = useState([]);
   const { direction } = useSelector(state => state.theme);
   const { role } = useSelector(state => state.auth);
 
@@ -84,8 +97,43 @@ export const DefaultDashboard = () => {
 
   const trendRangeValue = trendAxis === "MONTH" ? trendMonthRange : trendYearRange;
 
+  const latestMonthOptions = useMemo(() => {
+    const localeMap = { ru: "ru-RU", uz: "uz-UZ", en: "en-US" };
+    const locale = localeMap[i18n.language] || "ru-RU";
+
+    return Array.from({ length: 12 }, (_, index) => {
+      const monthValue = index + 1;
+      const monthLabel = new Date(2000, index, 1).toLocaleString(locale, { month: "long" });
+      return {
+        value: monthValue,
+        label: monthLabel,
+      };
+    });
+  }, [i18n.language]);
+
+  const latestYearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+
+    return Array.from({ length: LATEST_FILTER_YEAR_RANGE }, (_, index) => {
+      const yearValue = currentYear - index;
+      return {
+        value: yearValue,
+        label: String(yearValue),
+      };
+    });
+  }, []);
+
+  const latestSortOrderMap = useMemo(() => {
+    const map = {};
+    latestSortedColumns.forEach((item) => {
+      if (!item?.field) return;
+      map[item.field] = item.order === "ASC" ? "ascend" : "descend";
+    });
+    return map;
+  }, [latestSortedColumns]);
+
   const heroCategories = useMemo(() => {
-    const localeMap = { ru: "ru-RU", uz: "uz-UZ" };
+    const localeMap = { ru: "ru-RU", uz: "uz-UZ", en: "en-US" };
     const locale = localeMap[i18n.language] || "ru-RU";
     return heroRows.map((item) => {
       if (axis === "MONTH") {
@@ -279,7 +327,7 @@ export const DefaultDashboard = () => {
       };
     }
 
-    const localeMap = { ru: "ru-RU", uz: "uz-UZ" };
+    const localeMap = { ru: "ru-RU", uz: "uz-UZ", en: "en-US" };
     const locale = localeMap[i18n.language] || "ru-RU";
     const bucketMap = new Map();
     const valueMap = new Map();
@@ -372,11 +420,40 @@ export const DefaultDashboard = () => {
     },
   ]), [t]);
 
+  const handleLatestTableChange = useCallback((pagination, filters, sorter, extra) => {
+    const nextPageSize = Number(pagination?.pageSize) || LATEST_TABLE_DEFAULT_PAGE_SIZE;
+    setLatestPageSize(nextPageSize);
+
+    if (extra?.action === "sort") {
+      setLatestPageNumber(1);
+    } else {
+      const nextPageNumber = Number(pagination?.current) || 1;
+      setLatestPageNumber(nextPageNumber);
+    }
+
+    const sorters = Array.isArray(sorter) ? sorter : [sorter];
+    const normalizedSorters = sorters
+      .filter((item) => item?.order)
+      .map((item) => ({
+        field: item?.field || item?.columnKey || item?.column?.key,
+        order: item.order === "ascend" ? "ASC" : "DESC",
+        priority: Number(item?.column?.sorter?.multiple) || Number.MAX_SAFE_INTEGER,
+      }))
+      .filter((item) => typeof item.field === "string" && item.field.trim() !== "")
+      .sort((a, b) => a.priority - b.priority)
+      .map(({ field, order }) => ({ field: field.trim(), order }));
+
+    setLatestSortedColumns(normalizedSorters);
+  }, []);
+
   const tableColumns = useMemo(() => ([
     {
       title: t("dashboard_latest_column_customer"),
       dataIndex: "fullName",
       key: "fullName",
+      sorter: { multiple: 1 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: latestSortOrderMap.fullName || null,
       render: (text, record) => {
         const hasPhoto = typeof record?.photo === "string" && /^https?:\/\//i.test(record.photo);
         return (
@@ -393,28 +470,28 @@ export const DefaultDashboard = () => {
       title: t("dashboard_latest_column_registered"),
       dataIndex: "registeredCount",
       key: "registeredCount",
+      sorter: { multiple: 2 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: latestSortOrderMap.registeredCount || null,
     },
     {
       title: t("dashboard_latest_column_overdue"),
       dataIndex: "overdueCount",
       key: "overdueCount",
+      sorter: { multiple: 3 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: latestSortOrderMap.overdueCount || null,
     },
     {
-      title: () => <div className="text-right">{t("dashboard_latest_column_status")}</div>,
-      key: "status",
-      render: (_, record) => {
-        const normalized = String(record?.status || "").toLowerCase();
-        const color = normalized === "active" ? "green" : normalized === "inactive" ? "orange" : "default";
-        const statusLabel = t(`dashboard_latest_status_${normalized}`, { defaultValue: record?.status || "-" });
-
-        return (
-          <div className="text-right">
-            <Tag className="mr-0" color={color}>{statusLabel}</Tag>
-          </div>
-        );
-      },
+      title: () => <div className="text-right">{t("last_login")}</div>,
+      dataIndex: "lastLoginAt",
+      key: "lastLoginAt",
+      sorter: { multiple: 4 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: latestSortOrderMap.lastLoginAt || null,
+      render: (value) => <div className="text-right">{formatLastLogin(value)}</div>,
     },
-  ]), [t]);
+  ]), [latestSortOrderMap, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -675,6 +752,9 @@ export const DefaultDashboard = () => {
         const response = await StatisticsService.latestTransactions({
           pageNumber: latestPageNumber,
           pageSize: latestPageSize,
+          month: latestMonth,
+          year: latestYear,
+          sortFields: latestSortedColumns,
         });
 
         if (cancelled) return;
@@ -700,7 +780,7 @@ export const DefaultDashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [latestPageNumber, latestPageSize, t]);
+  }, [latestMonth, latestPageNumber, latestPageSize, latestSortedColumns, latestYear, t]);
 
   return (
     <>
@@ -832,23 +912,53 @@ export const DefaultDashboard = () => {
       </Row>
       <Row gutter={16}>
         <Col xs={24} sm={24} md={24} lg={24}>
-          <Card title={t("dashboard_latest_title")} extra={<CardDropdown items={latestTransactionOption} />}>
+          <Card
+            title={t("dashboard_latest_title")}
+            extra={(
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <Select
+                  value={latestMonth}
+                  options={latestMonthOptions}
+                  size="small"
+                  style={{ minWidth: 150 }}
+                  placeholder={t("dashboard_latest_filter_month")}
+                  onChange={(value) => {
+                    setLatestPageNumber(1);
+                    setLatestMonth(value);
+                  }}
+                  loading={latestLoading}
+                  disabled={latestLoading}
+                />
+                <Select
+                  value={latestYear}
+                  options={latestYearOptions}
+                  size="small"
+                  style={{ minWidth: 105 }}
+                  placeholder={t("dashboard_latest_filter_year")}
+                  onChange={(value) => {
+                    setLatestPageNumber(1);
+                    setLatestYear(value);
+                  }}
+                  loading={latestLoading}
+                  disabled={latestLoading}
+                />
+                <CardDropdown items={latestTransactionOption} />
+              </div>
+            )}
+          >
             <Table
               className="no-border-last"
               columns={tableColumns}
               dataSource={latestRows}
               rowKey='id'
               loading={latestLoading}
+              onChange={handleLatestTableChange}
               pagination={{
                 current: latestPageNumber,
                 pageSize: latestPageSize,
                 total: latestTotal,
                 showSizeChanger: true,
                 pageSizeOptions: ["10", "20", "50", "100"],
-                onChange: (page, size) => {
-                  setLatestPageNumber(page);
-                  setLatestPageSize(size);
-                },
               }}
             />
           </Card>

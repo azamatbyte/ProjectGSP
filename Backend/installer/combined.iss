@@ -25,6 +25,9 @@ ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
 WizardStyle=modern
 ; SetupIconFile line removed - icon.png is not valid ICO format. Create an .ico file if needed.
+WizardImageFile=..\..\frontedn_v2\public\img\gsbp_mini.png
+WizardSmallImageFile=..\..\frontedn_v2\public\img\gsbp_mini.png
+WizardImageBackColor=$403020
 UninstallDisplayIcon={app}\frontend\{#MyAppExeName}
 
 [Languages]
@@ -91,7 +94,7 @@ Name: "{autodesktop}\КОМПЛЕКС"; Filename: "{app}\frontend\{#MyAppExeName
 Name: "{autodesktop}\GSPApp Backend"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\backend\scripts\tray.ps1"" -AppRoot ""{app}\backend"""; Components: backend; IconFilename: "{app}\backend\node\node.exe"; Flags: runminimized
 
 ; Uninstall
-Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
+Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"; IconFilename: "{uninstallexe}"
 
 [Registry]
 ; Add to PATH for easier access to node/pg commands if needed
