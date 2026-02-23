@@ -459,9 +459,9 @@ exports.uploadExcel = async (req, res) => {
         const filter = {
           OR: [
             {
-              firstName: data?.firstName,
-              lastName: data?.lastName,
-              fatherName: data?.fatherName ? data?.fatherName : "",
+              firstName: data?.firstName ? { equals: data?.firstName, mode: "insensitive" } : undefined,
+              lastName: data?.lastName ? { equals: data?.lastName, mode: "insensitive" } : undefined,
+              fatherName: data?.fatherName ? { equals: data?.fatherName, mode: "insensitive" } : { equals: "", mode: "insensitive" },
               birthDate: data?.birthDate
                 ? {
                   gte: new Date(startOfYear.setHours(0, 0, 0, 0)), // Start of the year at 00:00:00
@@ -470,9 +470,9 @@ exports.uploadExcel = async (req, res) => {
                 : null,
             },
             {
-              firstName: data?.firstName,
-              lastName: data?.lastName,
-              fatherName: data?.fatherName ? data?.fatherName : "",
+              firstName: data?.firstName ? { equals: data?.firstName, mode: "insensitive" } : undefined,
+              lastName: data?.lastName ? { equals: data?.lastName, mode: "insensitive" } : undefined,
+              fatherName: data?.fatherName ? { equals: data?.fatherName, mode: "insensitive" } : { equals: "", mode: "insensitive" },
               birthYear: data?.birthYear ? parseInt(data?.birthYear) : null,
             },
           ].filter(Boolean),
@@ -3078,7 +3078,7 @@ exports.save = async (req, res) => {
         .status(404)
         .json({ code: 404, message: "Temporary data not found" });
     }
-    
+
     if (
       !(
         temporaryData?.registrationSimilarity.find(
@@ -3795,6 +3795,8 @@ exports.addManualRegistration = async (req, res) => {
 
     // Validate required fields
     if (!firstName || !lastName || !birthYear || !or_tab) {
+      console.log("i am here", req.body);
+
       return res.status(400).json({
         code: 400,
         message:
@@ -3925,18 +3927,18 @@ exports.addManualRegistration = async (req, res) => {
     const filter = {
       OR: [
         {
-          firstName: data?.firstName,
-          lastName: data?.lastName,
-          fatherName: data?.fatherName ? data?.fatherName : "",
+          firstName: data?.firstName ? { equals: data?.firstName, mode: "insensitive" } : undefined,
+          lastName: data?.lastName ? { equals: data?.lastName, mode: "insensitive" } : undefined,
+          fatherName: data?.fatherName ? { equals: data?.fatherName, mode: "insensitive" } : { equals: "", mode: "insensitive" },
           birthDate: {
             gte: new Date(startOfYear.setHours(0, 0, 0, 0)),
             lte: new Date(endOfYear.setHours(23, 59, 59, 999)),
           },
         },
         {
-          firstName: data?.firstName,
-          lastName: data?.lastName,
-          fatherName: data?.fatherName ? data?.fatherName : "",
+          firstName: data?.firstName ? { equals: data?.firstName, mode: "insensitive" } : undefined,
+          lastName: data?.lastName ? { equals: data?.lastName, mode: "insensitive" } : undefined,
+          fatherName: data?.fatherName ? { equals: data?.fatherName, mode: "insensitive" } : { equals: "", mode: "insensitive" },
           birthYear: data?.birthYear ? parseInt(data?.birthYear) : null,
         },
       ].filter(Boolean),

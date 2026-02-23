@@ -27,7 +27,7 @@ const DEFAULT_TREND_MONTH_RANGE = 12;
 const DEFAULT_TREND_YEAR_RANGE = 5;
 const TREND_MONTH_RANGE_OPTIONS = [3, 6, 9, 12, 18, 24];
 const TREND_YEAR_RANGE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-const LATEST_FILTER_YEAR_RANGE = 10;
+const LATEST_FILTER_YEAR_RANGE = 40;
 const LATEST_TABLE_DEFAULT_PAGE_SIZE = 5;
 const SIMILARITY_THRESHOLD_DEFAULT = 75;
 const SIMILARITY_THRESHOLD_MIN = 50;
@@ -78,7 +78,6 @@ export const DefaultDashboard = () => {
   const [latestPageNumber, setLatestPageNumber] = useState(1);
   const [latestPageSize, setLatestPageSize] = useState(LATEST_TABLE_DEFAULT_PAGE_SIZE);
   const [latestTotal, setLatestTotal] = useState(0);
-  const [latestMonth, setLatestMonth] = useState(() => new Date().getMonth() + 1);
   const [latestYear, setLatestYear] = useState(() => new Date().getFullYear());
   const [latestSortedColumns, setLatestSortedColumns] = useState([]);
   const { direction } = useSelector(state => state.theme);
@@ -96,20 +95,6 @@ export const DefaultDashboard = () => {
   );
 
   const trendRangeValue = trendAxis === "MONTH" ? trendMonthRange : trendYearRange;
-
-  const latestMonthOptions = useMemo(() => {
-    const localeMap = { ru: "ru-RU", uz: "uz-UZ", en: "en-US" };
-    const locale = localeMap[i18n.language] || "ru-RU";
-
-    return Array.from({ length: 12 }, (_, index) => {
-      const monthValue = index + 1;
-      const monthLabel = new Date(2000, index, 1).toLocaleString(locale, { month: "long" });
-      return {
-        value: monthValue,
-        label: monthLabel,
-      };
-    });
-  }, [i18n.language]);
 
   const latestYearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -752,7 +737,6 @@ export const DefaultDashboard = () => {
         const response = await StatisticsService.latestTransactions({
           pageNumber: latestPageNumber,
           pageSize: latestPageSize,
-          month: latestMonth,
           year: latestYear,
           sortFields: latestSortedColumns,
         });
@@ -780,7 +764,7 @@ export const DefaultDashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [latestMonth, latestPageNumber, latestPageSize, latestSortedColumns, latestYear, t]);
+  }, [latestPageNumber, latestPageSize, latestSortedColumns, latestYear, t]);
 
   return (
     <>
@@ -916,19 +900,6 @@ export const DefaultDashboard = () => {
             title={t("dashboard_latest_title")}
             extra={(
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                <Select
-                  value={latestMonth}
-                  options={latestMonthOptions}
-                  size="small"
-                  style={{ minWidth: 150 }}
-                  placeholder={t("dashboard_latest_filter_month")}
-                  onChange={(value) => {
-                    setLatestPageNumber(1);
-                    setLatestMonth(value);
-                  }}
-                  loading={latestLoading}
-                  disabled={latestLoading}
-                />
                 <Select
                   value={latestYear}
                   options={latestYearOptions}

@@ -5,7 +5,8 @@
 #>
 Param(
 	[string]$ProgramDataRoot = (Join-Path $env:ProgramData 'GSPApp'),
-	[string]$AppRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+	[string]$AppRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
+	[switch]$SkipNodeStart   # Pass from installer to skip Node startup (Electron starts it instead)
 )
 
 # Do NOT use $ErrorActionPreference = 'Stop' globally - we want to continue on errors
@@ -536,7 +537,9 @@ try {
 Log "Seed log: $seedLog"
 
 # -- Node server --------------------------------------------------------------
-# Start Node AFTER database is ready with schema and seed data
+# Start Node AFTER database is ready with schema and seed data.
+# Skipped during installer run (-SkipNodeStart); Electron's ensureBackendRunning() starts it instead.
+if (-not $SkipNodeStart) {
 Log "========== NODE SERVER STARTUP =========="
 try {
 	$nodePidFile = Join-Path $pidDir 'node.pid'
@@ -579,12 +582,16 @@ try {
 			$env:NODE_ENV = 'production'
 
 			try {
-				# Use Start-Process with -RedirectStandardOutput for persistent file handles
-				# Unlike Start-Job, this survives after the PowerShell script exits
-				$proc = Start-Process -FilePath $nodeExe -ArgumentList "`"$indexJs`"" -WorkingDirectory $workingDir -NoNewWindow -PassThru -RedirectStandardOutput $appLog -RedirectStandardError $appErrLog
+				# Use cmd /C wrapper: gives Node a new detached console (no shared console with PowerShell).
+				# - PowerShell can exit immediately after this line.
+				# - cmd.exe stays alive as long as node runs; taskkill /T on cmd PID also kills node child.
+				# - PID file stores cmd.exe PID — works for alive-check and stop_services.ps1 (which uses /T).
+				$cmdArgs = "/C `"$nodeExe`" `"$indexJs`" 1>>`"$appLog`" 2>>`"$appErrLog`""
+				$proc = Start-Process -FilePath "cmd.exe" -ArgumentList $cmdArgs `
+					-WorkingDirectory $workingDir -WindowStyle Hidden -PassThru
 				if ($proc) {
 					$proc.Id | Out-File $nodePidFile -Encoding ascii
-					Log "Node started successfully (PID $($proc.Id))"
+					Log "Node started successfully (cmd PID $($proc.Id))"
 				} else {
 					LogErr "Failed to start Node process"
 				}
@@ -598,6 +605,10 @@ try {
 	LogErr "Node start failed with exception: $_"
 	LogErr "Exception details: $($_.Exception.Message)"
 	LogErr "Stack trace: $($_.ScriptStackTrace)"
+}
+} else {
+	Log "========== NODE SERVER STARTUP SKIPPED (-SkipNodeStart) =========="
+	Log "Electron will start Node via ensureBackendRunning() on first launch."
 }
 
 try { Stop-Transcript | Out-Null } catch {}

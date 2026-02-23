@@ -604,11 +604,6 @@ exports.updateSimilarityThreshold = async (req, res) => {
  *               pageSize:
  *                 type: integer
  *                 example: 10
- *               month:
- *                 type: integer
- *                 minimum: 1
- *                 maximum: 12
- *                 example: 2
  *               year:
  *                 type: integer
  *                 minimum: 1
@@ -623,7 +618,7 @@ exports.updateSimilarityThreshold = async (req, res) => {
  */
 exports.latestTransactions = async (req, res) => {
   try {
-    const { pageNumber, pageSize, month, year, sortFields } = req.body || {};
+    const { pageNumber, pageSize, year, sortFields } = req.body || {};
 
     const parsedPageNumber = parsePositiveInt(pageNumber, 1);
     const parsedPageSize = parsePositiveInt(pageSize, 10);
@@ -635,38 +630,22 @@ exports.latestTransactions = async (req, res) => {
       });
     }
 
-    const hasMonth = !(month === undefined || month === null || month === "");
     const hasYear = !(year === undefined || year === null || year === "");
-
-    if (hasMonth !== hasYear) {
-      return res.status(400).json({
-        code: 400,
-        message: "month and year must be provided together",
-      });
-    }
-
-    let parsedMonth = null;
     let parsedYear = null;
     let regDateWhere = undefined;
 
-    if (hasMonth && hasYear) {
-      parsedMonth = parsePositiveInt(month, null);
+    if (hasYear) {
       parsedYear = parsePositiveInt(year, null);
 
-      if (
-        parsedMonth === null ||
-        parsedYear === null ||
-        parsedMonth < 1 ||
-        parsedMonth > 12
-      ) {
+      if (parsedYear === null) {
         return res.status(400).json({
           code: 400,
-          message: "month must be between 1 and 12 and year must be a positive integer",
+          message: "year must be a positive integer",
         });
       }
 
-      const periodStart = new Date(Date.UTC(parsedYear, parsedMonth - 1, 1, 0, 0, 0, 0));
-      const periodEnd = new Date(Date.UTC(parsedYear, parsedMonth, 0, 23, 59, 59, 999));
+      const periodStart = new Date(Date.UTC(parsedYear, 0, 1, 0, 0, 0, 0));
+      const periodEnd = new Date(Date.UTC(parsedYear, 11, 31, 23, 59, 59, 999));
 
       regDateWhere = {
         not: null,
@@ -695,6 +674,9 @@ exports.latestTransactions = async (req, res) => {
         father_name: true,
         photo: true,
         createdAt: true,
+      },
+      where: {
+        status: "active",
       },
       orderBy: {
         createdAt: "desc",
@@ -858,7 +840,6 @@ exports.latestTransactions = async (req, res) => {
           totalPages: Math.ceil(total / safePageSize),
         },
         filters: {
-          month: parsedMonth,
           year: parsedYear,
         },
       },
