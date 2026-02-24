@@ -4070,53 +4070,6 @@ exports.exportData = async (req, res) => {
   try {
     const { format = 'csv', compress = false } = req.body;
 
-    // Fetch data from Registration and Relatives models
-    const registrations = await prisma.registration.findMany({
-      include: {
-        executor: {
-          select: {
-            username: true,
-            first_name: true,
-            last_name: true
-          }
-        },
-        Initiator: {
-          select: {
-            first_name: true,
-            last_name: true,
-            father_name: true
-          }
-        }
-      }
-    });
-
-    const relatives = await prisma.relatives.findMany({
-      include: {
-        executor: {
-          select: {
-            username: true,
-            first_name: true,
-            last_name: true
-          }
-        },
-        Initiator: {
-          select: {
-            first_name: true,
-            last_name: true,
-            father_name: true
-          }
-        },
-        registration: {
-          select: {
-            id: true,
-            regNumber: true,
-            fullName: true
-          }
-        }
-      }
-    });
-
-    // await new Promise(resolve => setTimeout(resolve, 10000));//10 sekund kutish
 
     if (format === 'csv') {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -4210,80 +4163,136 @@ exports.exportData = async (req, res) => {
         encoding: 'utf8'
       });
 
-      // Prepare registration data
-      const registrationData = registrations.map(reg => ({
-        id: reg.id,
-        regNumber: reg.regNumber || '',
-        regDate: reg.regDate ? reg.regDate.toISOString() : '',
-        regEndDate: reg.regEndDate ? reg.regEndDate.toISOString() : '',
-        fullName: reg.fullName || '',
-        firstName: reg.firstName || '',
-        lastName: reg.lastName || '',
-        fatherName: reg.fatherName || '',
-        nationality: reg.nationality || '',
-        pinfl: reg.pinfl || '',
-        birthDate: reg.birthDate ? reg.birthDate.toISOString() : '',
-        birthYear: reg.birthYear || '',
-        birthPlace: reg.birthPlace || '',
-        residence: reg.residence || '',
-        workplace: reg.workplace || '',
-        position: reg.position || '',
-        status: reg.status || '',
-        completeStatus: reg.completeStatus || '',
-        form_reg: reg.form_reg || '',
-        form_reg_log: reg.form_reg_log || '',
-        conclusionDate: reg.conclusionDate ? reg.conclusionDate.toISOString() : '',
-        conclusionRegNum: reg.conclusionRegNum || '',
-        model: reg.model || '',
-        notes: reg.notes || '',
-        additionalNotes: reg.additionalNotes || '',
-        conclusion_compr: reg.conclusion_compr || '',
-        externalNotes: reg.externalNotes || '',
-        accessStatus: reg.accessStatus || '',
-        expired: reg.expired ? reg.expired.toISOString() : '',
-        expiredDate: reg.expiredDate ? reg.expiredDate.toISOString() : '',
-        recordNumber: reg.recordNumber || '',
-        endDate: reg.endDate ? reg.endDate.toISOString() : '',
-        executorName: reg.executor ? `${reg.executor.first_name} ${reg.executor.last_name}`.trim() : '',
-        initiatorName: reg.Initiator ? `${reg.Initiator.first_name} ${reg.Initiator.last_name}`.trim() : '',
-        createdAt: reg.createdAt.toISOString(),
-        updatedAt: reg.updatedAt.toISOString()
-      }));
+      // Stream registrations in batches to avoid loading all records into memory
+      const batchSize = 500;
+      let skip = 0;
+      while (true) {
+        const batch = await prisma.registration.findMany({
+          include: {
+            executor: {
+              select: {
+                username: true,
+                first_name: true,
+                last_name: true
+              }
+            },
+            Initiator: {
+              select: {
+                first_name: true,
+                last_name: true,
+                father_name: true
+              }
+            }
+          },
+          skip,
+          take: batchSize
+        });
+        if (batch.length === 0) break;
+        await registrationsCsvWriter.writeRecords(batch.map(reg => ({
+          id: reg.id,
+          regNumber: reg.regNumber || '',
+          regDate: reg.regDate ? reg.regDate.toISOString() : '',
+          regEndDate: reg.regEndDate ? reg.regEndDate.toISOString() : '',
+          fullName: reg.fullName || '',
+          firstName: reg.firstName || '',
+          lastName: reg.lastName || '',
+          fatherName: reg.fatherName || '',
+          nationality: reg.nationality || '',
+          pinfl: reg.pinfl || '',
+          birthDate: reg.birthDate ? reg.birthDate.toISOString() : '',
+          birthYear: reg.birthYear || '',
+          birthPlace: reg.birthPlace || '',
+          residence: reg.residence || '',
+          workplace: reg.workplace || '',
+          position: reg.position || '',
+          status: reg.status || '',
+          completeStatus: reg.completeStatus || '',
+          form_reg: reg.form_reg || '',
+          form_reg_log: reg.form_reg_log || '',
+          conclusionDate: reg.conclusionDate ? reg.conclusionDate.toISOString() : '',
+          conclusionRegNum: reg.conclusionRegNum || '',
+          model: reg.model || '',
+          notes: reg.notes || '',
+          additionalNotes: reg.additionalNotes || '',
+          conclusion_compr: reg.conclusion_compr || '',
+          externalNotes: reg.externalNotes || '',
+          accessStatus: reg.accessStatus || '',
+          expired: reg.expired ? reg.expired.toISOString() : '',
+          expiredDate: reg.expiredDate ? reg.expiredDate.toISOString() : '',
+          recordNumber: reg.recordNumber || '',
+          endDate: reg.endDate ? reg.endDate.toISOString() : '',
+          executorName: reg.executor ? `${reg.executor.first_name} ${reg.executor.last_name}`.trim() : '',
+          initiatorName: reg.Initiator ? `${reg.Initiator.first_name} ${reg.Initiator.last_name}`.trim() : '',
+          createdAt: reg.createdAt.toISOString(),
+          updatedAt: reg.updatedAt.toISOString()
+        })));
+        skip += batch.length;
+        if (batch.length < batchSize) break;
+      }
 
-      // Prepare relatives data
-      const relativesData = relatives.map(rel => ({
-        id: rel.id,
-        regNumber: rel.regNumber || '',
-        relationDegree: rel.relationDegree || '',
-        fullName: rel.fullName || '',
-        firstName: rel.firstName || '',
-        lastName: rel.lastName || '',
-        fatherName: rel.fatherName || '',
-        nationality: rel.nationality || '',
-        pinfl: rel.pinfl || '',
-        birthDate: rel.birthDate ? rel.birthDate.toISOString() : '',
-        birthYear: rel.birthYear || '',
-        birthPlace: rel.birthPlace || '',
-        residence: rel.residence || '',
-        workplace: rel.workplace || '',
-        position: rel.position || '',
-        familyStatus: rel.familyStatus || '',
-        model: rel.model || '',
-        notes: rel.notes || '',
-        additionalNotes: rel.additionalNotes || '',
-        externalNotes: rel.externalNotes || '',
-        accessStatus: rel.accessStatus || '',
-        status_analysis: rel.status_analysis !== undefined ? rel.status_analysis : true,
-        registrationId: rel.registrationId || '',
-        executorName: rel.executor ? `${rel.executor.first_name} ${rel.executor.last_name}`.trim() : '',
-        initiatorName: rel.Initiator ? `${rel.Initiator.first_name} ${rel.Initiator.last_name}`.trim() : '',
-        createdAt: rel.createdAt.toISOString(),
-        updatedAt: rel.updatedAt.toISOString()
-      }));
-
-      // Write CSV files
-      await registrationsCsvWriter.writeRecords(registrationData);
-      await relativesCsvWriter.writeRecords(relativesData);
+      // Stream relatives in batches
+      skip = 0;
+      while (true) {
+        const batch = await prisma.relatives.findMany({
+          include: {
+            executor: {
+              select: {
+                username: true,
+                first_name: true,
+                last_name: true
+              }
+            },
+            Initiator: {
+              select: {
+                first_name: true,
+                last_name: true,
+                father_name: true
+              }
+            },
+            registration: {
+              select: {
+                id: true,
+                regNumber: true,
+                fullName: true
+              }
+            }
+          },
+          skip,
+          take: batchSize
+        });
+        if (batch.length === 0) break;
+        await relativesCsvWriter.writeRecords(batch.map(rel => ({
+          id: rel.id,
+          regNumber: rel.regNumber || '',
+          relationDegree: rel.relationDegree || '',
+          fullName: rel.fullName || '',
+          firstName: rel.firstName || '',
+          lastName: rel.lastName || '',
+          fatherName: rel.fatherName || '',
+          nationality: rel.nationality || '',
+          pinfl: rel.pinfl || '',
+          birthDate: rel.birthDate ? rel.birthDate.toISOString() : '',
+          birthYear: rel.birthYear || '',
+          birthPlace: rel.birthPlace || '',
+          residence: rel.residence || '',
+          workplace: rel.workplace || '',
+          position: rel.position || '',
+          familyStatus: rel.familyStatus || '',
+          model: rel.model || '',
+          notes: rel.notes || '',
+          additionalNotes: rel.additionalNotes || '',
+          externalNotes: rel.externalNotes || '',
+          accessStatus: rel.accessStatus || '',
+          status_analysis: rel.status_analysis !== undefined ? rel.status_analysis : true,
+          registrationId: rel.registrationId || '',
+          executorName: rel.executor ? `${rel.executor.first_name} ${rel.executor.last_name}`.trim() : '',
+          initiatorName: rel.Initiator ? `${rel.Initiator.first_name} ${rel.Initiator.last_name}`.trim() : '',
+          createdAt: rel.createdAt.toISOString(),
+          updatedAt: rel.updatedAt.toISOString()
+        })));
+        skip += batch.length;
+        if (batch.length < batchSize) break;
+      }
 
       // Generate secure password for ZIP encryption
       const zipPassword = generateSecurePassword(16);
@@ -4293,7 +4302,7 @@ exports.exportData = async (req, res) => {
         const zipPath = path.join(tempDir, `export_${timestamp}.zip`);
         const output = fs.createWriteStream(zipPath);
         const archive = archiver('zip-encrypted', {
-          zlib: { level: 9 },
+          zlib: { level: 6 },
           encryptionMethod: 'aes256',
           password: zipPassword
         });
@@ -4331,7 +4340,12 @@ exports.exportData = async (req, res) => {
         });
 
         archive.on('error', (err) => {
-          throw err;
+          console.error('Archive error:', err);
+          try { fs.unlinkSync(registrationsCsvPath); } catch (_) {}
+          try { fs.unlinkSync(relativesCsvPath); } catch (_) {}
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Error creating backup archive', message: err.message });
+          }
         });
 
         archive.pipe(output);
@@ -4344,7 +4358,7 @@ exports.exportData = async (req, res) => {
         const zipPath = path.join(tempDir, `export_${timestamp}.zip`);
         const output = fs.createWriteStream(zipPath);
         const archive = archiver('zip-encrypted', {
-          zlib: { level: 9 },
+          zlib: { level: 6 },
           encryptionMethod: 'aes256',
           password: zipPassword
         });
@@ -4382,7 +4396,12 @@ exports.exportData = async (req, res) => {
         });
 
         archive.on('error', (err) => {
-          throw err;
+          console.error('Archive error:', err);
+          try { fs.unlinkSync(registrationsCsvPath); } catch (_) {}
+          try { fs.unlinkSync(relativesCsvPath); } catch (_) {}
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Error creating backup archive', message: err.message });
+          }
         });
 
         archive.pipe(output);
@@ -4393,6 +4412,51 @@ exports.exportData = async (req, res) => {
 
     } else {
       // Return JSON format
+      const registrations = await prisma.registration.findMany({
+        include: {
+          executor: {
+            select: {
+              username: true,
+              first_name: true,
+              last_name: true
+            }
+          },
+          Initiator: {
+            select: {
+              first_name: true,
+              last_name: true,
+              father_name: true
+            }
+          }
+        }
+      });
+
+      const relatives = await prisma.relatives.findMany({
+        include: {
+          executor: {
+            select: {
+              username: true,
+              first_name: true,
+              last_name: true
+            }
+          },
+          Initiator: {
+            select: {
+              first_name: true,
+              last_name: true,
+              father_name: true
+            }
+          },
+          registration: {
+            select: {
+              id: true,
+              regNumber: true,
+              fullName: true
+            }
+          }
+        }
+      });
+
       res.json({
         success: true,
         data: {

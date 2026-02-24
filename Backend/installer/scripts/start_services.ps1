@@ -586,7 +586,7 @@ try {
 				# - PowerShell can exit immediately after this line.
 				# - cmd.exe stays alive as long as node runs; taskkill /T on cmd PID also kills node child.
 				# - PID file stores cmd.exe PID — works for alive-check and stop_services.ps1 (which uses /T).
-				$cmdArgs = "/C `"$nodeExe`" `"$indexJs`" 1>>`"$appLog`" 2>>`"$appErrLog`""
+				$cmdArgs = "/C `"$nodeExe`" --max-old-space-size=4096 `"$indexJs`" 1>>`"$appLog`" 2>>`"$appErrLog`""
 				$proc = Start-Process -FilePath "cmd.exe" -ArgumentList $cmdArgs `
 					-WorkingDirectory $workingDir -WindowStyle Hidden -PassThru
 				if ($proc) {
