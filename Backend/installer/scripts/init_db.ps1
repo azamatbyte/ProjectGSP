@@ -127,10 +127,45 @@ New-Item -ItemType Directory -Force -Path $dataDir | Out-Null
 $pwFile = [System.IO.Path]::GetTempFileName()
 Set-Content -Path $pwFile -Value $pgPass -NoNewline -Encoding ascii
 
+# Locale selection:
+# - Prefer ICU when supported (better case-insensitive behavior for non-ASCII)
+# - Allow env overrides via PG_LOCALE_PROVIDER / PG_ICU_LOCALE
+# - Fall back to OS default locale if ICU flags are unavailable
+$pgLocaleProvider = (Get-Val 'PG_LOCALE_PROVIDER' '')
+if ($pgLocaleProvider) { $pgLocaleProvider = $pgLocaleProvider.ToLowerInvariant() }
+$pgIcuLocale = Get-Val 'PG_ICU_LOCALE' 'und'
+$initdbHelp = & $initdbExe --help 2>&1
+$icuSupported = ($initdbHelp -match '--locale-provider') -or ($initdbHelp -match '--icu-locale')
+
+$initdbArgs = @(
+	'-U', $pgUser,
+	'-D', "$dataDir",
+	'--auth=scram-sha-256',
+	"--pwfile=$pwFile",
+	'--encoding=UTF8'
+)
+
+if ($icuSupported) {
+	if ($pgLocaleProvider -eq 'libc') {
+		$initdbArgs += '--locale-provider=libc'
+		Write-Step "Locale: libc (explicit)"
+	} else {
+		$initdbArgs += '--locale-provider=icu'
+		$initdbArgs += "--icu-locale=$pgIcuLocale"
+		Write-Step "Locale: ICU ($pgIcuLocale)"
+	}
+} else {
+	if ($pgLocaleProvider -or $pgIcuLocale) {
+		Write-Warning "ICU locale flags not supported by this initdb. Using OS default locale."
+	} else {
+		Write-Step "Locale: OS default (ICU flags not supported)"
+	}
+}
+
 $initLog = Join-Path $logsDir 'initdb.log'
 Write-Step "Running initdb..."
 
-$initResult = & $initdbExe -U $pgUser -D "$dataDir" --auth=scram-sha-256 --pwfile="$pwFile" --encoding=UTF8 --locale=C 2>&1
+$initResult = & $initdbExe @initdbArgs 2>&1
 $initExitCode = $LASTEXITCODE
 $initResult | Out-File -FilePath $initLog -Encoding utf8
 

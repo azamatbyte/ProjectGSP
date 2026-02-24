@@ -278,6 +278,19 @@ try {
 						LogErr "Last 30 lines of postgres.log:"
 						Get-Content $pgLogFile -Tail 30 | ForEach-Object { LogErr "  $_" }
 					}
+
+					# Fallback: try a simple psql connect to confirm readiness
+					$psqlExeFallback = Join-Path $pgBin 'psql.exe'
+					$dbUserFallback = if ($env:DB_USER) { $env:DB_USER } else { 'appuser' }
+					if (Test-Path $psqlExeFallback) {
+						$psqlTest = & $psqlExeFallback -h 127.0.0.1 -p $pgPort -U $dbUserFallback -tAc "SELECT 1" postgres 2>&1
+						if ($LASTEXITCODE -eq 0) {
+							$pgReady = $true
+							Log "PostgreSQL is ready (psql fallback check succeeded)."
+						} else {
+							LogErr "psql fallback check failed: $psqlTest"
+						}
+					}
 				}
 
 				# Save PID
@@ -418,6 +431,39 @@ try {
 	}
 } catch {
 	LogErr "Database creation check failed: $_"
+}
+
+# -- Locale check -------------------------------------------------------------
+Log "========== LOCALE CHECK =========="
+try {
+	$psqlExe = Join-Path $pgBin 'psql.exe'
+	$dbUser = if ($env:DB_USER) { $env:DB_USER } else { 'appuser' }
+
+	if (Test-Path $psqlExe) {
+		# lc_collate / lc_ctype are not runtime GUCs in newer PG versions.
+		# Query pg_database instead (postgres DB always exists).
+		$localeRow = & $psqlExe -h 127.0.0.1 -p $pgPort -U $dbUser -tAc "SELECT datcollate || '|' || datctype FROM pg_database WHERE datname = 'postgres';" postgres 2>&1
+		$localeTrim = "$localeRow".Trim()
+		if ($localeTrim -match '\|') {
+			$parts = $localeTrim.Split('|', 2)
+			$lcCollateTrim = $parts[0].Trim()
+			$lcCtypeTrim = $parts[1].Trim()
+
+			if ($lcCollateTrim -match '^(C|POSIX)$' -or $lcCtypeTrim -match '^(C|POSIX)$') {
+				LogErr "WARNING: PostgreSQL locale is lc_collate='$lcCollateTrim', lc_ctype='$lcCtypeTrim'."
+				LogErr "Case-insensitive search for non-ASCII names may fail."
+				LogErr "Reinitialize data directory: $dataDir"
+			} else {
+				Log "Locale OK: lc_collate='$lcCollateTrim', lc_ctype='$lcCtypeTrim'"
+			}
+		} else {
+			LogErr "Locale check failed (unexpected output): $localeTrim"
+		}
+	} else {
+		LogErr "psql.exe not found at $psqlExe - cannot check locale"
+	}
+} catch {
+	LogErr "Locale check failed: $_"
 }
 
 # -- Prisma schema push -------------------------------------------------------

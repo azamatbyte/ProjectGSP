@@ -1052,6 +1052,21 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
             </Flex>
           )}
 
+          {model !== "registration4" && (
+            <Flex className="mb-1" mobileFlex={false}>
+              <div className="mr-md-3 mb-3">
+                <Button
+                  className="mr-2"
+                  onClick={() => setIsModalVisibleMalumotnoma(true)}
+                  type="primary"
+                >
+                  <FileExcelOutlined />
+                  <span className="ml-2">{t("export_malumotnoma")}</span>
+                </Button>
+              </div>
+            </Flex>
+          )}
+
           <Flex className="mb-1" mobileFlex={false}>
             <div className="mr-md-3 mb-3">
               <Select

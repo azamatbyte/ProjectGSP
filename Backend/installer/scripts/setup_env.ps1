@@ -104,6 +104,16 @@ if ((Test-Path $EnvFile) -and -not $Force) {
         Log "Added DB_NAME"
         $needsUpdate = $true
     }
+    if ($content -notmatch 'PG_LOCALE_PROVIDER\s*=') {
+        Add-Content -Path $EnvFile -Value "PG_LOCALE_PROVIDER=icu"
+        Log "Added PG_LOCALE_PROVIDER"
+        $needsUpdate = $true
+    }
+    if ($content -notmatch 'PG_ICU_LOCALE\s*=') {
+        Add-Content -Path $EnvFile -Value "PG_ICU_LOCALE=und"
+        Log "Added PG_ICU_LOCALE"
+        $needsUpdate = $true
+    }
 
     # Check for DATABASE_URL
     if ($content -notmatch 'DATABASE_URL\s*=\s*\S+') {
@@ -155,6 +165,8 @@ $jwtKey = New-SecureString -Length 48
     "JWT_SECRET_KEY=$jwtKey",
     '',
     '# Database Connection',
+    'PG_LOCALE_PROVIDER=icu',
+    'PG_ICU_LOCALE=und',
     "DATABASE_URL=postgresql://appuser:${pgPass}@127.0.0.1:5433/appdb?schema=public",
     "DB_HOST=127.0.0.1",
     "DB_PORT=5433",

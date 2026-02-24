@@ -355,6 +355,8 @@ NODE_ENV=production
 PGPORT=5433
 PGUSER=appuser
 # PGPASSWORD is auto-generated on first run
+PG_LOCALE_PROVIDER=icu
+PG_ICU_LOCALE=und
 
 # Database Connection (auto-configured on first run)
 DB_HOST=localhost

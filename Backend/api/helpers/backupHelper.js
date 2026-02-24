@@ -1,494 +1,714 @@
 // Helper functions and configurations for complete database backup/restore
 
-/**
- * Get all table configurations for backup/restore
- * Returns array of table configs with headers and data mapping functions
- */
-const getTableConfigurations = () => {
-    return [
-        {
-            name: 'admins',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'username', title: 'Username' },
-                { id: 'password', title: 'Password' },
-                { id: 'birthDate', title: 'Birth Date' },
-                { id: 'father_name', title: 'Father Name' },
-                { id: 'first_name', title: 'First Name' },
-                { id: 'last_name', title: 'Last Name' },
-                { id: 'nationality', title: 'Nationality' },
-                { id: 'rank', title: 'Rank' },
-                { id: 'gender', title: 'Gender' },
-                { id: 'workplace', title: 'Workplace' },
-                { id: 'phone', title: 'Phone' },
-                { id: 'photo', title: 'Photo' },
-                { id: 'salt', title: 'Salt' },
-                { id: 'role', title: 'Role' },
-                { id: 'status', title: 'Status' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                username: item.username || '',
-                password: item.password || '',
-                birthDate: item.birthDate ? item.birthDate.toISOString() : '',
-                father_name: item.father_name || '',
-                first_name: item.first_name || '',
-                last_name: item.last_name || '',
-                nationality: item.nationality || '',
-                rank: item.rank || '',
-                gender: item.gender || '',
-                workplace: item.workplace || '',
-                phone: item.phone || '',
-                photo: item.photo || '',
-                salt: item.salt || '',
-                role: item.role || '',
-                status: item.status || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'initiators',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'first_name', title: 'First Name' },
-                { id: 'last_name', title: 'Last Name' },
-                { id: 'father_name', title: 'Father Name' },
-                { id: 'rank', title: 'Rank' },
-                { id: 'notes', title: 'Notes' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                first_name: item.first_name || '',
-                last_name: item.last_name || '',
-                father_name: item.father_name || '',
-                rank: item.rank || '',
-                notes: item.notes || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'forms',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'name', title: 'Name' },
-                { id: 'description', title: 'Description' },
-                { id: 'length', title: 'Length' },
-                { id: 'month', title: 'Month' },
-                { id: 'type', title: 'Type' },
-                { id: 'status', title: 'Status' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                name: item.name || '',
-                description: item.description || '',
-                length: item.length || '',
-                month: item.month || '',
-                type: item.type || '',
-                status: item.status !== undefined ? item.status : false,
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'services',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'name', title: 'Name' },
-                { id: 'description', title: 'Description' },
-                { id: 'code', title: 'Code' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                name: item.name || '',
-                description: item.description || '',
-                code: item.code || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'accessStatuses',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'name', title: 'Name' },
-                { id: 'adminId', title: 'Admin ID' },
-                { id: 'status', title: 'Status' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                name: item.name || '',
-                adminId: item.adminId || '',
-                status: item.status !== undefined ? item.status : false,
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'workPlaces',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'name', title: 'Name' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                name: item.name || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'relationDegrees',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'name', title: 'Name' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                name: item.name || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'signLists',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'lastName', title: 'Last Name' },
-                { id: 'firstName', title: 'First Name' },
-                { id: 'fatherName', title: 'Father Name' },
-                { id: 'workplace', title: 'Workplace' },
-                { id: 'position', title: 'Position' },
-                { id: 'rank', title: 'Rank' },
-                { id: 'notes', title: 'Notes' },
-                { id: 'birthDate', title: 'Birth Date' },
-                { id: 'nationality', title: 'Nationality' },
-                { id: 'gender', title: 'Gender' },
-                { id: 'phone', title: 'Phone' },
-                { id: 'photo', title: 'Photo' },
-                { id: 'status', title: 'Status' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                lastName: item.lastName || '',
-                firstName: item.firstName || '',
-                fatherName: item.fatherName || '',
-                workplace: item.workplace || '',
-                position: item.position || '',
-                rank: item.rank || '',
-                notes: item.notes || '',
-                birthDate: item.birthDate ? item.birthDate.toISOString() : '',
-                nationality: item.nationality || '',
-                gender: item.gender || '',
-                phone: item.phone || '',
-                photo: item.photo || '',
-                status: item.status || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'registrationLogs',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'registrationId', title: 'Registration ID' },
-                { id: 'fieldName', title: 'Field Name' },
-                { id: 'oldValue', title: 'Old Value' },
-                { id: 'newValue', title: 'New Value' },
-                { id: 'executorId', title: 'Executor ID' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                registrationId: item.registrationId || '',
-                fieldName: item.fieldName || '',
-                oldValue: item.oldValue || '',
-                newValue: item.newValue || '',
-                executorId: item.executorId || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'logs',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'recordId', title: 'Record ID' },
-                { id: 'tableName', title: 'Table Name' },
-                { id: 'fieldName', title: 'Field Name' },
-                { id: 'oldValue', title: 'Old Value' },
-                { id: 'newValue', title: 'New Value' },
-                { id: 'executorId', title: 'Executor ID' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                recordId: item.recordId || '',
-                tableName: item.tableName || '',
-                fieldName: item.fieldName || '',
-                oldValue: item.oldValue || '',
-                newValue: item.newValue || '',
-                executorId: item.executorId || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'seans',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'adminId', title: 'Admin ID' },
-                { id: 'resource', title: 'Resource' },
-                { id: 'ip_address', title: 'IP Address' },
-                { id: 'user_agent', title: 'User Agent' },
-                { id: 'auth_method', title: 'Auth Method' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                adminId: item.adminId || '',
-                resource: item.resource || '',
-                ip_address: item.ip_address || '',
-                user_agent: item.user_agent || '',
-                auth_method: item.auth_method || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'sessions',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'registrationId', title: 'Registration ID' },
-                { id: 'regNumber', title: 'Reg Number' },
-                { id: 'fullName', title: 'Full Name' },
-                { id: 'firstName', title: 'First Name' },
-                { id: 'lastName', title: 'Last Name' },
-                { id: 'fatherName', title: 'Father Name' },
-                { id: 'birthYear', title: 'Birth Year' },
-                { id: 'birthDate', title: 'Birth Date' },
-                { id: 'birthPlace', title: 'Birth Place' },
-                { id: 'workplace', title: 'Workplace' },
-                { id: 'position', title: 'Position' },
-                { id: 'residence', title: 'Residence' },
-                { id: 'model', title: 'Model' },
-                { id: 'notes', title: 'Notes' },
-                { id: 'additionalNotes', title: 'Additional Notes' },
-                { id: 'externalNotes', title: 'External Notes' },
-                { id: 'adminId', title: 'Admin ID' },
-                { id: 'type', title: 'Type' },
-                { id: 'order', title: 'Order' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                registrationId: item.registrationId || '',
-                regNumber: item.regNumber || '',
-                fullName: item.fullName || '',
-                firstName: item.firstName || '',
-                lastName: item.lastName || '',
-                fatherName: item.fatherName || '',
-                birthYear: item.birthYear || '',
-                birthDate: item.birthDate ? item.birthDate.toISOString() : '',
-                birthPlace: item.birthPlace || '',
-                workplace: item.workplace || '',
-                position: item.position || '',
-                residence: item.residence || '',
-                model: item.model || '',
-                notes: item.notes || '',
-                additionalNotes: item.additionalNotes || '',
-                externalNotes: item.externalNotes || '',
-                adminId: item.adminId || '',
-                type: item.type || '',
-                order: item.order || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'temporaryData',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'order', title: 'Order' },
-                { id: 'form_reg', title: 'Form Reg' },
-                { id: 'regNumber', title: 'Reg Number' },
-                { id: 'regDate', title: 'Reg Date' },
-                { id: 'firstName', title: 'First Name' },
-                { id: 'lastName', title: 'Last Name' },
-                { id: 'fatherName', title: 'Father Name' },
-                { id: 'fullName', title: 'Full Name' },
-                { id: 'birthYear', title: 'Birth Year' },
-                { id: 'birthPlace', title: 'Birth Place' },
-                { id: 'workplace', title: 'Workplace' },
-                { id: 'position', title: 'Position' },
-                { id: 'model', title: 'Model' },
-                { id: 'residence', title: 'Residence' },
-                { id: 'initiatorId', title: 'Initiator ID' },
-                { id: 'executorId', title: 'Executor ID' },
-                { id: 'accessStatus', title: 'Access Status' },
-                { id: 'data', title: 'Data' },
-                { id: 'recordNumber', title: 'Record Number' },
-                { id: 'pinfl', title: 'PINFL' },
-                { id: 'found_status', title: 'Found Status' },
-                { id: 'action_status', title: 'Action Status' },
-                { id: 'registration', title: 'Registration' },
-                { id: 'registrationSimilarity', title: 'Registration Similarity' },
-                { id: 'registration_four', title: 'Registration Four' },
-                { id: 'registration_four_similarity', title: 'Registration Four Similarity' },
-                { id: 'relatives', title: 'Relatives' },
-                { id: 'migration_status', title: 'Migration Status' },
-                { id: 'status', title: 'Status' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                order: item.order || '',
-                form_reg: item.form_reg || '',
-                regNumber: item.regNumber || '',
-                regDate: item.regDate ? item.regDate.toISOString() : '',
-                firstName: item.firstName || '',
-                lastName: item.lastName || '',
-                fatherName: item.fatherName || '',
-                fullName: item.fullName || '',
-                birthYear: item.birthYear || '',
-                birthPlace: item.birthPlace || '',
-                workplace: item.workplace || '',
-                position: item.position || '',
-                model: item.model || '',
-                residence: item.residence || '',
-                initiatorId: item.initiatorId || '',
-                executorId: item.executorId || '',
-                accessStatus: item.accessStatus || '',
-                data: item.data ? JSON.stringify(item.data) : '',
-                recordNumber: item.recordNumber || '',
-                pinfl: item.pinfl || '',
-                found_status: item.found_status !== undefined ? item.found_status : false,
-                action_status: item.action_status || '',
-                registration: item.registration || '',
-                registrationSimilarity: item.registrationSimilarity ? JSON.stringify(item.registrationSimilarity) : '',
-                registration_four: item.registration_four || '',
-                registration_four_similarity: item.registration_four_similarity ? JSON.stringify(item.registration_four_similarity) : '',
-                relatives: item.relatives || '',
-                migration_status: item.migration_status !== undefined ? item.migration_status : false,
-                status: item.status || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'raports',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'name', title: 'Name' },
-                { id: 'executorId', title: 'Executor ID' },
-                { id: 'link', title: 'Link' },
-                { id: 'notes', title: 'Notes' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                name: item.name || '',
-                executorId: item.executorId || '',
-                link: item.link || '',
-                notes: item.notes || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'raportTypes',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'name', title: 'Name' },
-                { id: 'code', title: 'Code' },
-                { id: 'code_ru', title: 'Code RU' },
-                { id: 'code_uz', title: 'Code UZ' },
-                { id: 'organization', title: 'Organization' },
-                { id: 'requested_organization', title: 'Requested Organization' },
-                { id: 'signed_fio', title: 'Signed FIO' },
-                { id: 'signed_position', title: 'Signed Position' },
-                { id: 'link', title: 'Link' },
-                { id: 'notes', title: 'Notes' },
-                { id: 'executorId', title: 'Executor ID' },
-                { id: 'data', title: 'Data' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                name: item.name || '',
-                code: item.code || '',
-                code_ru: item.code_ru || '',
-                code_uz: item.code_uz || '',
-                organization: item.organization || '',
-                requested_organization: item.requested_organization || '',
-                signed_fio: item.signed_fio || '',
-                signed_position: item.signed_position || '',
-                link: item.link || '',
-                notes: item.notes || '',
-                executorId: item.executorId || '',
-                data: item.data ? JSON.stringify(item.data) : '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        },
-        {
-            name: 'raportLinks',
-            headers: [
-                { id: 'id', title: 'ID' },
-                { id: 'raportId', title: 'Raport ID' },
-                { id: 'regNumber', title: 'Reg Number' },
-                { id: 'code', title: 'Code' },
-                { id: 'delete', title: 'Delete' },
-                { id: 'display', title: 'Display' },
-                { id: 'adminCheck', title: 'Admin Check' },
-                { id: 'discussCheck', title: 'Discuss Check' },
-                { id: 'operator', title: 'Operator' },
-                { id: 'notes', title: 'Notes' },
-                { id: 'createdAt', title: 'Created At' },
-                { id: 'updatedAt', title: 'Updated At' }
-            ],
-            dataMapper: (item) => ({
-                id: item.id,
-                raportId: item.raportId || '',
-                regNumber: item.regNumber || '',
-                code: item.code || '',
-                delete: item.delete !== undefined ? item.delete : false,
-                display: item.display !== undefined ? item.display : true,
-                adminCheck: item.adminCheck !== undefined ? item.adminCheck : false,
-                discussCheck: item.discussCheck !== undefined ? item.discussCheck : false,
-                operator: item.operator !== undefined ? item.operator : false,
-                notes: item.notes || '',
-                createdAt: item.createdAt.toISOString(),
-                updatedAt: item.updatedAt.toISOString()
-            })
-        }
-    ];
-};
+const COMPLETE_STATUSES = new Set(['WAITING', 'IN_PROGRESS', 'COMPLETED', 'EXPIRED']);
+const SESSION_TYPES = new Set(['SESSION', 'RESERVE', 'RAPORT']);
+
+const BASE_EXCLUDED_COMPARE_FIELDS = new Set(['createdAt', 'updatedAt']);
+
+const BACKUP_MODEL_CONFIGS = [
+  {
+    prismaModel: 'admin',
+    csvPrefix: 'admins',
+    jsonKey: 'admins',
+    idField: 'id',
+    uniqueMatchers: [['username'], ['phone']],
+    restoreOrder: 10,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'username', title: 'Username' },
+      { key: 'password', title: 'Password' },
+      { key: 'birthDate', title: 'Birth Date', type: 'date' },
+      { key: 'father_name', title: 'Father Name' },
+      { key: 'first_name', title: 'First Name' },
+      { key: 'last_name', title: 'Last Name' },
+      { key: 'nationality', title: 'Nationality' },
+      { key: 'rank', title: 'Rank' },
+      { key: 'gender', title: 'Gender' },
+      { key: 'workplace', title: 'Workplace' },
+      { key: 'phone', title: 'Phone' },
+      { key: 'photo', title: 'Photo' },
+      { key: 'salt', title: 'Salt' },
+      { key: 'role', title: 'Role' },
+      { key: 'status', title: 'Status' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'service',
+    csvPrefix: 'services',
+    jsonKey: 'services',
+    idField: 'id',
+    uniqueMatchers: [['name']],
+    restoreOrder: 20,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'name', title: 'Name' },
+      { key: 'description', title: 'Description' },
+      { key: 'code', title: 'Code', type: 'int' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'form',
+    csvPrefix: 'forms',
+    jsonKey: 'forms',
+    idField: 'id',
+    uniqueMatchers: [['name']],
+    restoreOrder: 30,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'name', title: 'Name' },
+      { key: 'description', title: 'Description' },
+      { key: 'length', title: 'Length', type: 'int' },
+      { key: 'month', title: 'Month', type: 'int' },
+      { key: 'type', title: 'Type' },
+      { key: 'status', title: 'Status', type: 'boolean' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'initiator',
+    csvPrefix: 'initiators',
+    jsonKey: 'initiators',
+    idField: 'id',
+    restoreOrder: 40,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'first_name', title: 'First Name' },
+      { key: 'last_name', title: 'Last Name' },
+      { key: 'father_name', title: 'Father Name' },
+      { key: 'rank', title: 'Rank' },
+      { key: 'notes', title: 'Notes' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'relationDegree',
+    csvPrefix: 'relation_degrees',
+    jsonKey: 'relationDegrees',
+    idField: 'id',
+    uniqueMatchers: [['name']],
+    restoreOrder: 50,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'name', title: 'Name' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'workPlace',
+    csvPrefix: 'workplaces',
+    jsonKey: 'workPlaces',
+    idField: 'id',
+    uniqueMatchers: [['name']],
+    restoreOrder: 60,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'name', title: 'Name' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'systemSetting',
+    csvPrefix: 'system_settings',
+    jsonKey: 'systemSettings',
+    idField: 'key',
+    uniqueMatchers: [['key']],
+    restoreOrder: 70,
+    fields: [
+      { key: 'key', title: 'Key' },
+      { key: 'value', title: 'Value' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'accessStatus',
+    csvPrefix: 'access_statuses',
+    jsonKey: 'accessStatuses',
+    idField: 'id',
+    uniqueMatchers: [['name']],
+    restoreOrder: 80,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'name', title: 'Name' },
+      { key: 'adminId', title: 'Admin ID' },
+      { key: 'status', title: 'Status', type: 'boolean' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'adminServiceAccess',
+    csvPrefix: 'admin_service_accesses',
+    jsonKey: 'adminServiceAccesses',
+    idField: 'id',
+    uniqueMatchers: [['adminId', 'serviceId', 'grantedBy']],
+    restoreOrder: 90,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'adminId', title: 'Admin ID' },
+      { key: 'serviceId', title: 'Service ID' },
+      { key: 'grantedBy', title: 'Granted By' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'registration',
+    csvPrefix: 'registrations',
+    jsonKey: 'registrations',
+    idField: 'id',
+    uniqueMatchers: [['pinfl'], ['regNumber', 'fullName', 'birthDate']],
+    restoreOrder: 100,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'regNumber', title: 'Registration Number' },
+      { key: 'regDate', title: 'Registration Date', type: 'date' },
+      { key: 'regEndDate', title: 'Registration End Date', type: 'date' },
+      { key: 'fullName', title: 'Full Name' },
+      { key: 'firstName', title: 'First Name' },
+      { key: 'lastName', title: 'Last Name' },
+      { key: 'fatherName', title: 'Father Name' },
+      { key: 'nationality', title: 'Nationality' },
+      { key: 'pinfl', title: 'PINFL' },
+      { key: 'birthDate', title: 'Birth Date', type: 'date' },
+      { key: 'birthYear', title: 'Birth Year', type: 'int' },
+      { key: 'birthPlace', title: 'Birth Place' },
+      { key: 'residence', title: 'Residence' },
+      { key: 'workplace', title: 'Workplace' },
+      { key: 'position', title: 'Position' },
+      { key: 'status', title: 'Status' },
+      { key: 'completeStatus', title: 'Complete Status', type: 'completeStatus' },
+      { key: 'form_reg', title: 'Form Registration' },
+      { key: 'form_reg_log', title: 'Form Registration Log' },
+      { key: 'conclusionDate', title: 'Conclusion Date', type: 'date' },
+      { key: 'conclusionRegNum', title: 'Conclusion Registration Number' },
+      { key: 'model', title: 'Model' },
+      { key: 'notes', title: 'Notes' },
+      { key: 'additionalNotes', title: 'Additional Notes' },
+      { key: 'conclusion_compr', title: 'Conclusion Comprehensive' },
+      { key: 'externalNotes', title: 'External Notes' },
+      { key: 'accessStatus', title: 'Access Status' },
+      { key: 'expired', title: 'Expired', type: 'date' },
+      { key: 'expiredDate', title: 'Expired Date', type: 'date' },
+      { key: 'recordNumber', title: 'Record Number' },
+      { key: 'endDate', title: 'End Date', type: 'date' },
+      { key: 'or_tab', title: 'Initiator ID' },
+      { key: 'executorId', title: 'Executor ID' },
+      { key: 'whoAdd', title: 'Who Added' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'relatives',
+    csvPrefix: 'relatives',
+    jsonKey: 'relatives',
+    idField: 'id',
+    uniqueMatchers: [['pinfl'], ['regNumber', 'fullName', 'relationDegree', 'registrationId']],
+    restoreOrder: 110,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'regNumber', title: 'Registration Number' },
+      { key: 'relationDegree', title: 'Relation Degree' },
+      { key: 'fullName', title: 'Full Name' },
+      { key: 'firstName', title: 'First Name' },
+      { key: 'lastName', title: 'Last Name' },
+      { key: 'fatherName', title: 'Father Name' },
+      { key: 'nationality', title: 'Nationality' },
+      { key: 'pinfl', title: 'PINFL' },
+      { key: 'birthDate', title: 'Birth Date', type: 'date' },
+      { key: 'birthYear', title: 'Birth Year', type: 'int' },
+      { key: 'birthStatus', title: 'Birth Status', type: 'boolean' },
+      { key: 'birthPlace', title: 'Birth Place' },
+      { key: 'residence', title: 'Residence' },
+      { key: 'workplace', title: 'Workplace' },
+      { key: 'position', title: 'Position' },
+      { key: 'familyStatus', title: 'Family Status' },
+      { key: 'model', title: 'Model' },
+      { key: 'notes', title: 'Notes' },
+      { key: 'additionalNotes', title: 'Additional Notes' },
+      { key: 'externalNotes', title: 'External Notes' },
+      { key: 'accessStatus', title: 'Access Status' },
+      { key: 'status_analysis', title: 'Status Analysis', type: 'boolean' },
+      { key: 'registrationId', title: 'Related Registration ID' },
+      { key: 'or_tab', title: 'Initiator ID' },
+      { key: 'executorId', title: 'Executor ID' },
+      { key: 'whoAdd', title: 'Who Added' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'registrationLog',
+    csvPrefix: 'registration_logs',
+    jsonKey: 'registrationLogs',
+    idField: 'id',
+    restoreOrder: 120,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'registrationId', title: 'Registration ID' },
+      { key: 'fieldName', title: 'Field Name' },
+      { key: 'oldValue', title: 'Old Value' },
+      { key: 'newValue', title: 'New Value' },
+      { key: 'executorId', title: 'Executor ID' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'log',
+    csvPrefix: 'logs',
+    jsonKey: 'logs',
+    idField: 'id',
+    restoreOrder: 130,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'recordId', title: 'Record ID' },
+      { key: 'tableName', title: 'Table Name' },
+      { key: 'fieldName', title: 'Field Name' },
+      { key: 'oldValue', title: 'Old Value' },
+      { key: 'newValue', title: 'New Value' },
+      { key: 'executorId', title: 'Executor ID' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'seans',
+    csvPrefix: 'seans',
+    jsonKey: 'seans',
+    idField: 'id',
+    restoreOrder: 140,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'adminId', title: 'Admin ID' },
+      { key: 'resource', title: 'Resource' },
+      { key: 'ip_address', title: 'IP Address' },
+      { key: 'user_agent', title: 'User Agent' },
+      { key: 'auth_method', title: 'Auth Method' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'refreshToken',
+    csvPrefix: 'refresh_tokens',
+    jsonKey: 'refreshTokens',
+    idField: 'id',
+    uniqueMatchers: [['token']],
+    restoreOrder: 150,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'token', title: 'Token' },
+      { key: 'adminId', title: 'Admin ID' },
+      { key: 'expiredAt', title: 'Expired At', type: 'date' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'upload',
+    csvPrefix: 'uploads',
+    jsonKey: 'uploads',
+    idField: 'id',
+    uniqueMatchers: [['file_link']],
+    restoreOrder: 160,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'file_link', title: 'File Link' },
+      { key: 'uploadedBy', title: 'Uploaded By' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'signList',
+    csvPrefix: 'sign_lists',
+    jsonKey: 'signLists',
+    idField: 'id',
+    uniqueMatchers: [['phone']],
+    restoreOrder: 170,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'lastName', title: 'Last Name' },
+      { key: 'firstName', title: 'First Name' },
+      { key: 'fatherName', title: 'Father Name' },
+      { key: 'workplace', title: 'Workplace' },
+      { key: 'position', title: 'Position' },
+      { key: 'rank', title: 'Rank' },
+      { key: 'notes', title: 'Notes' },
+      { key: 'birthDate', title: 'Birth Date', type: 'date' },
+      { key: 'nationality', title: 'Nationality' },
+      { key: 'gender', title: 'Gender' },
+      { key: 'phone', title: 'Phone' },
+      { key: 'photo', title: 'Photo' },
+      { key: 'status', title: 'Status' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'raportTypes',
+    csvPrefix: 'raport_types',
+    jsonKey: 'raportTypes',
+    idField: 'id',
+    restoreOrder: 180,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'name', title: 'Name' },
+      { key: 'code', title: 'Code' },
+      { key: 'code_ru', title: 'Code RU' },
+      { key: 'code_uz', title: 'Code UZ' },
+      { key: 'organization', title: 'Organization' },
+      { key: 'requested_organization', title: 'Requested Organization' },
+      { key: 'signed_fio', title: 'Signed FIO' },
+      { key: 'signed_position', title: 'Signed Position' },
+      { key: 'link', title: 'Link' },
+      { key: 'notes', title: 'Notes' },
+      { key: 'executorId', title: 'Executor ID' },
+      { key: 'data', title: 'Data', type: 'json' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'raport',
+    csvPrefix: 'raports',
+    jsonKey: 'raports',
+    idField: 'id',
+    restoreOrder: 190,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'name', title: 'Name' },
+      { key: 'executorId', title: 'Executor ID' },
+      { key: 'link', title: 'Link' },
+      { key: 'notes', title: 'Notes' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'raportLink',
+    csvPrefix: 'raport_links',
+    jsonKey: 'raportLinks',
+    idField: 'id',
+    restoreOrder: 200,
+    include: {
+      registrations: { select: { id: true } }
+    },
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'raportId', title: 'Raport ID' },
+      { key: 'regNumber', title: 'Reg Number' },
+      { key: 'code', title: 'Code' },
+      { key: 'delete', title: 'Delete', type: 'boolean' },
+      { key: 'display', title: 'Display', type: 'boolean' },
+      { key: 'adminCheck', title: 'Admin Check', type: 'boolean' },
+      { key: 'discussCheck', title: 'Discuss Check', type: 'boolean' },
+      { key: 'operator', title: 'Operator', type: 'boolean' },
+      { key: 'notes', title: 'Notes' },
+      { key: 'registrationIds', title: 'Registration IDs', type: 'json', exportFrom: (item) => (item.registrations || []).map((reg) => reg.id) },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'archive',
+    csvPrefix: 'archives',
+    jsonKey: 'archives',
+    idField: 'id',
+    restoreOrder: 210,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'name', title: 'Name' },
+      { key: 'data', title: 'Data', type: 'json' },
+      { key: 'executorId', title: 'Executor ID' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'temporaryData',
+    csvPrefix: 'temporary_data',
+    jsonKey: 'temporaryData',
+    idField: 'id',
+    restoreOrder: 220,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'order', title: 'Order', type: 'int' },
+      { key: 'form_reg', title: 'Form Reg' },
+      { key: 'regNumber', title: 'Reg Number' },
+      { key: 'regDate', title: 'Reg Date', type: 'date' },
+      { key: 'firstName', title: 'First Name' },
+      { key: 'lastName', title: 'Last Name' },
+      { key: 'fatherName', title: 'Father Name' },
+      { key: 'fullName', title: 'Full Name' },
+      { key: 'birthYear', title: 'Birth Year', type: 'int' },
+      { key: 'birthPlace', title: 'Birth Place' },
+      { key: 'workplace', title: 'Workplace' },
+      { key: 'position', title: 'Position' },
+      { key: 'model', title: 'Model' },
+      { key: 'residence', title: 'Residence' },
+      { key: 'initiatorId', title: 'Initiator ID' },
+      { key: 'executorId', title: 'Executor ID' },
+      { key: 'accessStatus', title: 'Access Status' },
+      { key: 'data', title: 'Data', type: 'json' },
+      { key: 'recordNumber', title: 'Record Number' },
+      { key: 'pinfl', title: 'PINFL' },
+      { key: 'found_status', title: 'Found Status', type: 'boolean' },
+      { key: 'action_status', title: 'Action Status' },
+      { key: 'registration', title: 'Registration' },
+      { key: 'registrationSimilarity', title: 'Registration Similarity', type: 'json' },
+      { key: 'registration_four', title: 'Registration Four' },
+      { key: 'registration_four_similarity', title: 'Registration Four Similarity', type: 'json' },
+      { key: 'relatives', title: 'Relatives' },
+      { key: 'migration_status', title: 'Migration Status', type: 'boolean' },
+      { key: 'status', title: 'Status' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  },
+  {
+    prismaModel: 'session',
+    csvPrefix: 'sessions',
+    jsonKey: 'sessions',
+    idField: 'id',
+    restoreOrder: 230,
+    fields: [
+      { key: 'id', title: 'ID' },
+      { key: 'registrationId', title: 'Registration ID' },
+      { key: 'regNumber', title: 'Reg Number' },
+      { key: 'fullName', title: 'Full Name' },
+      { key: 'firstName', title: 'First Name' },
+      { key: 'lastName', title: 'Last Name' },
+      { key: 'fatherName', title: 'Father Name' },
+      { key: 'birthYear', title: 'Birth Year', type: 'int' },
+      { key: 'birthDate', title: 'Birth Date', type: 'date' },
+      { key: 'birthPlace', title: 'Birth Place' },
+      { key: 'workplace', title: 'Workplace' },
+      { key: 'position', title: 'Position' },
+      { key: 'residence', title: 'Residence' },
+      { key: 'model', title: 'Model' },
+      { key: 'notes', title: 'Notes' },
+      { key: 'additionalNotes', title: 'Additional Notes' },
+      { key: 'externalNotes', title: 'External Notes' },
+      { key: 'adminId', title: 'Admin ID' },
+      { key: 'type', title: 'Type', type: 'sessionType' },
+      { key: 'order', title: 'Order', type: 'int' },
+      { key: 'createdAt', title: 'Created At', type: 'date' },
+      { key: 'updatedAt', title: 'Updated At', type: 'date' }
+    ]
+  }
+].sort((a, b) => a.restoreOrder - b.restoreOrder);
+
+const byModel = new Map(BACKUP_MODEL_CONFIGS.map((cfg) => [cfg.prismaModel, cfg]));
+const byCsvPrefix = new Map(BACKUP_MODEL_CONFIGS.map((cfg) => [cfg.csvPrefix, cfg]));
+
+function isEmptyValue(value) {
+  return value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
+}
+
+function normalizeBoolean(value) {
+  if (typeof value === 'boolean') return value;
+  if (isEmptyValue(value)) return null;
+  const raw = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'y'].includes(raw)) return true;
+  if (['false', '0', 'no', 'n'].includes(raw)) return false;
+  return null;
+}
+
+function normalizeDate(value) {
+  if (isEmptyValue(value)) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function normalizeInt(value) {
+  if (isEmptyValue(value)) return null;
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function normalizeJson(value) {
+  if (isEmptyValue(value)) return null;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function normalizeCompleteStatus(value) {
+  if (isEmptyValue(value)) return null;
+  const status = String(value).trim();
+  return COMPLETE_STATUSES.has(status) ? status : null;
+}
+
+function normalizeSessionType(value) {
+  if (isEmptyValue(value)) return null;
+  const type = String(value).trim().toUpperCase();
+  return SESSION_TYPES.has(type) ? type : null;
+}
+
+function parseFieldValueByType(value, type = 'string') {
+  switch (type) {
+    case 'boolean':
+      return normalizeBoolean(value);
+    case 'date':
+      return normalizeDate(value);
+    case 'int':
+      return normalizeInt(value);
+    case 'json':
+      return normalizeJson(value);
+    case 'completeStatus':
+      return normalizeCompleteStatus(value);
+    case 'sessionType':
+      return normalizeSessionType(value);
+    default:
+      return isEmptyValue(value) ? '' : value;
+  }
+}
+
+function serializeFieldValueByType(value, type = 'string') {
+  if (value === undefined || value === null) return '';
+
+  switch (type) {
+    case 'date': {
+      const date = normalizeDate(value);
+      return date ? date.toISOString() : '';
+    }
+    case 'json':
+      return JSON.stringify(value);
+    case 'boolean':
+      return value === true;
+    default:
+      return value;
+  }
+}
+
+function buildCsvHeader(config) {
+  return config.fields.map((field) => ({
+    id: field.key,
+    title: field.title
+  }));
+}
+
+function serializeRowForCsv(config, row) {
+  const mapped = {};
+
+  for (const field of config.fields) {
+    const raw = typeof field.exportFrom === 'function' ? field.exportFrom(row) : row[field.key];
+    mapped[field.key] = serializeFieldValueByType(raw, field.type);
+  }
+
+  return mapped;
+}
+
+function parseImportedRow(config, rawRow) {
+  const parsed = {};
+
+  for (const field of config.fields) {
+    let rawValue;
+
+    if (Object.prototype.hasOwnProperty.call(rawRow, field.title)) {
+      rawValue = rawRow[field.title];
+    } else if (Object.prototype.hasOwnProperty.call(rawRow, field.key)) {
+      rawValue = rawRow[field.key];
+    } else if (Array.isArray(field.aliases)) {
+      const alias = field.aliases.find((key) => Object.prototype.hasOwnProperty.call(rawRow, key));
+      rawValue = alias ? rawRow[alias] : undefined;
+    } else {
+      rawValue = undefined;
+    }
+
+    parsed[field.key] = parseFieldValueByType(rawValue, field.type);
+  }
+
+  return parsed;
+}
+
+function normalizeCompareValue(value, type = 'string') {
+  if (value === null || value === undefined) return '';
+
+  switch (type) {
+    case 'date': {
+      const date = normalizeDate(value);
+      return date ? date.toISOString() : '';
+    }
+    case 'json':
+      return JSON.stringify(value ?? null);
+    case 'boolean':
+      return normalizeBoolean(value) === true ? 'true' : normalizeBoolean(value) === false ? 'false' : '';
+    case 'int': {
+      const intValue = normalizeInt(value);
+      return intValue === null ? '' : String(intValue);
+    }
+    case 'completeStatus': {
+      const status = normalizeCompleteStatus(value);
+      return status || '';
+    }
+    case 'sessionType': {
+      const sessionType = normalizeSessionType(value);
+      return sessionType || '';
+    }
+    default:
+      return String(value).trim();
+  }
+}
+
+function areRowsEquivalent(config, parsedRow, existingRow) {
+  if (!existingRow) return false;
+
+  for (const field of config.fields) {
+    if (field.key === config.idField) continue;
+    if (BASE_EXCLUDED_COMPARE_FIELDS.has(field.key)) continue;
+
+    const left = normalizeCompareValue(parsedRow[field.key], field.type);
+    let right;
+
+    if (field.key === 'registrationIds' && config.prismaModel === 'raportLink') {
+      const currentIds = Array.isArray(existingRow.registrations) ? existingRow.registrations.map((x) => x.id) : [];
+      right = normalizeCompareValue(currentIds, 'json');
+    } else {
+      right = normalizeCompareValue(existingRow[field.key], field.type);
+    }
+
+    if (left !== right) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getBackupModelConfigs() {
+  return BACKUP_MODEL_CONFIGS;
+}
+
+function getBackupModelConfigByPrismaModel(prismaModel) {
+  return byModel.get(prismaModel) || null;
+}
+
+function getBackupModelConfigByCsvPrefix(csvPrefix) {
+  return byCsvPrefix.get(csvPrefix) || null;
+}
 
 module.exports = {
-    getTableConfigurations
+  getBackupModelConfigs,
+  getBackupModelConfigByPrismaModel,
+  getBackupModelConfigByCsvPrefix,
+  buildCsvHeader,
+  serializeRowForCsv,
+  parseImportedRow,
+  areRowsEquivalent,
+  isEmptyValue
 };

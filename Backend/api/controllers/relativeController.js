@@ -474,13 +474,15 @@ exports.searchRelatives = async (req, res) => {
         );
       }
 
-      const matchingNameIds = await prisma.$queryRaw`
-        SELECT "id"
-        FROM "Relatives"
-        WHERE ${Prisma.join(nameSqlConditions, Prisma.sql` AND `)}
-      `;
+      if (nameSqlConditions.length > 0) {
+        const matchingNameIds = await prisma.$queryRaw`
+          SELECT "id"
+          FROM "Relatives"
+          WHERE ${Prisma.join(nameSqlConditions, " AND ")}
+        `;
 
-      andConditions.push({ id: { in: matchingNameIds.map((item) => item.id) } });
+        andConditions.push({ id: { in: matchingNameIds.map((item) => item.id) } });
+      }
     }
 
     const filters = {

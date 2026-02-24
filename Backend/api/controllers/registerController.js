@@ -17,6 +17,15 @@ const crypto = require("crypto");
 const { extractFull } = require('node-7z');
 const { MODEL_TYPE } = require("../helpers/constants");
 const { buildSearchQuery, buildCountQuery } = require("../helpers/globalSearchQueryBuilder");
+const {
+  getBackupModelConfigs,
+  getBackupModelConfigByCsvPrefix,
+  buildCsvHeader,
+  serializeRowForCsv,
+  parseImportedRow,
+  areRowsEquivalent,
+  isEmptyValue
+} = require("../helpers/backupHelper");
 const { equal } = require("assert");
 
 
@@ -898,13 +907,15 @@ exports.getRegistrationList = async (req, res) => {
         );
       }
 
-      const matchingNameIds = await prisma.$queryRaw`
-        SELECT "id"
-        FROM "Registration"
-        WHERE ${Prisma.join(nameSqlConditions, Prisma.sql` AND `)}
-      `;
+      if (nameSqlConditions.length > 0) {
+        const matchingNameIds = await prisma.$queryRaw`
+          SELECT "id"
+          FROM "Registration"
+          WHERE ${Prisma.join(nameSqlConditions, " AND ")}
+        `;
 
-      andConditions.push({ id: { in: matchingNameIds.map((item) => item.id) } });
+        andConditions.push({ id: { in: matchingNameIds.map((item) => item.id) } });
+      }
     }
 
     const filters = andConditions.length > 0 ? { AND: andConditions } : {};
@@ -4066,417 +4077,541 @@ exports.getWorkPlaces = async (req, res) => {
  *                   type: string
  *                   example: "Error details"
  */
+const BACKUP_BATCH_SIZE = 500;
+const RESTORE_TRANSACTION_TIMEOUT_MS = 600000;
+const VALID_RESTORE_MODES = new Set(['upsert', 'insert_only', 'update_only']);
+
+const backupModelConfigs = getBackupModelConfigs();
+
+function getBackupModelConfigForFile(fileName) {
+  const lowered = String(fileName || '').toLowerCase();
+  for (const config of backupModelConfigs) {
+    const prefix = config.csvPrefix.toLowerCase();
+    if (lowered === `${prefix}.csv` || lowered.startsWith(`${prefix}_`)) {
+      return config;
+    }
+  }
+
+  // Legacy compatibility for previously exported CSV names.
+  if (lowered.startsWith('registrations_')) {
+    return getBackupModelConfigByCsvPrefix('registrations');
+  }
+  if (lowered.startsWith('relatives_')) {
+    return getBackupModelConfigByCsvPrefix('relatives');
+  }
+
+  return null;
+}
+
+function parseCsvFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const rows = [];
+    fs.createReadStream(filePath)
+      .pipe(csvParser())
+      .on('data', (row) => rows.push(row))
+      .on('end', () => resolve(rows))
+      .on('error', reject);
+  });
+}
+
+function normalizeRestoreMode(mode) {
+  if (typeof mode !== 'string') {
+    return 'upsert';
+  }
+  return VALID_RESTORE_MODES.has(mode) ? mode : 'upsert';
+}
+
+function buildJsonRowsMap(body) {
+  const result = new Map();
+  const modelsSection = body && typeof body.models === 'object' && body.models !== null ? body.models : null;
+
+  for (const config of backupModelConfigs) {
+    const candidates = [
+      body?.[config.jsonKey],
+      body?.[config.csvPrefix],
+      body?.[config.prismaModel],
+      modelsSection?.[config.jsonKey],
+      modelsSection?.[config.csvPrefix],
+      modelsSection?.[config.prismaModel]
+    ];
+
+    const rows = candidates.find((value) => Array.isArray(value));
+    if (rows) {
+      result.set(config.prismaModel, rows);
+    }
+  }
+
+  return result;
+}
+
+function buildRestoreStats(rowsByModel) {
+  const modelStats = {};
+
+  for (const config of backupModelConfigs) {
+    const total = (rowsByModel.get(config.prismaModel) || []).length;
+    modelStats[config.jsonKey] = {
+      total,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0
+    };
+  }
+
+  return modelStats;
+}
+
+function buildWhereForMatcher(config, matcher, parsedRow) {
+  const where = {};
+
+  for (const key of matcher) {
+    const value = parsedRow[key];
+    if (isEmptyValue(value)) {
+      return null;
+    }
+    where[key] = value;
+  }
+
+  return where;
+}
+
+async function findExistingRecord(tx, config, parsedRow) {
+  const delegate = tx[config.prismaModel];
+  const include = config.prismaModel === 'raportLink' ? { registrations: { select: { id: true } } } : undefined;
+
+  const idValue = parsedRow[config.idField];
+  if (!isEmptyValue(idValue) && (config.idField !== 'id' || isUuid(String(idValue)))) {
+    const foundById = await delegate.findUnique({
+      where: { [config.idField]: idValue },
+      ...(include ? { include } : {})
+    });
+    if (foundById) {
+      return { record: foundById, conflict: null };
+    }
+  }
+
+  for (const matcher of config.uniqueMatchers || []) {
+    const where = buildWhereForMatcher(config, matcher, parsedRow);
+    if (!where) {
+      continue;
+    }
+
+    const candidates = await delegate.findMany({
+      where,
+      take: 2,
+      ...(include ? { include } : {})
+    });
+
+    if (candidates.length === 1) {
+      return { record: candidates[0], conflict: null };
+    }
+
+    if (candidates.length > 1) {
+      return {
+        record: null,
+        conflict: `Ambiguous conflict match by [${matcher.join(', ')}]`
+      };
+    }
+  }
+
+  return { record: null, conflict: null };
+}
+
+function buildWriteData(config, parsedRow) {
+  const data = {};
+
+  for (const field of config.fields) {
+    if (field.key === config.idField) {
+      continue;
+    }
+
+    if (field.key === 'createdAt' || field.key === 'updatedAt' || field.key === 'registrationIds') {
+      continue;
+    }
+
+    let value = parsedRow[field.key];
+
+    if (field.type === 'completeStatus' && isEmptyValue(value)) {
+      value = 'WAITING';
+    }
+
+    if (field.type === 'sessionType' && isEmptyValue(value)) {
+      value = 'SESSION';
+    }
+
+    if (value !== undefined) {
+      data[field.key] = value;
+    }
+  }
+
+  return data;
+}
+
+async function resolveRelativeRegistrationId(tx, parsedRow, registrationIdMap) {
+  const originalRegistrationId = parsedRow.registrationId;
+  if (isEmptyValue(originalRegistrationId)) {
+    if (isEmptyValue(parsedRow.regNumber)) {
+      return null;
+    }
+
+    const byRegNumber = await tx.registration.findMany({
+      where: { regNumber: parsedRow.regNumber },
+      select: { id: true },
+      take: 2
+    });
+
+    if (byRegNumber.length === 1) {
+      return byRegNumber[0].id;
+    }
+
+    return null;
+  }
+
+  const mappedRegistrationId = registrationIdMap.get(originalRegistrationId) || originalRegistrationId;
+
+  const direct = await tx.registration.findUnique({
+    where: { id: mappedRegistrationId },
+    select: { id: true }
+  });
+
+  if (direct) {
+    return direct.id;
+  }
+
+  if (!isEmptyValue(parsedRow.regNumber)) {
+    const byRegNumber = await tx.registration.findMany({
+      where: { regNumber: parsedRow.regNumber },
+      select: { id: true },
+      take: 2
+    });
+
+    if (byRegNumber.length === 1) {
+      return byRegNumber[0].id;
+    }
+  }
+
+  return null;
+}
+
+function buildRestoreResponseData(modelStats) {
+  const response = {
+    models: modelStats,
+    restoredAt: new Date().toISOString()
+  };
+
+  if (modelStats.registrations) {
+    response.registrations = modelStats.registrations;
+  }
+
+  if (modelStats.relatives) {
+    response.relatives = modelStats.relatives;
+  }
+
+  return response;
+}
+
+async function restoreRowsByModel(rowsByModel, { mode = 'upsert', skipExisting = false } = {}) {
+  const normalizedMode = normalizeRestoreMode(mode);
+  const errors = [];
+  const modelStats = buildRestoreStats(rowsByModel);
+  const registrationIdMap = new Map();
+
+  await prisma.$transaction(async (tx) => {
+    for (const config of backupModelConfigs) {
+      const delegate = tx[config.prismaModel];
+      const rawRows = rowsByModel.get(config.prismaModel) || [];
+      if (rawRows.length === 0) {
+        continue;
+      }
+
+      const currentStats = modelStats[config.jsonKey];
+
+      for (let index = 0; index < rawRows.length; index++) {
+        try {
+          const parsedRow = parseImportedRow(config, rawRows[index]);
+
+          if (config.prismaModel === 'relatives') {
+            const resolvedRegistrationId = await resolveRelativeRegistrationId(tx, parsedRow, registrationIdMap);
+            if (!resolvedRegistrationId && !isEmptyValue(parsedRow.registrationId)) {
+              currentStats.failed++;
+              errors.push(`[${config.jsonKey}] row ${index}: registrationId '${parsedRow.registrationId}' is not resolvable`);
+              continue;
+            }
+            parsedRow.registrationId = resolvedRegistrationId;
+          }
+
+          const existing = await findExistingRecord(tx, config, parsedRow);
+          if (existing.conflict) {
+            currentStats.failed++;
+            errors.push(`[${config.jsonKey}] row ${index}: ${existing.conflict}`);
+            continue;
+          }
+
+          if (existing.record) {
+            if (normalizedMode === 'insert_only') {
+              if (skipExisting) {
+                currentStats.skipped++;
+              } else {
+                currentStats.failed++;
+                errors.push(`[${config.jsonKey}] row ${index}: record already exists`);
+              }
+
+              if (config.prismaModel === 'registration' && !isEmptyValue(parsedRow.id)) {
+                registrationIdMap.set(parsedRow.id, existing.record.id);
+              }
+
+              continue;
+            }
+
+            const writeData = buildWriteData(config, parsedRow);
+            const isSame = areRowsEquivalent(config, parsedRow, existing.record);
+
+            if (!isSame) {
+              await delegate.update({
+                where: { [config.idField]: existing.record[config.idField] },
+                data: writeData
+              });
+              currentStats.updated++;
+            } else {
+              currentStats.skipped++;
+            }
+
+            if (config.prismaModel === 'raportLink' && Array.isArray(parsedRow.registrationIds)) {
+              const relationIds = parsedRow.registrationIds.filter((value) => typeof value === 'string' && value.length > 0);
+              const availableRegistrations = relationIds.length === 0
+                ? []
+                : await tx.registration.findMany({
+                  where: { id: { in: relationIds } },
+                  select: { id: true }
+                });
+
+              await tx.raportLink.update({
+                where: { id: existing.record.id },
+                data: {
+                  registrations: {
+                    set: availableRegistrations.map((registration) => ({ id: registration.id }))
+                  }
+                }
+              });
+            }
+
+            if (config.prismaModel === 'registration' && !isEmptyValue(parsedRow.id)) {
+              registrationIdMap.set(parsedRow.id, existing.record.id);
+            }
+
+            continue;
+          }
+
+          if (normalizedMode === 'update_only') {
+            currentStats.skipped++;
+            continue;
+          }
+
+          const writeData = buildWriteData(config, parsedRow);
+          const createData = {
+            ...writeData
+          };
+
+          if (
+            !isEmptyValue(parsedRow[config.idField]) &&
+            (config.idField !== 'id' || isUuid(String(parsedRow[config.idField])))
+          ) {
+            createData[config.idField] = parsedRow[config.idField];
+          }
+
+          const created = await delegate.create({ data: createData });
+          currentStats.created++;
+
+          if (config.prismaModel === 'raportLink' && Array.isArray(parsedRow.registrationIds)) {
+            const relationIds = parsedRow.registrationIds.filter((value) => typeof value === 'string' && value.length > 0);
+            const availableRegistrations = relationIds.length === 0
+              ? []
+              : await tx.registration.findMany({
+                where: { id: { in: relationIds } },
+                select: { id: true }
+              });
+
+            await tx.raportLink.update({
+              where: { id: created.id },
+              data: {
+                registrations: {
+                  set: availableRegistrations.map((registration) => ({ id: registration.id }))
+                }
+              }
+            });
+          }
+
+          if (config.prismaModel === 'registration' && !isEmptyValue(parsedRow.id)) {
+            registrationIdMap.set(parsedRow.id, created.id);
+          }
+        } catch (error) {
+          currentStats.failed++;
+          errors.push(`[${config.jsonKey}] row ${index}: ${error.message}`);
+        }
+      }
+    }
+  }, { timeout: RESTORE_TRANSACTION_TIMEOUT_MS });
+
+  return {
+    modelStats,
+    errors
+  };
+}
+
+/**
+ * @swagger
+ * /api/v1/auth/backup:
+ *   post:
+ *     summary: "Ma'lumotlarni eksport qilish (Backup)"
+ *     description: "Barcha registratsiya va qarindoshlik ma'lumotlarini CSV yoki JSON formatida eksport qilish. Faqat superAdmin huquqiga ega foydalanuvchilar uchun."
+ *     tags: [Auth]
+ */
 exports.exportData = async (req, res) => {
   try {
-    const { format = 'csv', compress = false } = req.body;
+    const { format = 'csv' } = req.body || {};
 
-
-    if (format === 'csv') {
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const tempDir = getBackupTempDir();
-
-      // Create CSV files
-      const registrationsCsvPath = path.join(tempDir, `registrations_${timestamp}.csv`);
-      const relativesCsvPath = path.join(tempDir, `relatives_${timestamp}.csv`);
-
-      // Registration CSV headers
-      const registrationHeaders = [
-        { id: 'id', title: 'ID' },
-        { id: 'regNumber', title: 'Registration Number' },
-        { id: 'regDate', title: 'Registration Date' },
-        { id: 'regEndDate', title: 'Registration End Date' },
-        { id: 'fullName', title: 'Full Name' },
-        { id: 'firstName', title: 'First Name' },
-        { id: 'lastName', title: 'Last Name' },
-        { id: 'fatherName', title: 'Father Name' },
-        { id: 'nationality', title: 'Nationality' },
-        { id: 'pinfl', title: 'PINFL' },
-        { id: 'birthDate', title: 'Birth Date' },
-        { id: 'birthYear', title: 'Birth Year' },
-        { id: 'birthPlace', title: 'Birth Place' },
-        { id: 'residence', title: 'Residence' },
-        { id: 'workplace', title: 'Workplace' },
-        { id: 'position', title: 'Position' },
-        { id: 'status', title: 'Status' },
-        { id: 'completeStatus', title: 'Complete Status' },
-        { id: 'form_reg', title: 'Form Registration' },
-        { id: 'form_reg_log', title: 'Form Registration Log' },
-        { id: 'conclusionDate', title: 'Conclusion Date' },
-        { id: 'conclusionRegNum', title: 'Conclusion Registration Number' },
-        { id: 'model', title: 'Model' },
-        { id: 'notes', title: 'Notes' },
-        { id: 'additionalNotes', title: 'Additional Notes' },
-        { id: 'conclusion_compr', title: 'Conclusion Comprehensive' },
-        { id: 'externalNotes', title: 'External Notes' },
-        { id: 'accessStatus', title: 'Access Status' },
-        { id: 'expired', title: 'Expired' },
-        { id: 'expiredDate', title: 'Expired Date' },
-        { id: 'recordNumber', title: 'Record Number' },
-        { id: 'endDate', title: 'End Date' },
-        { id: 'executorName', title: 'Executor Name' },
-        { id: 'initiatorName', title: 'Initiator Name' },
-        { id: 'createdAt', title: 'Created At' },
-        { id: 'updatedAt', title: 'Updated At' }
-      ];
-
-      // Relatives CSV headers
-      const relativesHeaders = [
-        { id: 'id', title: 'ID' },
-        { id: 'regNumber', title: 'Registration Number' },
-        { id: 'relationDegree', title: 'Relation Degree' },
-        { id: 'fullName', title: 'Full Name' },
-        { id: 'firstName', title: 'First Name' },
-        { id: 'lastName', title: 'Last Name' },
-        { id: 'fatherName', title: 'Father Name' },
-        { id: 'nationality', title: 'Nationality' },
-        { id: 'pinfl', title: 'PINFL' },
-        { id: 'birthDate', title: 'Birth Date' },
-        { id: 'birthYear', title: 'Birth Year' },
-        { id: 'birthPlace', title: 'Birth Place' },
-        { id: 'residence', title: 'Residence' },
-        { id: 'workplace', title: 'Workplace' },
-        { id: 'position', title: 'Position' },
-        { id: 'familyStatus', title: 'Family Status' },
-        { id: 'model', title: 'Model' },
-        { id: 'notes', title: 'Notes' },
-        { id: 'additionalNotes', title: 'Additional Notes' },
-        { id: 'externalNotes', title: 'External Notes' },
-        { id: 'accessStatus', title: 'Access Status' },
-        { id: 'status_analysis', title: 'Status Analysis' },
-        { id: 'registrationId', title: 'Related Registration ID' },
-        { id: 'executorName', title: 'Executor Name' },
-        { id: 'initiatorName', title: 'Initiator Name' },
-        { id: 'createdAt', title: 'Created At' },
-        { id: 'updatedAt', title: 'Updated At' }
-      ];
-
-      // Create CSV writers
-      const registrationsCsvWriter = createCsvWriter({
-        path: registrationsCsvPath,
-        header: registrationHeaders,
-        encoding: 'utf8'
-      });
-
-      const relativesCsvWriter = createCsvWriter({
-        path: relativesCsvPath,
-        header: relativesHeaders,
-        encoding: 'utf8'
-      });
-
-      // Stream registrations in batches to avoid loading all records into memory
-      const batchSize = 500;
-      let skip = 0;
-      while (true) {
-        const batch = await prisma.registration.findMany({
-          include: {
-            executor: {
-              select: {
-                username: true,
-                first_name: true,
-                last_name: true
-              }
-            },
-            Initiator: {
-              select: {
-                first_name: true,
-                last_name: true,
-                father_name: true
-              }
-            }
-          },
-          skip,
-          take: batchSize
-        });
-        if (batch.length === 0) break;
-        await registrationsCsvWriter.writeRecords(batch.map(reg => ({
-          id: reg.id,
-          regNumber: reg.regNumber || '',
-          regDate: reg.regDate ? reg.regDate.toISOString() : '',
-          regEndDate: reg.regEndDate ? reg.regEndDate.toISOString() : '',
-          fullName: reg.fullName || '',
-          firstName: reg.firstName || '',
-          lastName: reg.lastName || '',
-          fatherName: reg.fatherName || '',
-          nationality: reg.nationality || '',
-          pinfl: reg.pinfl || '',
-          birthDate: reg.birthDate ? reg.birthDate.toISOString() : '',
-          birthYear: reg.birthYear || '',
-          birthPlace: reg.birthPlace || '',
-          residence: reg.residence || '',
-          workplace: reg.workplace || '',
-          position: reg.position || '',
-          status: reg.status || '',
-          completeStatus: reg.completeStatus || '',
-          form_reg: reg.form_reg || '',
-          form_reg_log: reg.form_reg_log || '',
-          conclusionDate: reg.conclusionDate ? reg.conclusionDate.toISOString() : '',
-          conclusionRegNum: reg.conclusionRegNum || '',
-          model: reg.model || '',
-          notes: reg.notes || '',
-          additionalNotes: reg.additionalNotes || '',
-          conclusion_compr: reg.conclusion_compr || '',
-          externalNotes: reg.externalNotes || '',
-          accessStatus: reg.accessStatus || '',
-          expired: reg.expired ? reg.expired.toISOString() : '',
-          expiredDate: reg.expiredDate ? reg.expiredDate.toISOString() : '',
-          recordNumber: reg.recordNumber || '',
-          endDate: reg.endDate ? reg.endDate.toISOString() : '',
-          executorName: reg.executor ? `${reg.executor.first_name} ${reg.executor.last_name}`.trim() : '',
-          initiatorName: reg.Initiator ? `${reg.Initiator.first_name} ${reg.Initiator.last_name}`.trim() : '',
-          createdAt: reg.createdAt.toISOString(),
-          updatedAt: reg.updatedAt.toISOString()
-        })));
-        skip += batch.length;
-        if (batch.length < batchSize) break;
-      }
-
-      // Stream relatives in batches
-      skip = 0;
-      while (true) {
-        const batch = await prisma.relatives.findMany({
-          include: {
-            executor: {
-              select: {
-                username: true,
-                first_name: true,
-                last_name: true
-              }
-            },
-            Initiator: {
-              select: {
-                first_name: true,
-                last_name: true,
-                father_name: true
-              }
-            },
-            registration: {
-              select: {
-                id: true,
-                regNumber: true,
-                fullName: true
-              }
-            }
-          },
-          skip,
-          take: batchSize
-        });
-        if (batch.length === 0) break;
-        await relativesCsvWriter.writeRecords(batch.map(rel => ({
-          id: rel.id,
-          regNumber: rel.regNumber || '',
-          relationDegree: rel.relationDegree || '',
-          fullName: rel.fullName || '',
-          firstName: rel.firstName || '',
-          lastName: rel.lastName || '',
-          fatherName: rel.fatherName || '',
-          nationality: rel.nationality || '',
-          pinfl: rel.pinfl || '',
-          birthDate: rel.birthDate ? rel.birthDate.toISOString() : '',
-          birthYear: rel.birthYear || '',
-          birthPlace: rel.birthPlace || '',
-          residence: rel.residence || '',
-          workplace: rel.workplace || '',
-          position: rel.position || '',
-          familyStatus: rel.familyStatus || '',
-          model: rel.model || '',
-          notes: rel.notes || '',
-          additionalNotes: rel.additionalNotes || '',
-          externalNotes: rel.externalNotes || '',
-          accessStatus: rel.accessStatus || '',
-          status_analysis: rel.status_analysis !== undefined ? rel.status_analysis : true,
-          registrationId: rel.registrationId || '',
-          executorName: rel.executor ? `${rel.executor.first_name} ${rel.executor.last_name}`.trim() : '',
-          initiatorName: rel.Initiator ? `${rel.Initiator.first_name} ${rel.Initiator.last_name}`.trim() : '',
-          createdAt: rel.createdAt.toISOString(),
-          updatedAt: rel.updatedAt.toISOString()
-        })));
-        skip += batch.length;
-        if (batch.length < batchSize) break;
-      }
-
-      // Generate secure password for ZIP encryption
-      const zipPassword = generateSecurePassword(16);
-
-      if (compress) {
-        // Create password-protected ZIP file
-        const zipPath = path.join(tempDir, `export_${timestamp}.zip`);
-        const output = fs.createWriteStream(zipPath);
-        const archive = archiver('zip-encrypted', {
-          zlib: { level: 6 },
-          encryptionMethod: 'aes256',
-          password: zipPassword
-        });
-
-        output.on('close', () => {
-          // Set custom headers
-          res.setHeader('X-Backup-Password', zipPassword);
-          res.setHeader('X-Backup-Info', JSON.stringify({
-            password: zipPassword,
-            message: 'IMPORTANT: Save this password securely! It cannot be recovered if lost.',
-            filename: `export_${timestamp}.zip`,
-            exportedAt: new Date().toISOString()
-          }));
-
-          // Set Content-Disposition for download
-          res.setHeader('Content-Disposition', `attachment; filename="export_${timestamp}.zip"`);
-          res.setHeader('Content-Type', 'application/zip');
-
-          // Send file with custom headers
-          res.sendFile(zipPath, (err) => {
-            // Clean up temporary files after sending
-            try {
-              fs.unlinkSync(registrationsCsvPath);
-              fs.unlinkSync(relativesCsvPath);
-              fs.unlinkSync(zipPath);
-            } catch (cleanupErr) {
-              console.error('Error cleaning up files:', cleanupErr);
-            }
-
-            if (err && !res.headersSent) {
-              console.error('Error sending ZIP file:', err);
-              res.status(500).json({ error: 'Error sending backup file' });
-            }
-          });
-        });
-
-        archive.on('error', (err) => {
-          console.error('Archive error:', err);
-          try { fs.unlinkSync(registrationsCsvPath); } catch (_) {}
-          try { fs.unlinkSync(relativesCsvPath); } catch (_) {}
-          if (!res.headersSent) {
-            res.status(500).json({ error: 'Error creating backup archive', message: err.message });
-          }
-        });
-
-        archive.pipe(output);
-        archive.file(registrationsCsvPath, { name: `registrations_${timestamp}.csv` });
-        archive.file(relativesCsvPath, { name: `relatives_${timestamp}.csv` });
-        archive.finalize();
-
-      } else {
-        // Even without compress flag, create password-protected ZIP
-        const zipPath = path.join(tempDir, `export_${timestamp}.zip`);
-        const output = fs.createWriteStream(zipPath);
-        const archive = archiver('zip-encrypted', {
-          zlib: { level: 6 },
-          encryptionMethod: 'aes256',
-          password: zipPassword
-        });
-
-        output.on('close', () => {
-          // Set custom headers
-          res.setHeader('X-Backup-Password', zipPassword);
-          res.setHeader('X-Backup-Info', JSON.stringify({
-            password: zipPassword,
-            message: 'IMPORTANT: Save this password securely! It cannot be recovered if lost.',
-            filename: `export_${timestamp}.zip`,
-            exportedAt: new Date().toISOString()
-          }));
-
-          // Set Content-Disposition for download
-          res.setHeader('Content-Disposition', `attachment; filename="export_${timestamp}.zip"`);
-          res.setHeader('Content-Type', 'application/zip');
-
-          // Send file with custom headers
-          res.sendFile(zipPath, (err) => {
-            // Clean up temporary files after sending
-            try {
-              fs.unlinkSync(registrationsCsvPath);
-              fs.unlinkSync(relativesCsvPath);
-              fs.unlinkSync(zipPath);
-            } catch (cleanupErr) {
-              console.error('Error cleaning up files:', cleanupErr);
-            }
-
-            if (err && !res.headersSent) {
-              console.error('Error sending ZIP file:', err);
-              res.status(500).json({ error: 'Error sending backup file' });
-            }
-          });
-        });
-
-        archive.on('error', (err) => {
-          console.error('Archive error:', err);
-          try { fs.unlinkSync(registrationsCsvPath); } catch (_) {}
-          try { fs.unlinkSync(relativesCsvPath); } catch (_) {}
-          if (!res.headersSent) {
-            res.status(500).json({ error: 'Error creating backup archive', message: err.message });
-          }
-        });
-
-        archive.pipe(output);
-        archive.file(registrationsCsvPath, { name: `registrations_${timestamp}.csv` });
-        archive.file(relativesCsvPath, { name: `relatives_${timestamp}.csv` });
-        archive.finalize();
-      }
-
-    } else {
-      // Return JSON format
-      const registrations = await prisma.registration.findMany({
-        include: {
-          executor: {
-            select: {
-              username: true,
-              first_name: true,
-              last_name: true
-            }
-          },
-          Initiator: {
-            select: {
-              first_name: true,
-              last_name: true,
-              father_name: true
-            }
-          }
-        }
-      });
-
-      const relatives = await prisma.relatives.findMany({
-        include: {
-          executor: {
-            select: {
-              username: true,
-              first_name: true,
-              last_name: true
-            }
-          },
-          Initiator: {
-            select: {
-              first_name: true,
-              last_name: true,
-              father_name: true
-            }
-          },
-          registration: {
-            select: {
-              id: true,
-              regNumber: true,
-              fullName: true
-            }
-          }
-        }
-      });
-
-      res.json({
-        success: true,
-        data: {
-          registrations: registrations.length,
-          relatives: relatives.length,
-          exportedAt: new Date().toISOString()
-        },
-        registrations,
-        relatives
+    if (!['csv', 'json'].includes(format)) {
+      return res.status(400).json({
+        code: 400,
+        message: 'Invalid format. Allowed formats: csv, json'
       });
     }
 
+    if (format === 'json') {
+      const payload = {};
+      const counts = {};
+
+      for (const config of backupModelConfigs) {
+        const data = await prisma[config.prismaModel].findMany({
+          ...(config.include ? { include: config.include } : {})
+        });
+        payload[config.jsonKey] = data;
+        counts[config.jsonKey] = data.length;
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          counts,
+          exportedAt: new Date().toISOString(),
+          modelCount: backupModelConfigs.length
+        },
+        ...payload
+      });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const tempDir = getBackupTempDir();
+    const csvPaths = [];
+    const exportedCounts = {};
+
+    for (const config of backupModelConfigs) {
+      const csvPath = path.join(tempDir, `${config.csvPrefix}_${timestamp}.csv`);
+      csvPaths.push(csvPath);
+
+      const csvWriter = createCsvWriter({
+        path: csvPath,
+        header: buildCsvHeader(config),
+        encoding: 'utf8'
+      });
+
+      let skip = 0;
+      let total = 0;
+
+      while (true) {
+        const batch = await prisma[config.prismaModel].findMany({
+          ...(config.include ? { include: config.include } : {}),
+          skip,
+          take: BACKUP_BATCH_SIZE
+        });
+
+        if (batch.length === 0) {
+          break;
+        }
+
+        await csvWriter.writeRecords(batch.map((row) => serializeRowForCsv(config, row)));
+
+        total += batch.length;
+        skip += batch.length;
+
+        if (batch.length < BACKUP_BATCH_SIZE) {
+          break;
+        }
+      }
+
+      exportedCounts[config.jsonKey] = total;
+    }
+
+    const zipPassword = generateSecurePassword(16);
+    const zipPath = path.join(tempDir, `export_${timestamp}.zip`);
+    const output = fs.createWriteStream(zipPath);
+    const archive = archiver('zip-encrypted', {
+      zlib: { level: 6 },
+      encryptionMethod: 'aes256',
+      password: zipPassword
+    });
+
+    output.on('close', () => {
+      res.setHeader('X-Backup-Password', zipPassword);
+      res.setHeader('X-Backup-Info', JSON.stringify({
+        password: zipPassword,
+        message: 'IMPORTANT: Save this password securely! It cannot be recovered if lost.',
+        filename: `export_${timestamp}.zip`,
+        exportedAt: new Date().toISOString(),
+        models: backupModelConfigs.map((config) => config.jsonKey),
+        counts: exportedCounts
+      }));
+      res.setHeader('Content-Disposition', `attachment; filename="export_${timestamp}.zip"`);
+      res.setHeader('Content-Type', 'application/zip');
+
+      res.sendFile(zipPath, (err) => {
+        for (const filePath of [...csvPaths, zipPath]) {
+          try {
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          } catch (cleanupError) {
+            console.error('Error cleaning up backup files:', cleanupError);
+          }
+        }
+
+        if (err && !res.headersSent) {
+          console.error('Error sending ZIP file:', err);
+          res.status(500).json({ error: 'Error sending backup file' });
+        }
+      });
+    });
+
+    archive.on('error', (archiveError) => {
+      for (const filePath of [...csvPaths, zipPath]) {
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (_) {
+          // noop
+        }
+      }
+
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: 'Error creating backup archive',
+          message: archiveError.message
+        });
+      }
+    });
+
+    archive.pipe(output);
+    for (const filePath of csvPaths) {
+      archive.file(filePath, { name: path.basename(filePath) });
+    }
+    archive.finalize();
   } catch (error) {
     console.error('Export error:', error);
     res.status(500).json({
       error: 'Internal server error during export',
       message: error.message
     });
-  } finally {
-
   }
 };
 
@@ -4485,499 +4620,45 @@ exports.exportData = async (req, res) => {
  * /api/v1/auth/restore:
  *   post:
  *     summary: "Backup faylidan ma'lumotlarni tiklash (Restore)"
- *     description: "JSON formatidagi backup faylidan registratsiya va qarindoshlik ma'lumotlarini tiklash. Faqat superAdmin huquqiga ega foydalanuvchilar uchun. Mavjud ma'lumotlar yangilanadi, yangilari qo'shiladi."
  *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - registrations
- *               - relatives
- *             properties:
- *               mode:
- *                 type: string
- *                 enum: [upsert, insert_only, update_only]
- *                 default: upsert
- *                 description: "Import rejimi - upsert (mavjudlarni yangilash, yangilarini qo'shish), insert_only (faqat yangisini qo'shish), update_only (faqat mavjudlarni yangilash)"
- *               skipExisting:
- *                 type: boolean
- *                 default: false
- *                 description: "Mavjud yozuvlarni o'tkazib yuborish (faqat insert_only rejimida ishlaydi)"
- *               registrations:
- *                 type: array
- *                 description: "Registratsiya ma'lumotlari"
- *                 items:
- *                   type: object
- *                   required:
- *                     - id
- *                     - fullName
- *                   properties:
- *                     id:
- *                       type: string
- *                     regNumber:
- *                       type: string
- *                     fullName:
- *                       type: string
- *                     firstName:
- *                       type: string
- *                     lastName:
- *                       type: string
- *                     fatherName:
- *                       type: string
- *                     nationality:
- *                       type: string
- *                     pinfl:
- *                       type: string
- *                     birthDate:
- *                       type: string
- *                       format: date-time
- *                     birthYear:
- *                       type: integer
- *                     birthPlace:
- *                       type: string
- *                     residence:
- *                       type: string
- *                     workplace:
- *                       type: string
- *                     position:
- *                       type: string
- *                     status:
- *                       type: string
- *                     completeStatus:
- *                       type: string
- *                       enum: [WAITING, IN_PROGRESS, COMPLETED, EXPIRED]
- *               relatives:
- *                 type: array
- *                 description: "Qarindoshlik ma'lumotlari"
- *                 items:
- *                   type: object
- *                   required:
- *                     - id
- *                     - regNumber
- *                     - relationDegree
- *                     - fullName
- *                     - firstName
- *                     - lastName
- *                   properties:
- *                     id:
- *                       type: string
- *                     regNumber:
- *                       type: string
- *                     relationDegree:
- *                       type: string
- *                     fullName:
- *                       type: string
- *                     firstName:
- *                       type: string
- *                     lastName:
- *                       type: string
- *                     fatherName:
- *                       type: string
- *                     nationality:
- *                       type: string
- *                     pinfl:
- *                       type: string
- *                     birthDate:
- *                       type: string
- *                       format: date-time
- *                     birthYear:
- *                       type: integer
- *                     birthPlace:
- *                       type: string
- *                     residence:
- *                       type: string
- *                     workplace:
- *                       type: string
- *                     position:
- *                       type: string
- *                     familyStatus:
- *                       type: string
- *                     registrationId:
- *                       type: string
- *             example:
- *               mode: "upsert"
- *               registrations:
- *                 - id: "uuid-1"
- *                   fullName: "Test User"
- *                   firstName: "Test"
- *                   lastName: "User"
- *               relatives:
- *                 - id: "uuid-2"
- *                   regNumber: "REG-001"
- *                   relationDegree: "Aka"
- *                   fullName: "Relative User"
- *                   firstName: "Relative"
- *                   lastName: "User"
- *     responses:
- *       200:
- *         description: "Ma'lumotlar muvaffaqiyatli tiklandi"
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Data restored successfully"
- *                 data:
- *                   type: object
- *                   properties:
- *                     registrations:
- *                       type: object
- *                       properties:
- *                         total:
- *                           type: integer
- *                           example: 100
- *                         created:
- *                           type: integer
- *                           example: 50
- *                         updated:
- *                           type: integer
- *                           example: 50
- *                         skipped:
- *                           type: integer
- *                           example: 0
- *                         failed:
- *                           type: integer
- *                           example: 0
- *                     relatives:
- *                       type: object
- *                       properties:
- *                         total:
- *                           type: integer
- *                           example: 200
- *                         created:
- *                           type: integer
- *                           example: 100
- *                         updated:
- *                           type: integer
- *                           example: 100
- *                         skipped:
- *                           type: integer
- *                           example: 0
- *                         failed:
- *                           type: integer
- *                           example: 0
- *                     restoredAt:
- *                       type: string
- *                       format: date-time
- *       400:
- *         description: "Noto'g'ri so'rov parametrlari"
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 code:
- *                   type: integer
- *                   example: 400
- *                 message:
- *                   type: string
- *                   example: "Invalid request body - registrations and relatives arrays are required"
- *       401:
- *         description: "Autentifikatsiya talab qilinadi"
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 code:
- *                   type: integer
- *                   example: 401
- *                 message:
- *                   type: string
- *                   example: "Authentication required"
- *       403:
- *         description: "Ruxsat etilmagan - faqat superAdmin huquqi"
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 code:
- *                   type: integer
- *                   example: 403
- *                 message:
- *                   type: string
- *                   example: "Access forbidden - superAdmin role required"
- *       500:
- *         description: "Ichki server xatosi"
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: "Internal server error during import"
- *                 message:
- *                   type: string
- *                   example: "Error details"
  */
 exports.importData = async (req, res) => {
   try {
-    const {
-      registrations = [],
-      relatives = [],
-      mode = 'upsert',
-      skipExisting = false
-    } = req.body;
-
-    const executorId = req.userId;
-
-    // Validate request body
-    if (!Array.isArray(registrations) || !Array.isArray(relatives)) {
+    if (req.body?.mode && !VALID_RESTORE_MODES.has(req.body.mode)) {
       return res.status(400).json({
         code: 400,
-        message: 'Invalid request body - registrations and relatives must be arrays'
+        message: `Invalid mode. Allowed: ${Array.from(VALID_RESTORE_MODES).join(', ')}`
       });
     }
 
-    // Validate mode
-    const validModes = ['upsert', 'insert_only', 'update_only'];
-    if (!validModes.includes(mode)) {
+    const mode = normalizeRestoreMode(req.body?.mode);
+    const skipExisting = Boolean(req.body?.skipExisting);
+
+    const rowsByModel = buildJsonRowsMap(req.body || {});
+    if (rowsByModel.size === 0) {
       return res.status(400).json({
         code: 400,
-        message: `Invalid mode. Allowed: ${validModes.join(', ')}`
+        message: 'Invalid request body - expected at least one model array in payload'
       });
     }
 
-    // Valid completeStatus values
-    const validCompleteStatuses = ['WAITING', 'IN_PROGRESS', 'COMPLETED', 'EXPIRED'];
-
-    // Statistics tracking
-    const stats = {
-      registrations: { total: registrations.length, created: 0, updated: 0, skipped: 0, failed: 0 },
-      relatives: { total: relatives.length, created: 0, updated: 0, skipped: 0, failed: 0 }
-    };
-
-    const errors = [];
-
-    // Helper function to parse date safely
-    const parseDate = (dateStr) => {
-      if (!dateStr) return null;
-      try {
-        const date = new Date(dateStr);
-        return isNaN(date.getTime()) ? null : date;
-      } catch {
-        return null;
-      }
-    };
-
-    // Helper function to parse integer safely
-    const parseInt = (value) => {
-      if (value === null || value === undefined || value === '') return null;
-      const parsed = Number.parseInt(value, 10);
-      return isNaN(parsed) ? null : parsed;
-    };
-
-    // Process registrations
-    await prisma.$transaction(async (tx) => {
-      // Process registrations
-      for (let i = 0; i < registrations.length; i++) {
-        const reg = registrations[i];
-
-        try {
-          // Validate required fields
-          if (!reg.id || !reg.fullName) {
-            stats.registrations.failed++;
-            errors.push(`Registration at index ${i}: Missing required fields (id, fullName)`);
-            continue;
-          }
-
-          // Check if registration exists
-          const existingReg = await tx.registration.findUnique({
-            where: { id: reg.id }
-          });
-
-          // Prepare data for insert/update
-          const registrationData = {
-            regNumber: reg.regNumber || '',
-            regDate: parseDate(reg.regDate),
-            regEndDate: parseDate(reg.regEndDate),
-            fullName: reg.fullName,
-            firstName: reg.firstName || '',
-            lastName: reg.lastName || '',
-            fatherName: reg.fatherName || '',
-            nationality: reg.nationality || '',
-            pinfl: reg.pinfl || '',
-            birthDate: parseDate(reg.birthDate),
-            birthYear: parseInt(reg.birthYear),
-            birthPlace: reg.birthPlace || '',
-            residence: reg.residence || '',
-            workplace: reg.workplace || '',
-            position: reg.position || '',
-            status: reg.status || 'proccess',
-            completeStatus: validCompleteStatuses.includes(reg.completeStatus) ? reg.completeStatus : 'WAITING',
-            form_reg: reg.form_reg || '',
-            form_reg_log: reg.form_reg_log || '',
-            conclusionDate: parseDate(reg.conclusionDate),
-            conclusionRegNum: reg.conclusionRegNum || '',
-            model: reg.model || 'registration',
-            notes: reg.notes || '',
-            additionalNotes: reg.additionalNotes || '',
-            conclusion_compr: reg.conclusion_compr || '',
-            externalNotes: reg.externalNotes || '',
-            accessStatus: reg.accessStatus || '',
-            expired: parseDate(reg.expired),
-            expiredDate: parseDate(reg.expiredDate),
-            recordNumber: reg.recordNumber || '',
-            endDate: parseDate(reg.endDate),
-            executorId: executorId
-          };
-
-          if (existingReg) {
-            // Record exists
-            if (mode === 'insert_only') {
-              if (skipExisting) {
-                stats.registrations.skipped++;
-                continue;
-              } else {
-                stats.registrations.failed++;
-                errors.push(`Registration at index ${i}: Record with id ${reg.id} already exists`);
-                continue;
-              }
-            }
-
-            // Update existing record
-            await tx.registration.update({
-              where: { id: reg.id },
-              data: registrationData
-            });
-            stats.registrations.updated++;
-          } else {
-            // Record doesn't exist
-            if (mode === 'update_only') {
-              stats.registrations.skipped++;
-              continue;
-            }
-
-            // Create new record
-            await tx.registration.create({
-              data: {
-                id: reg.id,
-                ...registrationData
-              }
-            });
-            stats.registrations.created++;
-          }
-        } catch (error) {
-          stats.registrations.failed++;
-          errors.push(`Registration at index ${i} (id: ${reg.id}): ${error.message}`);
-        }
-      }
-
-      // Process relatives
-      for (let i = 0; i < relatives.length; i++) {
-        const rel = relatives[i];
-
-        try {
-          // Validate required fields
-          if (!rel.id || !rel.regNumber || !rel.relationDegree || !rel.fullName || !rel.firstName || !rel.lastName) {
-            stats.relatives.failed++;
-            errors.push(`Relative at index ${i}: Missing required fields (id, regNumber, relationDegree, fullName, firstName, lastName)`);
-            continue;
-          }
-
-          // Check if relative exists
-          const existingRel = await tx.relatives.findUnique({
-            where: { id: rel.id }
-          });
-
-          // Prepare data for insert/update
-          const relativeData = {
-            regNumber: rel.regNumber,
-            relationDegree: rel.relationDegree,
-            fullName: rel.fullName,
-            firstName: rel.firstName,
-            lastName: rel.lastName,
-            fatherName: rel.fatherName || '',
-            nationality: rel.nationality || '',
-            pinfl: rel.pinfl || '',
-            birthDate: parseDate(rel.birthDate),
-            birthYear: parseInt(rel.birthYear),
-            birthPlace: rel.birthPlace || '',
-            residence: rel.residence || '',
-            workplace: rel.workplace || '',
-            position: rel.position || '',
-            familyStatus: rel.familyStatus || 'single',
-            model: rel.model || 'relative',
-            notes: rel.notes || '',
-            additionalNotes: rel.additionalNotes || '',
-            externalNotes: rel.externalNotes || '',
-            accessStatus: rel.accessStatus || null,
-            status_analysis: rel.status_analysis !== undefined ? rel.status_analysis : true,
-            registrationId: rel.registrationId || null,
-            executorId: executorId
-          };
-
-          if (existingRel) {
-            // Record exists
-            if (mode === 'insert_only') {
-              if (skipExisting) {
-                stats.relatives.skipped++;
-                continue;
-              } else {
-                stats.relatives.failed++;
-                errors.push(`Relative at index ${i}: Record with id ${rel.id} already exists`);
-                continue;
-              }
-            }
-
-            // Update existing record
-            await tx.relatives.update({
-              where: { id: rel.id },
-              data: relativeData
-            });
-            stats.relatives.updated++;
-          } else {
-            // Record doesn't exist
-            if (mode === 'update_only') {
-              stats.relatives.skipped++;
-              continue;
-            }
-
-            // Create new record
-            await tx.relatives.create({
-              data: {
-                id: rel.id,
-                ...relativeData
-              }
-            });
-            stats.relatives.created++;
-          }
-        } catch (error) {
-          stats.relatives.failed++;
-          errors.push(`Relative at index ${i} (id: ${rel.id}): ${error.message}`);
-        }
-      }
+    const { modelStats, errors } = await restoreRowsByModel(rowsByModel, {
+      mode,
+      skipExisting
     });
 
-    // Return success response with statistics
     res.json({
       success: true,
       message: 'Data restored successfully',
-      data: {
-        ...stats,
-        restoredAt: new Date().toISOString()
-      },
-      ...(errors.length > 0 && { errors })
+      data: buildRestoreResponseData(modelStats),
+      ...(errors.length > 0 ? { errors } : {})
     });
-
   } catch (error) {
     console.error('Import error:', error);
     res.status(500).json({
       error: 'Internal server error during import',
       message: error.message
     });
-  } finally {
-
   }
 };
 
@@ -4994,7 +4675,7 @@ const uploadStorage = multer.diskStorage({
 
 const upload = multer({
   storage: uploadStorage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed' || (file.originalname || '').toLowerCase().endsWith('.zip')) {
       cb(null, true);
@@ -5009,91 +4690,12 @@ const upload = multer({
  * /api/v1/auth/restore-from-zip:
  *   post:
  *     summary: "ZIP fayldan ma'lumotlarni tiklash (Restore from ZIP)"
- *     description: "Backup eksport qilingan parol bilan himoyalangan ZIP fayldan registratsiya va qarindoshlik ma'lumotlarini tiklash. Faqat superAdmin huquqiga ega foydalanuvchilar uchun. Dublikat yozuvlarni aniqlash: barcha maydonlarni (ID bundan mustasno) solishtiradi va faqat farq qiladigan yozuvlarni import qiladi."
  *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - file
- *               - password
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: "Backup ZIP fayl"
- *               password:
- *                 type: string
- *                 description: "ZIP fayl paroli (backup jarayonida qaytarilgan)"
- *                 example: "aB3!xY9#kL2@pQ5$"
- *     responses:
- *       200:
- *         description: "Ma'lumotlar muvaffaqiyatli tiklandi"
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: "Data restored successfully from ZIP"
- *                 data:
- *                   type: object
- *                   properties:
- *                     registrations:
- *                       type: object
- *                       properties:
- *                         total:
- *                           type: integer
- *                           example: 100
- *                         created:
- *                           type: integer
- *                           example: 30
- *                         updated:
- *                           type: integer
- *                           example: 50
- *                         skipped:
- *                           type: integer
- *                           example: 20
- *                         failed:
- *                           type: integer
- *                           example: 0
- *                     relatives:
- *                       type: object
- *                       properties:
- *                         total:
- *                           type: integer
- *                           example: 200
- *                         created:
- *                           type: integer
- *                           example: 60
- *                         updated:
- *                           type: integer
- *                           example: 100
- *                         skipped:
- *                           type: integer
- *                           example: 40
- *                         failed:
- *                           type: integer
- *                           example: 0
- *                     restoredAt:
- *                       type: string
- *                       format: date-time
- *       400:
- *         description: "Noto'g'ri fayl formati yoki parametrlar"
- *       500:
- *         description: "Ichki server xatosi"
  */
 exports.restoreFromZip = async (req, res) => {
   const uploadedFilePath = req.file ? req.file.path : null;
   const extractDir = uploadedFilePath ? path.join(path.dirname(uploadedFilePath), `extract_${Date.now()}`) : null;
-  const password = req.body.password;
+  const password = req.body?.password;
 
   try {
     if (!req.file) {
@@ -5110,19 +4712,14 @@ exports.restoreFromZip = async (req, res) => {
       });
     }
 
-    const executorId = req.userId;
-
-    // Create extraction directory
     if (!fs.existsSync(extractDir)) {
       fs.mkdirSync(extractDir, { recursive: true });
     }
 
-    // Extract password-protected ZIP file using 7z
     try {
       const sevenBin = require('7zip-bin').path7za;
-
       const stream = extractFull(uploadedFilePath, extractDir, {
-        password: password,
+        password,
         $bin: sevenBin
       });
 
@@ -5131,7 +4728,6 @@ exports.restoreFromZip = async (req, res) => {
         stream.on('error', reject);
       });
     } catch (zipError) {
-      // Clean up and return error
       try {
         if (fs.existsSync(extractDir)) {
           fs.rmSync(extractDir, { recursive: true, force: true });
@@ -5140,7 +4736,7 @@ exports.restoreFromZip = async (req, res) => {
         console.error('Error cleaning up after ZIP extraction failure:', cleanupErr);
       }
 
-      const errorMessage = zipError.message || zipError.toString();
+      const errorMessage = zipError.message || String(zipError);
       return res.status(400).json({
         code: 400,
         message: errorMessage.includes('password') || errorMessage.includes('Wrong password')
@@ -5150,251 +4746,43 @@ exports.restoreFromZip = async (req, res) => {
       });
     }
 
-    // Find CSV files
-    const files = fs.readdirSync(extractDir);
-    const registrationsCsvFile = files.find(f => f.includes('registrations') && f.endsWith('.csv'));
-    const relativesCsvFile = files.find(f => f.includes('relatives') && f.endsWith('.csv'));
+    const allCsvFiles = fs.readdirSync(extractDir).filter((fileName) => fileName.toLowerCase().endsWith('.csv'));
+    const rowsByModel = new Map();
+    const ignoredFiles = [];
 
-    if (!registrationsCsvFile || !relativesCsvFile) {
-      throw new Error('ZIP file must contain both registrations and relatives CSV files');
+    for (const fileName of allCsvFiles) {
+      const config = getBackupModelConfigForFile(fileName);
+      if (!config) {
+        ignoredFiles.push(fileName);
+        continue;
+      }
+
+      const filePath = path.join(extractDir, fileName);
+      const rows = await parseCsvFile(filePath);
+      rowsByModel.set(config.prismaModel, rows);
     }
 
-    // Helper function to parse CSV
-    const parseCSV = (filePath) => {
-      return new Promise((resolve, reject) => {
-        const results = [];
-        fs.createReadStream(filePath)
-          .pipe(csvParser())
-          .on('data', (data) => results.push(data))
-          .on('end', () => resolve(results))
-          .on('error', (error) => reject(error));
+    if (rowsByModel.size === 0) {
+      return res.status(400).json({
+        code: 400,
+        message: 'ZIP file does not contain any recognized backup CSV files.'
       });
-    };
+    }
 
-    // Parse CSV files
-    const registrationsData = await parseCSV(path.join(extractDir, registrationsCsvFile));
-    const relativesData = await parseCSV(path.join(extractDir, relativesCsvFile));
-
-    // Helper function to compare objects (excluding specific fields)
-    const areRecordsEqual = (record1, record2, excludeFields = ['id', 'createdAt', 'updatedAt']) => {
-      const keys1 = Object.keys(record1).filter(k => !excludeFields.includes(k));
-      const keys2 = Object.keys(record2).filter(k => !excludeFields.includes(k));
-
-      // Check if all keys match
-      if (keys1.length !== keys2.length) return false;
-
-      for (const key of keys1) {
-        const val1 = record1[key];
-        const val2 = record2[key];
-
-        // Normalize values for comparison
-        const normalizedVal1 = val1 === null || val1 === undefined || val1 === '' ? '' : String(val1).trim();
-        const normalizedVal2 = val2 === null || val2 === undefined || val2 === '' ? '' : String(val2).trim();
-
-        if (normalizedVal1 !== normalizedVal2) {
-          return false;
-        }
-      }
-
-      return true;
-    };
-
-    // Helper function to parse date safely
-    const parseDate = (dateStr) => {
-      if (!dateStr || dateStr === '') return null;
-      try {
-        const date = new Date(dateStr);
-        return isNaN(date.getTime()) ? null : date;
-      } catch {
-        return null;
-      }
-    };
-
-    // Helper function to parse integer safely
-    const parseIntSafe = (value) => {
-      if (value === null || value === undefined || value === '') return null;
-      const parsed = Number.parseInt(value, 10);
-      return isNaN(parsed) ? null : parsed;
-    };
-
-    // Statistics tracking
-    const stats = {
-      registrations: { total: registrationsData.length, created: 0, updated: 0, skipped: 0, failed: 0 },
-      relatives: { total: relativesData.length, created: 0, updated: 0, skipped: 0, failed: 0 }
-    };
-
-    const errors = [];
-    const validCompleteStatuses = ['WAITING', 'IN_PROGRESS', 'COMPLETED', 'EXPIRED'];
-
-    // Process data in transaction (with extended timeout for large datasets)
-    await prisma.$transaction(async (tx) => {
-      // Process registrations
-      for (let i = 0; i < registrationsData.length; i++) {
-        const reg = registrationsData[i];
-
-        try {
-          if (!reg.ID || !reg['Full Name']) {
-            stats.registrations.failed++;
-            errors.push(`Registration at index ${i}: Missing required fields`);
-            continue;
-          }
-
-          // Check if registration exists
-          const existingReg = await tx.registration.findUnique({
-            where: { id: reg.ID }
-          });
-
-          // Prepare data
-          const registrationData = {
-            regNumber: reg['Registration Number'] || '',
-            regDate: parseDate(reg['Registration Date']),
-            regEndDate: parseDate(reg['Registration End Date']),
-            fullName: reg['Full Name'],
-            firstName: reg['First Name'] || '',
-            lastName: reg['Last Name'] || '',
-            fatherName: reg['Father Name'] || '',
-            nationality: reg['Nationality'] || '',
-            pinfl: reg['PINFL'] || '',
-            birthDate: parseDate(reg['Birth Date']),
-            birthYear: parseIntSafe(reg['Birth Year']),
-            birthPlace: reg['Birth Place'] || '',
-            residence: reg['Residence'] || '',
-            workplace: reg['Workplace'] || '',
-            position: reg['Position'] || '',
-            status: reg['Status'] || 'proccess',
-            completeStatus: validCompleteStatuses.includes(reg['Complete Status']) ? reg['Complete Status'] : 'WAITING',
-            form_reg: reg['Form Registration'] || '',
-            form_reg_log: reg['Form Registration Log'] || '',
-            conclusionDate: parseDate(reg['Conclusion Date']),
-            conclusionRegNum: reg['Conclusion Registration Number'] || '',
-            model: reg['Model'] || 'registration',
-            notes: reg['Notes'] || '',
-            additionalNotes: reg['Additional Notes'] || '',
-            conclusion_compr: reg['Conclusion Comprehensive'] || '',
-            externalNotes: reg['External Notes'] || '',
-            accessStatus: reg['Access Status'] || '',
-            expired: parseDate(reg['Expired']),
-            expiredDate: parseDate(reg['Expired Date']),
-            recordNumber: reg['Record Number'] || '',
-            endDate: parseDate(reg['End Date']),
-            executorId: executorId
-          };
-
-          if (existingReg) {
-            // Compare all fields except ID
-            if (areRecordsEqual(registrationData, existingReg)) {
-              // Records are identical, skip
-              stats.registrations.skipped++;
-            } else {
-              // Records are different, update
-              await tx.registration.update({
-                where: { id: reg.ID },
-                data: registrationData
-              });
-              stats.registrations.updated++;
-            }
-          } else {
-            // Record doesn't exist, create
-            await tx.registration.create({
-              data: {
-                id: reg.ID,
-                ...registrationData
-              }
-            });
-            stats.registrations.created++;
-          }
-        } catch (error) {
-          stats.registrations.failed++;
-          errors.push(`Registration at index ${i} (id: ${reg.ID}): ${error.message}`);
-        }
-      }
-
-      // Process relatives
-      for (let i = 0; i < relativesData.length; i++) {
-        const rel = relativesData[i];
-
-        try {
-          if (!rel.ID || !rel['Full Name']) {
-            stats.relatives.failed++;
-            errors.push(`Relative at index ${i}: Missing required fields`);
-            continue;
-          }
-
-          // Check if relative exists
-          const existingRel = await tx.relatives.findUnique({
-            where: { id: rel.ID }
-          });
-
-          // Prepare data
-          const relativeData = {
-            regNumber: rel['Registration Number'] || '',
-            relationDegree: rel['Relation Degree'] || '',
-            fullName: rel['Full Name'],
-            firstName: rel['First Name'] || '',
-            lastName: rel['Last Name'] || '',
-            fatherName: rel['Father Name'] || '',
-            nationality: rel['Nationality'] || '',
-            pinfl: rel['PINFL'] || '',
-            birthDate: parseDate(rel['Birth Date']),
-            birthYear: parseIntSafe(rel['Birth Year']),
-            birthPlace: rel['Birth Place'] || '',
-            residence: rel['Residence'] || '',
-            workplace: rel['Workplace'] || '',
-            position: rel['Position'] || '',
-            familyStatus: rel['Family Status'] || 'single',
-            model: rel['Model'] || 'relative',
-            notes: rel['Notes'] || '',
-            additionalNotes: rel['Additional Notes'] || '',
-            externalNotes: rel['External Notes'] || '',
-            accessStatus: rel['Access Status'] || null,
-            status_analysis: rel['Status Analysis'] !== undefined ? (rel['Status Analysis'] === 'true' || rel['Status Analysis'] === true) : true,
-            registrationId: rel['Related Registration ID'] || null,
-            executorId: executorId
-          };
-
-          if (existingRel) {
-            // Compare all fields except ID
-            if (areRecordsEqual(relativeData, existingRel)) {
-              // Records are identical, skip
-              stats.relatives.skipped++;
-            } else {
-              // Records are different, update
-              await tx.relatives.update({
-                where: { id: rel.ID },
-                data: relativeData
-              });
-              stats.relatives.updated++;
-            }
-          } else {
-            // Record doesn't exist, create
-            await tx.relatives.create({
-              data: {
-                id: rel.ID,
-                ...relativeData
-              }
-            });
-            stats.relatives.created++;
-          }
-        } catch (error) {
-          stats.relatives.failed++;
-          errors.push(`Relative at index ${i} (id: ${rel.ID}): ${error.message}`);
-        }
-      }
-    }, {
-      timeout: 600000, // 10 minutes timeout for large datasets
+    const { modelStats, errors } = await restoreRowsByModel(rowsByModel, {
+      mode: 'upsert',
+      skipExisting: false
     });
 
-    // Return success response
     res.json({
       success: true,
       message: 'Data restored successfully from ZIP',
       data: {
-        ...stats,
-        restoredAt: new Date().toISOString()
+        ...buildRestoreResponseData(modelStats),
+        ignoredFiles
       },
-      ...(errors.length > 0 && { errors })
+      ...(errors.length > 0 ? { errors } : {})
     });
-
   } catch (error) {
     console.error('Restore from ZIP error:', error);
     res.status(500).json({
@@ -5402,7 +4790,6 @@ exports.restoreFromZip = async (req, res) => {
       message: error.message
     });
   } finally {
-    // Clean up temporary files
     try {
       if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
         fs.unlinkSync(uploadedFilePath);
@@ -5413,7 +4800,6 @@ exports.restoreFromZip = async (req, res) => {
     } catch (cleanupError) {
       console.error('Error cleaning up temporary files:', cleanupError);
     }
-
   }
 };
 
@@ -5578,3 +4964,4 @@ exports.updateStatusAll = async (req, res) => {
 
   }
 };
+

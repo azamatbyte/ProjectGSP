@@ -3611,11 +3611,9 @@ function generateConclusionDocx(outputPath = "ф-4 заключение.docx", d
       { alignment: AlignmentType.JUSTIFIED, indent: { left: 2880 } }
     ),
     p([
-      t("получена информация, "),
+      t("получена информация: "),
       t(person.noteLabel, {
-        italics: true,
-        underline: underline ? {} : undefined,
-        highlight: highlightValue,
+        italics: false,
       }),
       t(".")
     ], { alignment: AlignmentType.JUSTIFIED, indent: { left: 0 } }
@@ -4031,11 +4029,9 @@ function generateConclusionDocxF4(outputPath = "ф-4 заключение.docx",
         }),
         t(" г.р., уроженец "),
         t(person.birthplace),
-        t(", по полученным данным, "),
+        t(", по полученным данным: "),
         t(person.noteLabel, {
-          italics: true,
-          underline: underline ? {} : undefined,
-          highlight: highlightValue,
+          italics: false,
         }),
         t("."),
       ],
