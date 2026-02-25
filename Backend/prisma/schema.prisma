@@ -139,6 +139,7 @@ model Registration {
   fatherName       String?   @default("")
   nationality      String?   @default("")
   pinfl            String?   @default("")
+  passport         String?   @default("")
   birthDate        DateTime? @db.Date
   birthYear        Int?
   conclusionDate   DateTime? @db.Date

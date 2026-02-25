@@ -112,6 +112,7 @@ const RegistrationSchema = z.object({
   whoAdd: z.string().optional(),
   externalNotes: z.string().optional(),
   pinfl: z.string().optional(),
+  passport: z.string().optional(),
 });
 
 const WorkPlaceSchema = z.object({

@@ -178,6 +178,7 @@ const BACKUP_MODEL_CONFIGS = [
       { key: 'fatherName', title: 'Father Name' },
       { key: 'nationality', title: 'Nationality' },
       { key: 'pinfl', title: 'PINFL' },
+      { key: 'passport', title: 'Passport' },
       { key: 'birthDate', title: 'Birth Date', type: 'date' },
       { key: 'birthYear', title: 'Birth Year', type: 'int' },
       { key: 'birthPlace', title: 'Birth Place' },

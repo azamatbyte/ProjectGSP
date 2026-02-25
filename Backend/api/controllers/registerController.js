@@ -211,6 +211,7 @@ exports.createRegistration = async (req, res) => {
       workplace,
       position,
       pinfl,
+      passport,
       completeStatus,
       accessStatus,
       model = "registration",
@@ -315,6 +316,7 @@ exports.createRegistration = async (req, res) => {
       notes: notes ? notes.trim() : "",
       externalNotes: externalNotes ? externalNotes.trim() : "",
       pinfl: pinfl ? pinfl.trim() : "",
+      passport: passport ? passport.trim() : "",
       model: model ? model.trim() : "",
       additionalNotes: additionalNotes ? additionalNotes.trim() : "",
       executorId: req.userId,
@@ -763,6 +765,7 @@ exports.getRegistrationList = async (req, res) => {
       workplace,
       model = data?.params?.model || "registration",
       position,
+      passport,
       recordNumber,
       sort = data?.sort || null
     } = body;
@@ -875,6 +878,18 @@ exports.getRegistrationList = async (req, res) => {
       andConditions.push({
         recordNumber: {
           contains: String(recordNumber)
+            .replace(/%/g, "")
+            .replace(/\*/g, "%")
+            .trim(),
+          mode: "insensitive",
+        },
+      });
+    }
+
+    if (passport) {
+      andConditions.push({
+        passport: {
+          contains: String(passport)
             .replace(/%/g, "")
             .replace(/\*/g, "%")
             .trim(),
@@ -1651,6 +1666,7 @@ exports.updateRegistration = async (req, res) => {
       workplace,
       position,
       pinfl,
+      passport,
       accessStatus,
       additionalNotes,
       completeStatus,
@@ -1857,6 +1873,19 @@ exports.updateRegistration = async (req, res) => {
         fieldName: "pinfl",
         oldValue: currentRegistration?.pinfl ? currentRegistration.pinfl : "",
         newValue: pinfl ? pinfl.trim() : "",
+        executorId: req.userId,
+      });
+    }
+
+    if (
+      passport !== currentRegistration?.passport
+    ) {
+      data.passport = passport ? passport.trim() : "";
+      logs.push({
+        registrationId: id,
+        fieldName: "passport",
+        oldValue: currentRegistration?.passport ? currentRegistration.passport : "",
+        newValue: passport ? passport.trim() : "",
         executorId: req.userId,
       });
     }
@@ -2579,6 +2608,8 @@ exports.globalSearch = async (req, res) => {
       form_reg,
       pinfl,
       pinflStatus,
+      passport,
+      passportStatus,
       form_regStatus,
       birth_date_start,
       birth_date_end,
@@ -2695,6 +2726,16 @@ exports.globalSearch = async (req, res) => {
 
     if (pinflStatus) {
       filter += `search_pinfl_status := '${safeString(pinflStatus)}'::boolean, `;
+    }
+
+    if (passport) {
+      filter += `search_passport := '${passport.trim()
+        .replace(/%/g, "")
+        .replace(/\*/g, "%")}'::text, `;
+    }
+
+    if (passportStatus) {
+      filter += `search_passport_status := '${safeString(passportStatus)}'::boolean, `;
     }
 
     if (regNumber) {
@@ -2880,6 +2921,8 @@ exports.globalSearch = async (req, res) => {
       workPlaceStatus,
       pinfl,
       pinflStatus,
+      passport,
+      passportStatus,
       regNumber,
       regNumberStatus,
       form_reg,
@@ -3077,6 +3120,8 @@ exports.globalSearchCount = async (req, res) => {
       modelStatus,
       pinfl,
       pinflStatus,
+      passport,
+      passportStatus,
       or_tab,
       or_tabStatus,
       executorId,
@@ -3152,6 +3197,16 @@ exports.globalSearchCount = async (req, res) => {
 
     if (pinflStatus) {
       filter += `search_pinfl_status := '${safeString(pinflStatus)}'::boolean, `;
+    }
+
+    if (passport) {
+      filter += `search_passport := '${passport.trim()
+        .replace(/%/g, "")
+        .replace(/\*/g, "%")}'::text, `;
+    }
+
+    if (passportStatus) {
+      filter += `search_passport_status := '${safeString(passportStatus)}'::boolean, `;
     }
 
     if (regNumber) {
@@ -3338,6 +3393,8 @@ exports.globalSearchCount = async (req, res) => {
       workPlaceStatus,
       pinfl,
       pinflStatus,
+      passport,
+      passportStatus,
       regNumber,
       regNumberStatus,
       form_reg,

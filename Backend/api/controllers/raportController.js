@@ -250,11 +250,12 @@ exports.generateReport = async (req, res) => {
         (item?.fatherName ? item?.fatherName.slice(0, 1) + "." : "");
       const positionLine = item?.position ? item?.position : "";
       const workPlaceLine = item?.workplace ? item?.workplace : "";
+      const rank = item?.rank ? item?.rank : "";
       if (idx === signList.length - 1) {
         // last signer: no «СОГЛАСОВАНО» prefix
-        return `«СОГЛАСОВАНО»\n${positionLine}\n${workPlaceLine}\n${nameLine}\n«____» ${currentMonthRu} ${year} года`;
+        return `«СОГЛАСОВАНО»\n${positionLine}\n${workPlaceLine}\n${rank}     ${nameLine}\n«____» ${currentMonthRu} ${year} года`;
       }
-      return `${positionLine}\n${workPlaceLine}\n${nameLine}\n«____» ${currentMonthRu} ${year} года\n`;
+      return `${positionLine}\n${workPlaceLine}\n${rank}     ${nameLine}\n«____» ${currentMonthRu} ${year} года\n`;
     });
 
     // Fetch data from database based on IDs
@@ -3641,7 +3642,7 @@ function generateConclusionDocx(outputPath = "ф-4 заключение.docx", d
     p([t(intro2)], {
       alignment: AlignmentType.JUSTIFIED,
       // spacing: { before: 100 },
-      // indent: { firstLine: 720 },
+      indent: { firstLine: 720 },
     }),
   ];
 
@@ -8569,7 +8570,7 @@ function generateUPK(
                           }),
                         ],
                         alignment: AlignmentType.CENTER,
-                        spacing: {after: 0, before: 276 },
+                        spacing: { after: 0, before: 276 },
                       }),
                       new Paragraph({
                         children: [
@@ -15488,7 +15489,7 @@ function generateAVR(
                           new TextRun({
                             text: `${firstName?.toUpperCase() || ""} ${fatherName?.toUpperCase() || ""
                               }`,
-                            size: 32,
+                            size: 28,
                             bold: true,
                             // underline: {
                             //   type: UnderlineType.SINGLE,
@@ -16392,7 +16393,7 @@ function generateAVR(
                       new Paragraph({
                         children: [
                           new TextRun({
-                            text: `8. Страна пребывания: `,
+                            text: `8. Паспорт: `,
                             bold: false,
                             size: 24, // Large font size for title
                           }),
@@ -16593,119 +16594,119 @@ function generateAVR(
             spacing: { after: 0, before: 0 },
           }),
 
-          //Другие дополнительные данные
-          new Table({
-            rows: [
-              new TableRow({
-                children: [
-                  // First Cell: Title "live place label"
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        children: [
-                          new TextRun({
-                            text: `10. Қандай маълумот керак`,
-                            bold: false,
-                            size: 24, // Large font size for title
-                          }),
-                          new TextRun({
-                            text: "(Какая нужна справка)",
-                            size: 24, // Adjust font size
-                            font: "Times New Roman",
-                            break: 1,
-                          }),
-                        ],
-                        color: "0f0f0f",
-                        alignment: AlignmentType.LEFT, // Align to the left
-                      }),
-                    ],
-                    verticalAlign: VerticalAlign.CENTER,
-                    width: {
-                      size: 35 * 50, // 70% width for the title
-                      type: WidthType.PERCENTAGE,
-                    },
-                  }),
-                  // Second Cell: Table "live place"
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        children: [
-                          new TextRun({
-                            text: additional_information,
-                            size: 24,
-                            bold: true,
-                          }),
-                        ],
-                        alignment: AlignmentType.LEFT,
-                        verticalAlign: VerticalAlign.CENTER,
-                        spacing: { after: 0, before: 276 },
-                      }),
-                      new Paragraph({
-                        children: [
-                          new TextRun({
-                            text: "________________________________________________________________________________________________________", // Chiziqni ifodalash uchun
-                            size: 12, // Chiziqning o'lchami
-                            bold: true,
-                          }),
-                        ],
-                        border: {
-                          bottom: {
-                            color: "000000", // Chiziq rangi
-                            space: 1,
-                            value: "dash", // Chiziq turi
-                            size: 40, // Chiziq qalinligi
-                          },
-                        },
-                        alignment: AlignmentType.CENTER,
-                        spacing: { after: 0, before: 0 },
-                      }),
-                    ],
-                    width: {
-                      size: 65 * 50, // 30% width for the table
-                      type: WidthType.PERCENTAGE,
-                    },
-                    verticalAlign: VerticalAlign.CENTER,
-                  }),
-                ],
-                verticalAlign: VerticalAlign.CENTER,
-                spacing: { after: 276 },
-              }),
-            ],
-            width: {
-              size: 100 * 50, // Ensure the table spans the full width of the page
-              type: WidthType.PERCENTAGE,
-            },
-            alignment: AlignmentType.CENTER, // Center-align the entire table
-            verticalAlign: VerticalAlign.CENTER,
-            borders: {
-              top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              insideHorizontal: {
-                style: BorderStyle.NONE,
-                size: 0,
-                color: "FFFFFF",
-              },
-              insideVertical: {
-                style: BorderStyle.NONE,
-                size: 0,
-                color: "FFFFFF",
-              },
-            },
-            spacing: { line: 276, after: 276, before: 0 },
-          }),
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "_________________________________________________________________________________________________________________________________________", // Chiziqni ifodalash uchun
-                size: 1, // Chiziqning o'lchami
-                bold: true,
-                color: "ffffff",
-              }),
-            ],
-            spacing: { after: 0, before: 0 },
-          }),
+          // //Другие дополнительные данные
+          // new Table({
+          //   rows: [
+          //     new TableRow({
+          //       children: [
+          //         // First Cell: Title "live place label"
+          //         new TableCell({
+          //           children: [
+          //             new Paragraph({
+          //               children: [
+          //                 new TextRun({
+          //                   text: `10. Қандай маълумот керак`,
+          //                   bold: false,
+          //                   size: 24, // Large font size for title
+          //                 }),
+          //                 new TextRun({
+          //                   text: "(Какая нужна справка)",
+          //                   size: 24, // Adjust font size
+          //                   font: "Times New Roman",
+          //                   break: 1,
+          //                 }),
+          //               ],
+          //               color: "0f0f0f",
+          //               alignment: AlignmentType.LEFT, // Align to the left
+          //             }),
+          //           ],
+          //           verticalAlign: VerticalAlign.CENTER,
+          //           width: {
+          //             size: 35 * 50, // 70% width for the title
+          //             type: WidthType.PERCENTAGE,
+          //           },
+          //         }),
+          //         // Second Cell: Table "live place"
+          //         new TableCell({
+          //           children: [
+          //             new Paragraph({
+          //               children: [
+          //                 new TextRun({
+          //                   text: additional_information,
+          //                   size: 24,
+          //                   bold: true,
+          //                 }),
+          //               ],
+          //               alignment: AlignmentType.LEFT,
+          //               verticalAlign: VerticalAlign.CENTER,
+          //               spacing: { after: 0, before: 276 },
+          //             }),
+          //             new Paragraph({
+          //               children: [
+          //                 new TextRun({
+          //                   text: "________________________________________________________________________________________________________", // Chiziqni ifodalash uchun
+          //                   size: 12, // Chiziqning o'lchami
+          //                   bold: true,
+          //                 }),
+          //               ],
+          //               border: {
+          //                 bottom: {
+          //                   color: "000000", // Chiziq rangi
+          //                   space: 1,
+          //                   value: "dash", // Chiziq turi
+          //                   size: 40, // Chiziq qalinligi
+          //                 },
+          //               },
+          //               alignment: AlignmentType.CENTER,
+          //               spacing: { after: 0, before: 0 },
+          //             }),
+          //           ],
+          //           width: {
+          //             size: 65 * 50, // 30% width for the table
+          //             type: WidthType.PERCENTAGE,
+          //           },
+          //           verticalAlign: VerticalAlign.CENTER,
+          //         }),
+          //       ],
+          //       verticalAlign: VerticalAlign.CENTER,
+          //       spacing: { after: 276 },
+          //     }),
+          //   ],
+          //   width: {
+          //     size: 100 * 50, // Ensure the table spans the full width of the page
+          //     type: WidthType.PERCENTAGE,
+          //   },
+          //   alignment: AlignmentType.CENTER, // Center-align the entire table
+          //   verticalAlign: VerticalAlign.CENTER,
+          //   borders: {
+          //     top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+          //     bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+          //     left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+          //     right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+          //     insideHorizontal: {
+          //       style: BorderStyle.NONE,
+          //       size: 0,
+          //       color: "FFFFFF",
+          //     },
+          //     insideVertical: {
+          //       style: BorderStyle.NONE,
+          //       size: 0,
+          //       color: "FFFFFF",
+          //     },
+          //   },
+          //   spacing: { line: 276, after: 276, before: 0 },
+          // }),
+          // new Paragraph({
+          //   children: [
+          //     new TextRun({
+          //       text: "_________________________________________________________________________________________________________________________________________", // Chiziqni ifodalash uchun
+          //       size: 1, // Chiziqning o'lchami
+          //       bold: true,
+          //       color: "ffffff",
+          //     }),
+          //   ],
+          //   spacing: { after: 0, before: 0 },
+          // }),
 
           //Какая нужна справка
           new Table({
@@ -16718,7 +16719,7 @@ function generateAVR(
                       new Paragraph({
                         children: [
                           new TextRun({
-                            text: `11. Какая нужна справка`,
+                            text: `10. Какая нужна справка`,
                             bold: false,
                             size: 24, // Large font size for title
                           }),
