@@ -1026,7 +1026,7 @@ const GlobalSearch = (props) => {
         render: (_, elm) => {
           const fullName =
             (elm?.initiator_last_name
-              ? elm?.initiator_last_name?.slice(0, 1) + "."
+              ? elm?.initiator_last_name
               : "") +
             (elm?.initiator_first_name ? elm?.initiator_first_name : "") +
             (elm?.initiator_father_name

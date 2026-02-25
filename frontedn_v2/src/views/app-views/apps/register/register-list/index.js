@@ -782,14 +782,14 @@ const RegisterList = () => {
     if (!initiator) {
       return t("initiator_not_found");
     }
-    return initiator?.first_name + " " + initiator?.last_name;
+    return initiator?.last_name + " " + (initiator?.first_name ? initiator?.first_name.charAt(0) + "." : "") + (initiator?.father_name ? initiator?.father_name.charAt(0) + "." : "");
   };
 
   const fromatExecutor = (executor) => {
     if (!executor) {
       return t("executor_not_found");
     }
-    return executor?.last_name + " " + executor?.first_name;
+    return executor?.last_name + " " + (executor?.first_name ? executor?.first_name.charAt(0) + "." : "") + (executor?.father_name ? executor?.father_name.charAt(0) + "." : "");
   };
 
   return (

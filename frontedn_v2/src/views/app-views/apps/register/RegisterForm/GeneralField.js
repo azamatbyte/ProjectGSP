@@ -87,7 +87,7 @@ const fetchRelationDegree = async (searchText) => {
 
 const GeneralField = (props) => {
   const { t, i18n } = useTranslation();
-  const { mode, id, model, modelProps } = props;
+  const { mode, id, model, modelProps, executorFullName } = props;
   const [workplaceOptions, setWorkplaceOptions] = useState([]);
   const [formOptions, setFormOptions] = useState([]);
   const [accessStatusOptions, setAccessStatusOptions] = useState([]);
@@ -738,6 +738,7 @@ const GeneralField = (props) => {
                     />
                   </Form.Item>
                 </Col>
+                
               </Row>
             </Col>
             <Col xs={24} sm={24} md={8}>
@@ -1189,6 +1190,18 @@ const GeneralField = (props) => {
                 />
               </Form.Item>
             </Col>
+            {mode === "EDIT" && (
+                  <Col xs={24} sm={24} md={12}>
+                    <Form.Item label={t("executor")}>
+                      <Input
+                        className="w-100"
+                        value={executorFullName || "-"}
+                        readOnly
+                        disabled
+                      />
+                    </Form.Item>
+                  </Col>
+                )}
             <Col xs={24} sm={24} md={24}>
               <Form.Item name="notes" label={t("compr_info")} style={{ flex: 1 }}>
                 <Input.TextArea

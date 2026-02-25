@@ -59,6 +59,7 @@ const GeneralField = (props) => {
     formType,
     regNumber,
     model: modelProps,
+    executorFullName,
   } = props;
   const { t } = useTranslation();
   const [model, setModel] = useState(MODEL_TYPES.RELATIVE);
@@ -347,6 +348,7 @@ const GeneralField = (props) => {
                       <Input readOnly />
                     </Form.Item>
                   </Col>
+                  
                 </Row>
               </Col>
               <Col xs={24} sm={24} md={8}>
@@ -472,6 +474,11 @@ const GeneralField = (props) => {
                     style={{ minWidth: 50 }}
                     readOnly
                   />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={24} md={12}>
+                <Form.Item label={t("executor")}>
+                  <Input value={executorFullName || "-"} readOnly />
                 </Form.Item>
               </Col>
               <Col xs={24} sm={24} md={24}>

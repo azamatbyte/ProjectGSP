@@ -451,6 +451,7 @@ exports.getRegistrationById = async (req, res) => {
             id: true,
             first_name: true,
             last_name: true,
+            father_name: true,
             username: true,
           },
         },

@@ -36,6 +36,13 @@ const fetchAccessStatus = async (searchText) => {
   }
 };
 
+const formatExecutorFullName = (executor) => {
+  if (!executor) return "";
+  return [executor?.last_name, executor?.first_name, executor?.father_name]
+    .filter((part) => !!String(part || "").trim())
+    .join(" ")
+    .trim();
+};
 
 
 const RegisterForm = (props) => {
@@ -53,6 +60,7 @@ const RegisterForm = (props) => {
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [accessStatusOptions, setAccessStatusOptions] = useState([]);
   const [accessStatusFetching, setAccessStatusFetching] = useState(false);
+  const [executorFullName, setExecutorFullName] = useState("");
   useEffect(() => {
     if (mode === INFO) {
       const fetchAdminData = async (id) => {
@@ -65,6 +73,7 @@ const RegisterForm = (props) => {
           setFormType(data?.form_reg);
           setRegNumber(data?.regNumber);
           setModel(data?.model);
+          setExecutorFullName(formatExecutorFullName(data?.executor));
           form.setFieldsValue({
             form_reg: data?.form_reg,
             formtype: data?.form_reg_log,
@@ -318,6 +327,7 @@ const RegisterForm = (props) => {
                     formType={formType}
                     regNumber={regNumber}
                     model={model}
+                    executorFullName={executorFullName}
                   />
                 ),
               },

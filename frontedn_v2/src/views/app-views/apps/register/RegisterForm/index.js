@@ -27,6 +27,14 @@ const fromatInitiator = (initiator) => {
   return initiator?.first_name + " " + initiator?.last_name;
 };
 
+const formatExecutorFullName = (executor) => {
+  if (!executor) return "";
+  return [executor?.last_name, executor?.first_name, executor?.father_name]
+    .filter((part) => !!String(part || "").trim())
+    .join(" ")
+    .trim();
+};
+
 const { Option } = Select;
 
 const fetchAccessStatus = async (searchText) => {
@@ -57,6 +65,7 @@ const RegisterForm = (props) => {
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [accessStatusOptions, setAccessStatusOptions] = useState([]);
   const [accessStatusFetching, setAccessStatusFetching] = useState(false);
+  const [executorFullName, setExecutorFullName] = useState("");
 
   const registerInformation = useCallback(
     async (id) => {
@@ -96,6 +105,7 @@ const RegisterForm = (props) => {
           });
         }
         setModel(model);
+        setExecutorFullName(formatExecutorFullName(executor));
         form.setFieldsValue({
           first_name,
           last_name,
@@ -408,6 +418,7 @@ const RegisterForm = (props) => {
                     mode={mode}
                     model={model}
                     modelProps={modelProps}
+                    executorFullName={executorFullName}
                     setIsEdit={setIsEdit}
                   />
                 ),
