@@ -71,6 +71,7 @@ const RegisterList = () => {
     firstName: 3,
     fatherName: 4,
     birthPlace: 5,
+    passport: 6,
     // To skip a field during tab navigation, set its value to -1
     // Example: someField: -1, // This field will be skipped
     // To reorder fields, change the numbers (lower numbers come first)
@@ -93,6 +94,7 @@ const RegisterList = () => {
     "birthDate",
     "birthPlace",
     "workPlace",
+    "passport",
   ];
 
   const updateSearchParams = useCallback(() => {
@@ -621,9 +623,25 @@ const RegisterList = () => {
       ),
     },
     {
+      title: t("passport"),
+      dataIndex: "passport",
+      width: "5%",
+      align: "center",
+      sorter: { multiple: 12 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap["passport"] || null,
+      render: (passport) => (
+        <Tooltip title={passport}>
+          <span>
+            {passport?.length > 10 ? passport?.slice(0, 10) + "..." : passport}
+          </span>
+        </Tooltip>
+      ),
+    },
+    {
       title: t("birth_date"),
       dataIndex: "birthDate",
-      sorter: { multiple: 12 },
+      sorter: { multiple: 13 },
       sortDirections: ["ascend", "descend"],
       sortOrder: sortOrderMap["birthDate"] || null,
       render: (_, elm) => (
@@ -641,7 +659,7 @@ const RegisterList = () => {
     {
       title: t("birth_place"),
       dataIndex: "birthPlace",
-      sorter: { multiple: 13 },
+      sorter: { multiple: 14 },
       sortDirections: ["ascend", "descend"],
       sortOrder: sortOrderMap["birthPlace"] || null,
       render: (birthPlace) => {
@@ -669,7 +687,7 @@ const RegisterList = () => {
     {
       title: t("work_place"),
       dataIndex: "workplace",
-      sorter: { multiple: 14 },
+      sorter: { multiple: 15 },
       sortDirections: ["ascend", "descend"],
       sortOrder: sortOrderMap["workplace"] || null,
       render: (workplace, elm) => {
@@ -696,7 +714,7 @@ const RegisterList = () => {
     {
       title: t("residence"),
       dataIndex: "residence",
-      sorter: { multiple: 15 },
+      sorter: { multiple: 16 },
       sortDirections: ["ascend", "descend"],
       sortOrder: sortOrderMap["residence"] || null,
       render: (residence) => (
@@ -738,7 +756,7 @@ const RegisterList = () => {
     {
       title: t("updated_at"),
       dataIndex: "updatedAt",
-      sorter: { multiple: 16 },
+      sorter: { multiple: 17 },
       sortDirections: ["ascend", "descend"],
       sortOrder: sortOrderMap["updatedAt"] || null,
       render: (updatedAt) => (
@@ -960,6 +978,19 @@ const RegisterList = () => {
                   />
                 </Form.Item>
               </Col>
+              <Col span={4}>
+                <Form.Item name={"field-8"} label={null}>
+                  <Input
+                    prefix={<SearchOutlined />}
+                    tabIndex={getTabIndex('passport')}
+                    placeholder={t("passport")}
+                    type="text"
+                    onChange={(e) =>
+                      setSearch({ ...search, [fields[8]]: e.target.value })
+                    }
+                  />
+                </Form.Item>
+              </Col>
               {/* <Col span={4}>
                 <Form.Item name={`field-8`} label={null}>
                   <Input
@@ -1175,6 +1206,19 @@ const RegisterList = () => {
                     type="text"
                     onChange={(e) =>
                       setSearch({ ...search, [fields[6]]: e.target.value })
+                    }
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={4}>
+                <Form.Item name={"field-8"} label={null}>
+                  <Input
+                    prefix={<SearchOutlined />}
+                    tabIndex={getTabIndex('passport')}
+                    placeholder={t("passport")}
+                    type="text"
+                    onChange={(e) =>
+                      setSearch({ ...search, [fields[8]]: e.target.value })
                     }
                   />
                 </Form.Item>

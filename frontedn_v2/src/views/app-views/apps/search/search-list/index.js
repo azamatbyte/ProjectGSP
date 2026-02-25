@@ -870,6 +870,22 @@ const GlobalSearch = (props) => {
         ),
       },
       {
+        title: t("passport"),
+        dataIndex: "passport",
+        width: "5%",
+        align: "center",
+        sorter: { multiple: 21 },
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortOrderMap['passport'] || null,
+        render: (passport) => (
+          <Tooltip title={passport}>
+            <span>
+              {passport?.length > 10 ? passport?.slice(0, 10) + "..." : passport}
+            </span>
+          </Tooltip>
+        ),
+      },
+      {
         title: t("conclusion_register_number"),
         dataIndex: "conclusion_reg_num",
         align: "center",
@@ -1972,6 +1988,39 @@ const GlobalSearch = (props) => {
                   </Col>
                 </Row>
               </Col>
+              <Col span={24} lg={4} md={6} sm={8} xs={12}>
+                <Row gutter={[8, 8]}>
+                  <Col span={4} xs={3}>
+                    <Form.Item name="passportStatus" label={null}>
+                      <Checkbox
+                        checked={search.passportStatus || false}
+                        onChange={(e) => {
+                          setSearch({
+                            ...search,
+                            passportStatus: e.target.checked ? true : false,
+                          });
+                          setPageNumber(1);
+                        }}
+                      ></Checkbox>
+                    </Form.Item>
+                  </Col>
+                  <Col span={20} xs={21}>
+                    <Form.Item name="passport" label={null}>
+                      <Input
+                        prefix={<SearchOutlined />}
+                        placeholder={t("passport")}
+                        tabIndex={20}
+                        type="text"
+                        onChange={(e) => {
+                          setSearch({ ...search, passport: e.target.value });
+                          setPageNumber(1);
+                        }}
+                        allowClear
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              </Col>
               {/* <Col span={4}>
                 <Form.Item name={`field-17`} label={null}>
                   <Input
@@ -2019,7 +2068,7 @@ const GlobalSearch = (props) => {
             </Button> */}
             <Button
               style={{ marginLeft: 8 }}
-              tabIndex={20}
+              tabIndex={21}
               onClick={() => {
                 setSearch({});
                 form.resetFields();
@@ -2033,7 +2082,7 @@ const GlobalSearch = (props) => {
               style={{ marginLeft: 8 }}
               // type="primary"
               // style={{ marginLeft: 8, fontSize: 12, padding: 0, height: "auto" }}
-              tabIndex={21}
+              tabIndex={22}
               onClick={() => setExpand(!expand)}
             >
               {expand ? <UpOutlined /> : <DownOutlined />} {t("more_search")}

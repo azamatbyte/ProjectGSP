@@ -87,6 +87,7 @@ const RegisterForm = (props) => {
           externalNotes,
           additionalNotes,
           pinfl,
+          passport,
           conclusion_compr
         } = response?.data?.data;
         if (model === "registration4") {
@@ -121,6 +122,7 @@ const RegisterForm = (props) => {
           externalNotes,
           additionalNotes,
           pinfl,
+          passport,
           model1: model,
           conclusion_compr,
         });

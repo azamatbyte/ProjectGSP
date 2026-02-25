@@ -1178,6 +1178,17 @@ const GeneralField = (props) => {
                 />
               </Form.Item>
             </Col>
+            <Col xs={24} sm={24} md={12}>
+              <Form.Item name="passport" label={t("passport")}>
+                <Input
+                  className="w-100"
+                  style={{ minWidth: 90 }}
+                  tabIndex={15}
+                  disabled={isReadOnly}
+                  maxLength={255}
+                />
+              </Form.Item>
+            </Col>
             <Col xs={24} sm={24} md={24}>
               <Form.Item name="notes" label={t("compr_info")} style={{ flex: 1 }}>
                 <Input.TextArea

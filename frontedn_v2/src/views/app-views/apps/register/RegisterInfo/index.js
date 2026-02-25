@@ -98,6 +98,7 @@ const RegisterForm = (props) => {
             )?.label,
             recordNumber: data?.recordNumber,
             pinfl: data?.pinfl,
+            passport: data?.passport,
             conclusion_compr: data?.conclusion_compr,
           });
         } catch (error) {
