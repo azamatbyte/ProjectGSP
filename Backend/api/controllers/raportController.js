@@ -402,7 +402,7 @@ exports.generateReport = async (req, res) => {
                 : item.birthDate.toString()
               : "",
             birthplace: item.birthPlace || "",
-            ...(registrationCheck ? { noteLabel: `(${registrationCheck.notes}), ${normalizeRelativeInfo.join("; ")}` } : { noteLabel: normalizeRelativeInfo.join("; ") }),
+            ...(registrationCheck ? { noteLabel: `${registrationCheck.notes}, ${normalizeRelativeInfo.join("; ")}` } : { noteLabel: normalizeRelativeInfo.join("; ") }),
             residence: item.residence || "",
             workplace: item.workplace || "",
           };
