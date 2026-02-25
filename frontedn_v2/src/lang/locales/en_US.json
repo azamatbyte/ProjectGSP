@@ -444,6 +444,7 @@
 	"dashboard_finished_target_title": "Finished registrations",
 	"dashboard_finished_target_subtitle": "Registration completion percentage: {{percentage}}%",
 	"dashboard_finished_target_counts": "Completed {{finished}} out of {{total}} registrations",
+	"dashboard_similarity_threshold_title": "Matching threshold",
 	"dashboard_similarity_threshold_label": "Matching threshold: {{percentage}}%",
 	"dashboard_similarity_threshold_hint": "Super Admin can set a threshold from {{min}}% to {{max}}%",
 	"dashboard_similarity_threshold_save": "Save threshold",

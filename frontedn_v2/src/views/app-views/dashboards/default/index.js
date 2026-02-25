@@ -801,46 +801,16 @@ export const DefaultDashboard = () => {
             extra={(
               <div>
                 <div>{t("dashboard_finished_target_counts", { finished: finishedCount, total: totalCount })}</div>
-                <div style={thresholdInfoStyle}>
-                  {t("dashboard_similarity_threshold_label", { percentage: similarityThreshold })}
-                </div>
                 <div style={thresholdControlStyle}>
                   {canEditSimilarityThreshold ? (
                     <div>
-                    <div className="text-muted font-size-sm mb-1">
-                      {t("dashboard_similarity_threshold_hint", {
-                        min: similarityThresholdMin,
-                        max: similarityThresholdMax,
-                      })}
+                      <div className="text-muted font-size-sm mb-1">
+                        {t("dashboard_similarity_threshold_hint", {
+                          min: similarityThresholdMin,
+                          max: similarityThresholdMax,
+                        })}
+                      </div>
                     </div>
-                    <Slider
-                      min={similarityThresholdMin}
-                      max={similarityThresholdMax}
-                      step={1}
-                      value={similarityThresholdDraft}
-                      disabled={similarityThresholdLoading || similarityThresholdSaving}
-                      onChange={(value) => {
-                        const numericValue = Array.isArray(value) ? value[0] : value;
-                        setSimilarityThresholdDraft(numericValue);
-                      }}
-                    />
-                    <div className="d-flex justify-content-end mt-2">
-                      <Button
-                        size="small"
-                        type="primary"
-                        style={thresholdButtonStyle}
-                        loading={similarityThresholdSaving}
-                        disabled={
-                          similarityThresholdLoading ||
-                          similarityThresholdSaving ||
-                          !hasSimilarityThresholdChanges
-                        }
-                        onClick={handleSimilarityThresholdSave}
-                      >
-                        {t("dashboard_similarity_threshold_save")}
-                      </Button>
-                    </div>
-                  </div>
                   ) : null}
                 </div>
               </div>
@@ -895,7 +865,7 @@ export const DefaultDashboard = () => {
         </Col>
       </Row>
       <Row gutter={16}>
-        <Col xs={24} sm={24} md={24} lg={24}>
+        <Col xs={24} sm={24} md={16} lg={16}>
           <Card
             title={t("dashboard_latest_title")}
             extra={(
@@ -913,7 +883,7 @@ export const DefaultDashboard = () => {
                   loading={latestLoading}
                   disabled={latestLoading}
                 />
-                <CardDropdown items={latestTransactionOption} />
+                {/* <CardDropdown items={latestTransactionOption} /> */}
               </div>
             )}
           >
@@ -932,6 +902,49 @@ export const DefaultDashboard = () => {
                 pageSizeOptions: ["10", "20", "50", "100"],
               }}
             />
+          </Card>
+        </Col>
+        <Col xs={24} sm={24} md={8} lg={8}>
+          <Card
+            title={t("dashboard_similarity_threshold_title")}
+            bodyStyle={{ padding: "12px" }}
+          >
+            <div style={thresholdInfoStyle}>
+              {t("dashboard_similarity_threshold_label", { percentage: similarityThreshold })}
+            </div>
+            <div style={thresholdControlStyle}>
+              {canEditSimilarityThreshold ? (
+                <div>
+                  <Slider
+                    min={similarityThresholdMin}
+                    max={similarityThresholdMax}
+                    step={1}
+                    value={similarityThresholdDraft}
+                    disabled={similarityThresholdLoading || similarityThresholdSaving}
+                    onChange={(value) => {
+                      const numericValue = Array.isArray(value) ? value[0] : value;
+                      setSimilarityThresholdDraft(numericValue);
+                    }}
+                  />
+                  <div className="d-flex justify-content-end mt-2">
+                    <Button
+                      size="small"
+                      type="primary"
+                      style={thresholdButtonStyle}
+                      loading={similarityThresholdSaving}
+                      disabled={
+                        similarityThresholdLoading ||
+                        similarityThresholdSaving ||
+                        !hasSimilarityThresholdChanges
+                      }
+                      onClick={handleSimilarityThresholdSave}
+                    >
+                      {t("dashboard_similarity_threshold_save")}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </Card>
         </Col>
       </Row>

@@ -545,24 +545,25 @@
     "dashboard_finished_target_title": "Якунланган рўйхатдан ўтишлар",
     "dashboard_finished_target_subtitle": "Рўйхатдан ўтиш якунланиш фоизи: {{percentage}}%",
     "dashboard_finished_target_counts": "{{total}} та рўйхатдан ўтишдан {{finished}} таси якунланган",
+    "dashboard_similarity_threshold_title": "Ўхшашлик чегараси",
     "dashboard_similarity_threshold_label": "Ўхшашлик чегараси: {{percentage}}%",
     "dashboard_similarity_threshold_hint": "Супер админ чегарани {{min}}% дан {{max}}% гача ўзгартириши мумкин",
     "dashboard_similarity_threshold_save": "Чегарани сақлаш",
     "dashboard_similarity_threshold_save_success": "Ўхшашлик чегараси янгиланди",
     "dashboard_similarity_threshold_save_error": "Ўхшашлик чегарасини янгилаб бўлмади",
-    "dashboard_similarity_threshold_load_error": "Ўхшашлик чегарасини юклаб бўлмади"
-    ,"uploading_file": "Fayl yuklanmoqda"
-    ,"processing_file": "Fayl qayta ishlanmoqda"
-    ,"finalizing_upload": "Yuklash yakunlanmoqda"
-    ,"upload_cancelled": "Yuklash bekor qilindi"
-    ,"cancel_upload": "Yuklashni bekor qilish"
-    ,"retry_upload": "Qayta yuklash"
-    ,"cancelling_upload": "Yuklash bekor qilinmoqda..."
-    ,"upload_progress_unavailable": "Yuklash jarayoni ko‘rinmadi. Qayta urinib ko‘ring."
-    ,"cancel_upload_before_close": "Oynani yopishdan oldin joriy yuklashni bekor qiling."
-    ,"done_percent": "Bajarildi"
-    ,"left_percent": "Qoldi"
-    ,"rows_done": "Qayta ishlangan qatorlar"
-    ,"rows_left": "Qolgan qatorlar"
-    ,"upload_processing_started": "Fayl qabul qilindi. Qayta ishlash boshlandi."
+    "dashboard_similarity_threshold_load_error": "Ўхшашлик чегарасини юклаб бўлмади",
+    "uploading_file": "Fayl yuklanmoqda",
+    "processing_file": "Fayl qayta ishlanmoqda",
+    "finalizing_upload": "Yuklash yakunlanmoqda",
+    "upload_cancelled": "Yuklash bekor qilindi",
+    "cancel_upload": "Yuklashni bekor qilish",
+    "retry_upload": "Qayta yuklash",
+    "cancelling_upload": "Yuklash bekor qilinmoqda...",
+    "upload_progress_unavailable": "Yuklash jarayoni ko‘rinmadi. Qayta urinib ko‘ring.",
+    "cancel_upload_before_close": "Oynani yopishdan oldin joriy yuklashni bekor qiling.",
+    "done_percent": "Bajarildi",
+    "left_percent": "Qoldi",
+    "rows_done": "Qayta ishlangan qatorlar",
+    "rows_left": "Qolgan qatorlar",
+    "upload_processing_started": "Fayl qabul qilindi. Qayta ishlash boshlandi."
 }
