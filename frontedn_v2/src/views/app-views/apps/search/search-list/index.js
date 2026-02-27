@@ -364,39 +364,39 @@ const GlobalSearch = (props) => {
   const dropdownMenu = useCallback(
     (row) => {
       const items = [
-        {
-          key: "add-main",
-          label: (
-            <Flex alignItems="center">
-              <PlusCircleOutlined />
-              <span className="ml-2">{t("add_main")}</span>
-            </Flex>
-          ),
-          onClick: () =>
-            addToCart(row, SESSION_TYPES.SESSION, MODEL_TYPES.RELATIVE),
-        },
-        {
-          key: "add-reserve",
-          label: (
-            <Flex alignItems="center">
-              <PlusCircleOutlined />
-              <span className="ml-2">{t("add_reserve")}</span>
-            </Flex>
-          ),
-          onClick: () =>
-            addToCart(row, SESSION_TYPES.RESERVE, MODEL_TYPES.RELATIVE),
-        },
-        {
-          key: "add-conclusion",
-          label: (
-            <Flex alignItems="center">
-              <PlusCircleOutlined />
-              <span className="ml-2">{t("add_conclusion")}</span>
-            </Flex>
-          ),
-          onClick: () =>
-            addToCart(row, SESSION_TYPES.RAPORT, MODEL_TYPES.RELATIVE),
-        },
+        // {
+        //   key: "add-main",
+        //   label: (
+        //     <Flex alignItems="center">
+        //       <PlusCircleOutlined />
+        //       <span className="ml-2">{t("add_main")}</span>
+        //     </Flex>
+        //   ),
+        //   onClick: () =>
+        //     addToCart(row, SESSION_TYPES.SESSION, MODEL_TYPES.RELATIVE),
+        // },
+        // {
+        //   key: "add-reserve",
+        //   label: (
+        //     <Flex alignItems="center">
+        //       <PlusCircleOutlined />
+        //       <span className="ml-2">{t("add_reserve")}</span>
+        //     </Flex>
+        //   ),
+        //   onClick: () =>
+        //     addToCart(row, SESSION_TYPES.RESERVE, MODEL_TYPES.RELATIVE),
+        // },
+        // {
+        //   key: "add-conclusion",
+        //   label: (
+        //     <Flex alignItems="center">
+        //       <PlusCircleOutlined />
+        //       <span className="ml-2">{t("add_conclusion")}</span>
+        //     </Flex>
+        //   ),
+        //   onClick: () =>
+        //     addToCart(row, SESSION_TYPES.RAPORT, MODEL_TYPES.RELATIVE),
+        // },
         {
           key: "view-details",
           label: (
@@ -1028,9 +1028,9 @@ const GlobalSearch = (props) => {
             (elm?.initiator_last_name
               ? elm?.initiator_last_name
               : "") +
-            (elm?.initiator_first_name ? elm?.initiator_first_name : "") +
+            (elm?.initiator_first_name ? (" "+elm?.initiator_first_name?.slice(0, 1))+"." : "") +
             (elm?.initiator_father_name
-              ? elm?.initiator_father_name?.slice(0, 1) + "."
+              ? (" "+elm?.initiator_father_name?.slice(0, 1) + ".")
               : "");
           return (
             <Tooltip title={fullName}>
@@ -1050,11 +1050,15 @@ const GlobalSearch = (props) => {
         sorter: { multiple: 19 },
         sortDirections: ['ascend', 'descend'],
         sortOrder: sortOrderMap['executor'] || null,
-        render: (_, elm) => (
-          <>
-            {elm?.executor_last_name} {elm?.executor_first_name}
-          </>
-        ),
+        render: (_, elm) => {
+          const fullName =
+            (elm?.executor_last_name ? elm?.executor_last_name : "") +
+            (elm?.executor_first_name
+              ? " " + elm?.executor_first_name?.slice(0, 1)+"."
+              : "");
+
+          return <>{fullName}</>;
+        },
       },
       {
         title: t("updated_at"),

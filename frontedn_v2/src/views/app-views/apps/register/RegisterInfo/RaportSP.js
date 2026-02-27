@@ -37,6 +37,22 @@ import { categoriesOfRaports } from "utils/sessions";
 import AuthService from "services/AuthService";
 import { handleUpload } from "../../admin/AdminForm/GeneralField";
 const { Option } = Select;
+const TYPE4_INITIAL_STATE = {
+  nationality: "",
+  residence: "",
+  passport: "",
+  travel: "",
+  additional_information: "",
+};
+const TYPE5_INITIAL_STATE = {
+  passport: "",
+  residence: "",
+  time_period: "",
+};
+
+const hasValue = (value) => String(value ?? "").trim().length > 0;
+const keepExistingOrDefault = (currentValue, defaultValue) =>
+  hasValue(currentValue) ? currentValue : defaultValue || "";
 
 const fetchSignedList = async (searchText) => {
   try {
@@ -82,6 +98,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [formAvr] = Form.useForm();
+  const [formUpk] = Form.useForm();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
@@ -96,13 +113,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isModalVisibleType4, setIsModalVisibleType4] = useState(false);
-  const [type4Data, setType4Data] = useState({
-    nationality: "",
-    residence: "",
-    passport: "",
-    travel: "",
-    additional_information: "",
-  });
+  const [type4Data, setType4Data] = useState(TYPE4_INITIAL_STATE);
   const [executorFetching, setExecutorFetching] = useState(false);
   const [executorOptions, setExecutorOptions] = useState([]);
 
@@ -112,6 +123,8 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
   const [search, setSearch] = useState({ adminCheck: "all", operator: "all", discuss:"all", fullName: "", name: "", executor: "", registration4: "" });
   const [fileList, setFileList] = useState([]);
   const [form] = Form.useForm();
+  const [isModalVisibleType5, setIsModalVisibleType5] = useState(false);
+  const [type5Data, setType5Data] = useState(TYPE5_INITIAL_STATE);
 
   // ✅ Upload props
   const uploadProps = {
@@ -141,28 +154,54 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
     },
   };
 
-  // Initialize/Update type4Data from avr when provided
+  const applyRegistrationDefaults = useCallback(() => {
+    if (!avr) return;
+
+    setType4Data((prev) => ({
+      nationality: keepExistingOrDefault(prev?.nationality, avr?.nationality),
+      residence: keepExistingOrDefault(prev?.residence, avr?.residence),
+      passport: keepExistingOrDefault(prev?.passport, avr?.passport),
+      travel: keepExistingOrDefault(prev?.travel, avr?.travel),
+      additional_information: keepExistingOrDefault(
+        prev?.additional_information,
+        avr?.additional_information
+      ),
+    }));
+
+    setType5Data((prev) => ({
+      passport: keepExistingOrDefault(prev?.passport, avr?.passport),
+      residence: prev?.residence || "",
+      time_period: prev?.time_period || "",
+    }));
+  }, [avr]);
+
   useEffect(() => {
-    if (avr) {
-      setType4Data((prev) => ({
-        ...prev,
-        nationality: avr?.nationality || "",
-        residence: avr?.residence || "",
-      }));
-      // Also reflect into form if such fields exist
-      formAvr.setFieldsValue({
-        nationality: avr?.nationality || undefined,
-        residence: avr?.residence || undefined,
-      });
+    formAvr.setFieldsValue({
+      nationality: type4Data?.nationality || "",
+      residence: type4Data?.residence || "",
+      passport: type4Data?.passport || "",
+      travel: type4Data?.travel || "",
+      additional_information: type4Data?.additional_information || "",
+    });
+  }, [type4Data, formAvr]);
+
+  useEffect(() => {
+    formUpk.setFieldsValue({
+      passport_number: type5Data?.passport || "",
+      citezenship: type5Data?.residence || "",
+      when: type5Data?.time_period || "",
+    });
+  }, [type5Data, formUpk]);
+
+  useEffect(() => {
+    applyRegistrationDefaults();
+  }, [applyRegistrationDefaults]);
+
+  useEffect(() => {
+    if (isModalVisibleType4 || isModalVisibleType5) {
+      applyRegistrationDefaults();
     }
-  }, [avr, formAvr]);
-  console.log("id", model)
-  const [isModalVisibleType5, setIsModalVisibleType5] = useState(false);
-  const [type5Data, setType5Data] = useState({
-    passport: "passport",
-    residence: "residence",
-    time_period: "when",
-  });
+  }, [isModalVisibleType4, isModalVisibleType5, applyRegistrationDefaults]);
 
   const [raport, setRaport] = useState("type123");
   const [malumotnomaRaport, setMalumotnomaRaport] = useState("type8");
@@ -608,23 +647,28 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
     } catch (error) {
       console.log(error);
       message.error(error?.message);
-      formAvr.resetFields();
     } finally {
       setIsModalVisibleType4(false);
       setIsModalVisible(true);
-      setType4Data({});
+      setType4Data(TYPE4_INITIAL_STATE);
       setSelectedValues([]);
       formAvr.resetFields();
     }
   };
   const generateReportUPK = async (name) => {
     try {
+      const upkPayload = {
+        ...type5Data,
+        passport: keepExistingOrDefault(type5Data?.passport, avr?.passport),
+        residence: type5Data?.residence || "",
+        time_period: type5Data?.time_period || "",
+      };
       const response = await RaportService.exportSpecialUPK({
         id: id,
         name: name,
         code: "upk",
         signListIds: selectedValues,
-        ...type5Data,
+        ...upkPayload,
       });
       const filename = raportStatusMap[name] || "UPK";
       const link = document.createElement("a");
@@ -639,8 +683,9 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
     } finally {
       setIsModalVisibleType5(false);
       setIsModalVisible(true);
-      setType5Data({});
+      setType5Data(TYPE5_INITIAL_STATE);
       setSelectedValues([]);
+      formUpk.resetFields();
     }
   };
   const generateReportMalumotnoma = async (name) => {
@@ -694,6 +739,11 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
         }
       } else if (name === "type5") {
         try {
+          setType5Data((prev) => ({
+            passport: keepExistingOrDefault(prev?.passport, avr?.passport),
+            residence: "",
+            time_period: prev?.time_period || "",
+          }));
           setIsModalVisible(false);
           setIsModalVisibleType5(true);
         } catch (error) {
@@ -714,6 +764,11 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
 
   const handleSignedListChange = (values, options) => {
     setSelectedValues(values);
+  };
+  const upkDisplayData = {
+    passport: keepExistingOrDefault(type5Data?.passport, avr?.passport),
+    residence: type5Data?.residence || "",
+    time_period: type5Data?.time_period || "",
   };
 
   return (
@@ -813,9 +868,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
           onOk={() => generateReportAVR(raport)}
           onCancel={() => {
             setIsModalVisibleType4(false);
-            setType4Data({});
             setIsModalVisible(true);
-            formAvr.resetFields();
           }}
           okText={t("generate")}
           cancelText={t("cancel")}
@@ -944,7 +997,6 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
           onOk={() => generateReportUPK(raport)}
           onCancel={() => {
             setIsModalVisibleType5(false);
-            setType5Data({});
             setIsModalVisible(true);
           }}
           okText={t("generate")}
@@ -956,6 +1008,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
             tabIndex: 6,
           }}
         >
+          <Form layout="vertical" form={formUpk}>
           <Row gutter={16}>
             <Col span={12} md={12} xs={24}>
               <Form.Item
@@ -965,11 +1018,11 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
               >
                 <Input
                   placeholder={t("passport")}
-                  value={type5Data?.passport}
+                  value={upkDisplayData?.passport}
                   onChange={(e) =>
                     setType5Data({ ...type5Data, passport: e.target.value })
                   }
-                  autoFocus={isModalVisibleType4}
+                  autoFocus={isModalVisibleType5}
                   tabIndex={1}
                 />
               </Form.Item>
@@ -982,7 +1035,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
               >
                 <Input
                   placeholder={t("citezenship")}
-                  value={type5Data?.residence}
+                  value={upkDisplayData?.residence}
                   onChange={(e) =>
                     setType5Data({ ...type5Data, residence: e.target.value })
                   }
@@ -998,7 +1051,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
               >
                 <Input
                   placeholder={t("when")}
-                  value={type5Data?.time_period}
+                  value={upkDisplayData?.time_period}
                   onChange={(e) =>
                     setType5Data({ ...type5Data, time_period: e.target.value })
                   }
@@ -1031,6 +1084,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
               </Form.Item>
             </Col>
           </Row>
+          </Form>
         </Modal>
         <Flex
           alignItems="center"

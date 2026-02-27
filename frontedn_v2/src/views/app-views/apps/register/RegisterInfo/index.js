@@ -342,6 +342,9 @@ const RegisterForm = (props) => {
                     avr={{
                       residence: registerData?.residence,
                       nationality: registerData?.nationality,
+                      passport: registerData?.passport,
+                      travel: registerData?.travel,
+                      additional_information: registerData?.additional_information,
                     }}
                   />
                 ),

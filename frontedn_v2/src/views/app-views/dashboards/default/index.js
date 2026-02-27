@@ -801,18 +801,6 @@ export const DefaultDashboard = () => {
             extra={(
               <div>
                 <div>{t("dashboard_finished_target_counts", { finished: finishedCount, total: totalCount })}</div>
-                <div style={thresholdControlStyle}>
-                  {canEditSimilarityThreshold ? (
-                    <div>
-                      <div className="text-muted font-size-sm mb-1">
-                        {t("dashboard_similarity_threshold_hint", {
-                          min: similarityThresholdMin,
-                          max: similarityThresholdMax,
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
               </div>
             )}
             cardStyle={{ minHeight: SIDE_CARD_MIN_HEIGHT }}
@@ -915,6 +903,12 @@ export const DefaultDashboard = () => {
             <div style={thresholdControlStyle}>
               {canEditSimilarityThreshold ? (
                 <div>
+                  <div className="text-muted font-size-sm mb-1">
+                    {t("dashboard_similarity_threshold_hint", {
+                      min: similarityThresholdMin,
+                      max: similarityThresholdMax,
+                    })}
+                  </div>
                   <Slider
                     min={similarityThresholdMin}
                     max={similarityThresholdMax}

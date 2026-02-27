@@ -168,14 +168,16 @@ function getAccessStatus4(accessStatus, record) {
 function completeStatusReg(regDate, regEndDate, record) {
     if (regDate == '2020-01-01') return 'COMPLETED';
     if (record['Заключение, рег №, форма']?.includes(record['Регистрационный номер и гриф секр'])) return 'COMPLETED';
-    if (regEndDate == null || regEndDate <= regDate) return 'WAITING';
+    if (regEndDate == null) return 'WAITING';
+    if (regEndDate != null && regEndDate <= regDate) return 'COMPLETED';
     return 'COMPLETED';
 }
 
 function completeStatusReg4(regDate, regEndDate, record) {
     if (regDate == '2020-01-01') return 'COMPLETED';
     if (record['Заключение']?.includes(record['Рег №'])) return 'COMPLETED';
-    if (regEndDate === null || regEndDate <= regDate) return 'WAITING';
+    if (regEndDate == null) return 'WAITING';
+    if (regEndDate != null && regEndDate <= regDate) return 'COMPLETED';
     return 'COMPLETED';
 }
 
@@ -769,324 +771,324 @@ async function clearProductionDB() {
 }
 
 async function createDefaultAdminsAndServices() {
-  try {
-    const service = await prisma.service.create({
-      data: {
-        name: "Руководители",
-        description: "Руководители для операторов.",
-        code: 1,
-      },
-    });
-    await prisma.service.create({
-      data: {
-        name: "Места работы",
-        description: "Места работы для операторов.",
-        code: 2,
-      },
-    });
-    await prisma.service.create({
-      data: {
-        name: "Статистика",
-        description: "Статистика для операторов.",
-        code: 3,
-      },
-    });
-    await prisma.service.create({
-      data: {
-        name: "Удаление",
-        description: "Удаление Ф-4 для операторов.",
-        code: 4,
-      },
-    });
-    const superAdmin = await prisma.admin.create({
-      data: {
-        first_name: "Super",
-        last_name: "Admin",
-        username: "superadmin",
-        status: "active",
-        password:
-          "$2a$10$VlxkGYp1/vjOX4TGkppFPeBwUcByuCNp5GhMOPGWC116Vr9sN/9oO", // Replace with actual hashed password
-        salt: "$2a$10$Q4b2cf/QMoJMr.NFxnyBZu",
-        role: "superAdmin", // Assign multiple roles
-      },
-    });
-    const admin = await prisma.admin.create({
-      data: {
-        first_name: "Admin",
-        last_name: "Super",
-        username: "admin01",
-        status: "active",
-        password:
-          "$2a$10$VlxkGYp1/vjOX4TGkppFPeBwUcByuCNp5GhMOPGWC116Vr9sN/9oO", // Replace with actual hashed password
-        salt: "$2a$10$Q4b2cf/QMoJMr.NFxnyBZu",
-        role: "superAdmin", // Assign multiple roles
-      },
-    });
-    const adminSimple = await prisma.admin.create({
-      data: {
-        first_name: "Admin",
-        last_name: "Admin",
-        username: "admin02",
-        status: "active",
-        password:
-          "$2a$10$VlxkGYp1/vjOX4TGkppFPeBwUcByuCNp5GhMOPGWC116Vr9sN/9oO", // Replace with actual hashed password
-        salt: "$2a$10$Q4b2cf/QMoJMr.NFxnyBZu",
-        role: "admin", // Assign multiple roles
-      },
-    });
-    await prisma.adminServiceAccess.create({
-      data: {
-        adminId: admin.id,
-        serviceId: service.id,
-        grantedBy: superAdmin.id, // ID of the super admin granting the access
-      },
-    });
-    await prisma.form.create({
-      data: { name: "Р", description: "Р", length: 2, month: 1, status: true, type: "registration" },
-    });
-    await prisma.form.create({
-      data: { name: "О", description: "О", length: 4, month: 1, status: true, type: "registration" },
-    });
-    await prisma.form.create({
-      data: { name: "У", description: "У", length: 1, month: 1, status: true, type: "registration4" },
-    });
-    await prisma.form.create({
-      data: { name: "1", description: "1", length: 2, month: 1, type: "registration" },
-    });
-    await prisma.form.create({
-      data: { name: "2", description: "2", length: 4, month: 1, type: "registration" },
-    });
-    await prisma.form.create({
-      data: { name: "3", description: "3", length: 4, month: 1, type: "registration" },
-    });
-    await prisma.form.create({
-      data: { name: "4", description: "4", length: 2, month: 1, type: "registration4" },
-    });
-    await prisma.accessStatus.create({
-      data: { name: "СП ПРОВЕРКА", adminId: admin.id, status: true },
-    });
-    await prisma.accessStatus.create({
-      data: { name: "ОТКАЗ", adminId: admin.id, status: true },
-    });
-    await prisma.accessStatus.create({
-      data: { name: "ОТКАЗ-1", adminId: admin.id, status: true },
-    });
-    await prisma.accessStatus.create({
-      data: {
-        name: "ДОПУСК АННУЛИРОВАН",
-        adminId: admin.id,
-        status: true,
-      },
-    });
-    await prisma.accessStatus.create({
-      data: { name: "ДОПУСК", adminId: admin.id, status: true },
-    });
-    await prisma.accessStatus.create({
-      data: { name: "ПРОВЕРКА", adminId: admin.id, status: true },
-    });
-    await prisma.accessStatus.create({
-      data: { name: "ЗАКЛЮЧЕНИЕ", adminId: admin.id, status: true },
-    });
-    await prisma.accessStatus.create({
-      data: { name: "ПОВТОРНЫЙ ОТКАЗ", adminId: admin.id, status: true },
-    });
-    await prisma.accessStatus.create({
-      data: { name: "СНЯТ ОТКАЗ", adminId: admin.id, status: true },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "МВД",
-        code: "osu_mvd",
-        code_ru: "osu_mvd",
-        code_uz: "osu_mvd",
-        organization: "МВД Республики Узбекистан",
-        requested_organization: "ГСБП Республики Узбекистан",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        link: "type1",
-        notes: "Р",
-        executorId: admin.id,
+    try {
+        const service = await prisma.service.create({
+            data: {
+                name: "Руководители",
+                description: "Руководители для операторов.",
+                code: 1,
+            },
+        });
+        await prisma.service.create({
+            data: {
+                name: "Места работы",
+                description: "Места работы для операторов.",
+                code: 2,
+            },
+        });
+        await prisma.service.create({
+            data: {
+                name: "Статистика",
+                description: "Статистика для операторов.",
+                code: 3,
+            },
+        });
+        await prisma.service.create({
+            data: {
+                name: "Удаление",
+                description: "Удаление Ф-4 для операторов.",
+                code: 4,
+            },
+        });
+        const superAdmin = await prisma.admin.create({
+            data: {
+                first_name: "Super",
+                last_name: "Admin",
+                username: "superadmin",
+                status: "active",
+                password:
+                    "$2a$10$VlxkGYp1/vjOX4TGkppFPeBwUcByuCNp5GhMOPGWC116Vr9sN/9oO", // Replace with actual hashed password
+                salt: "$2a$10$Q4b2cf/QMoJMr.NFxnyBZu",
+                role: "superAdmin", // Assign multiple roles
+            },
+        });
+        const admin = await prisma.admin.create({
+            data: {
+                first_name: "Admin",
+                last_name: "Super",
+                username: "admin01",
+                status: "active",
+                password:
+                    "$2a$10$VlxkGYp1/vjOX4TGkppFPeBwUcByuCNp5GhMOPGWC116Vr9sN/9oO", // Replace with actual hashed password
+                salt: "$2a$10$Q4b2cf/QMoJMr.NFxnyBZu",
+                role: "superAdmin", // Assign multiple roles
+            },
+        });
+        const adminSimple = await prisma.admin.create({
+            data: {
+                first_name: "Admin",
+                last_name: "Admin",
+                username: "admin02",
+                status: "active",
+                password:
+                    "$2a$10$VlxkGYp1/vjOX4TGkppFPeBwUcByuCNp5GhMOPGWC116Vr9sN/9oO", // Replace with actual hashed password
+                salt: "$2a$10$Q4b2cf/QMoJMr.NFxnyBZu",
+                role: "admin", // Assign multiple roles
+            },
+        });
+        await prisma.adminServiceAccess.create({
+            data: {
+                adminId: admin.id,
+                serviceId: service.id,
+                grantedBy: superAdmin.id, // ID of the super admin granting the access
+            },
+        });
+        await prisma.form.create({
+            data: { name: "Р", description: "Р", length: 2, month: 1, status: true, type: "registration" },
+        });
+        await prisma.form.create({
+            data: { name: "О", description: "О", length: 4, month: 1, status: true, type: "registration" },
+        });
+        await prisma.form.create({
+            data: { name: "У", description: "У", length: 1, month: 1, status: true, type: "registration4" },
+        });
+        await prisma.form.create({
+            data: { name: "1", description: "1", length: 2, month: 1, type: "registration" },
+        });
+        await prisma.form.create({
+            data: { name: "2", description: "2", length: 4, month: 1, type: "registration" },
+        });
+        await prisma.form.create({
+            data: { name: "3", description: "3", length: 4, month: 1, type: "registration" },
+        });
+        await prisma.form.create({
+            data: { name: "4", description: "4", length: 2, month: 1, type: "registration4" },
+        });
+        await prisma.accessStatus.create({
+            data: { name: "СП ПРОВЕРКА", adminId: admin.id, status: true },
+        });
+        await prisma.accessStatus.create({
+            data: { name: "ОТКАЗ", adminId: admin.id, status: true },
+        });
+        await prisma.accessStatus.create({
+            data: { name: "ОТКАЗ-1", adminId: admin.id, status: true },
+        });
+        await prisma.accessStatus.create({
+            data: {
+                name: "ДОПУСК АННУЛИРОВАН",
+                adminId: admin.id,
+                status: true,
+            },
+        });
+        await prisma.accessStatus.create({
+            data: { name: "ДОПУСК", adminId: admin.id, status: true },
+        });
+        await prisma.accessStatus.create({
+            data: { name: "ПРОВЕРКА", adminId: admin.id, status: true },
+        });
+        await prisma.accessStatus.create({
+            data: { name: "ЗАКЛЮЧЕНИЕ", adminId: admin.id, status: true },
+        });
+        await prisma.accessStatus.create({
+            data: { name: "ПОВТОРНЫЙ ОТКАЗ", adminId: admin.id, status: true },
+        });
+        await prisma.accessStatus.create({
+            data: { name: "СНЯТ ОТКАЗ", adminId: admin.id, status: true },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "МВД",
+                code: "osu_mvd",
+                code_ru: "osu_mvd",
+                code_uz: "osu_mvd",
+                organization: "МВД Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "type1",
+                notes: "Р",
+                executorId: admin.id,
 
-      },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "ОСУ",
-        code: "osu_sgb",
-        code_ru: "osu_sgb",
-        code_uz: "osu_sgb",
-        organization: "СГБ Республики Узбекистан",
-        requested_organization: "ГСБП Республики Узбекистан",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        link: "type2",
-        notes: "no name, no request_organization",
-        executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "ОСУ",
+                code: "osu_sgb",
+                code_ru: "osu_sgb",
+                code_uz: "osu_sgb",
+                organization: "СГБ Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "type2",
+                notes: "no name, no request_organization",
+                executorId: admin.id,
 
-      },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "ГСБП",
-        code: "osu_sgb",
-        code_ru: "osu_sgb",
-        code_uz: "osu_sgb",
-        organization: "ГСБП Республики Узбекистан",
-        requested_organization: "ГСБП Республики Узбекистан",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        link: "type2",
-        notes: "no name, no request_organization",
-        executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "ГСБП",
+                code: "osu_sgb",
+                code_ru: "osu_sgb",
+                code_uz: "osu_sgb",
+                organization: "ГСБП Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "type2",
+                notes: "no name, no request_organization",
+                executorId: admin.id,
 
-      },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "АВР",
-        code: "avr",
-        code_ru: "avr",
-        code_uz: "avr",
-        organization: "СГБ Республики Узбекистан",
-        requested_organization: "ГСБП Республики Узбекистан",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        link: "Р",
-        notes: "проверка по учетам",
-        executorId: admin.id,
-      },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "УПК ПВ",
-        code: "upk",
-        code_ru: "upk",
-        code_uz: "upk",
-        organization: "УПК ПВ",
-        requested_organization: "ГСБП Республики Узбекистан",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        link: "Р",
-        notes: "проверка по учетам",
-        executorId: admin.id,
-      },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "ЗАПРОС ГСБП",
-        code: "type8",
-        code_ru: "mlm",
-        code_uz: "mlm",
-        organization: "Ўзбекистон Республикаси ПДХХ",
-        requested_organization: "ГСБП Республики Узбекистан",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        link: "Р",
-        notes: "bad",
-        executorId: admin.id,
-      },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "ЗАПРОС СГБ",
-        code: "type9",
-        code_ru: "mlm",
-        code_uz: "mlm",
-        organization: "ГСБП Республики Узбекистан",
-        requested_organization: "ГСБП Республики Узбекистан",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        link: "Р",
-        notes: "good",
-        executorId: admin.id,
-      },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "НД",
-        code: "nd",
-        code_ru: "nd",
-        code_uz: "nd",
-        organization: "Директору Ташкентского городского филиала РСНПМЦН",
-        requested_organization:
-          "ГОСУДАРСТВЕННАЯ СЛУЖБА БЕЗОПАСНОСТИ ПРИ ПРЕЗИДЕНТЕ РЕСПУБЛИКИ УЗБЕКИСТАН",
-        link: "type3",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        notes: "В связи с возникшей необходимостью просим проверить по имеющимся учетам следующих лиц;должн подразделения",
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "АВР",
+                code: "avr",
+                code_ru: "avr",
+                code_uz: "avr",
+                organization: "СГБ Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "Р",
+                notes: "проверка по учетам",
+                executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "УПК ПВ",
+                code: "upk",
+                code_ru: "upk",
+                code_uz: "upk",
+                organization: "УПК ПВ",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "Р",
+                notes: "проверка по учетам",
+                executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "ЗАПРОС ГСБП",
+                code: "type8",
+                code_ru: "mlm",
+                code_uz: "mlm",
+                organization: "Ўзбекистон Республикаси ПДХХ",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "Р",
+                notes: "bad",
+                executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "ЗАПРОС СГБ",
+                code: "type9",
+                code_ru: "mlm",
+                code_uz: "mlm",
+                organization: "ГСБП Республики Узбекистан",
+                requested_organization: "ГСБП Республики Узбекистан",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "Р",
+                notes: "good",
+                executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "НД",
+                code: "nd",
+                code_ru: "nd",
+                code_uz: "nd",
+                organization: "Директору Ташкентского городского филиала РСНПМЦН",
+                requested_organization:
+                    "ГОСУДАРСТВЕННАЯ СЛУЖБА БЕЗОПАСНОСТИ ПРИ ПРЕЗИДЕНТЕ РЕСПУБЛИКИ УЗБЕКИСТАН",
+                link: "type3",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                notes: "В связи с возникшей необходимостью просим проверить по имеющимся учетам следующих лиц;должн подразделения",
 
-        executorId: admin.id,
-      },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "ПНД1",
-        code: "nd1",
-        code_ru: "nd1",
-        code_uz: "nd1",
-        organization:
-          "ГЛАВНОМУ ВРАЧУ ГОРОДСКОГО ПСИХОНЕВРОЛОГИЧЕСКОГО  ДИСПАНСЕРА №1 (ул.Мукими, 94)",
-        requested_organization:
-          "ГОСУДАРСТВЕННАЯ СЛУЖБА БЕЗОПАСНОСТИ ПРИ ПРЕЗИДЕНТЕ РЕСПУБЛИКИ УЗБЕКИСТАН",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        link: "type3",
-        notes:
+                executorId: admin.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "ПНД1",
+                code: "nd1",
+                code_ru: "nd1",
+                code_uz: "nd1",
+                organization:
+                    "ГЛАВНОМУ ВРАЧУ ГОРОДСКОГО ПСИХОНЕВРОЛОГИЧЕСКОГО  ДИСПАНСЕРА №1 (ул.Мукими, 94)",
+                requested_organization:
+                    "ГОСУДАРСТВЕННАЯ СЛУЖБА БЕЗОПАСНОСТИ ПРИ ПРЕЗИДЕНТЕ РЕСПУБЛИКИ УЗБЕКИСТАН",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "type3",
+                notes:
 
-          "В связи с возникшей необходимостью просим проверить по имеющимся учетам:;Начальник подразделения",
-        executorId: admin.id,
-      },
-    });
-    await prisma.registration.create({
-      data: {
-        fullName: "Неизвестно",
-        firstName: "Неизвестно",
-        lastName: "Неизвестно",
-        fatherName: "Неизвестно",
-        regNumber: "Неизвестно",
-        regDate: "2025-01-01T00:00:00.000Z",
-        notes: "Неизвестно",
-        executorId: admin.id,
-      },
-    });
-    await prisma.registration.create({
-      data: {
-        fullName: "Неизвестно1",
-        form_reg: "Р",
-        firstName: "Неизвестно1",
-        lastName: "Неизвестно1",
-        fatherName: "Неизвестно1",
-        regNumber: "Неизвестно1",
-        regDate: "2024-01-01T00:00:00.000Z",
-        notes: "Неизвестно1",
-        executorId: adminSimple.id,
-      },
-    });
-    await prisma.raportTypes.create({
-      data: {
-        name: "ПНД2",
-        code: "nd2",
-        code_ru: "nd2",
-        code_uz: "nd2",
-        organization:
-          "ГЛАВНОМУ ВРАЧУ ГОРОДСКОГО ПСИХОНЕВРОЛОГИЧЕСКОГО  ДИСПАНСЕРА №2 (ул. Лисунова, 25)",
-        requested_organization:
-          "ГОСУДАРСТВЕННАЯ СЛУЖБА БЕЗОПАСНОСТИ ПРИ ПРЕЗИДЕНТЕ РЕСПУБЛИКИ УЗБЕКИСТАН",
-        signed_fio: "И.И.Иванов",
-        signed_position: "Генеральный директор",
-        link: "type3",
-        notes:
+                    "В связи с возникшей необходимостью просим проверить по имеющимся учетам:;Начальник подразделения",
+                executorId: admin.id,
+            },
+        });
+        await prisma.registration.create({
+            data: {
+                fullName: "Неизвестно",
+                firstName: "Неизвестно",
+                lastName: "Неизвестно",
+                fatherName: "Неизвестно",
+                regNumber: "Неизвестно",
+                regDate: "2025-01-01T00:00:00.000Z",
+                notes: "Неизвестно",
+                executorId: admin.id,
+            },
+        });
+        await prisma.registration.create({
+            data: {
+                fullName: "Неизвестно1",
+                form_reg: "Р",
+                firstName: "Неизвестно1",
+                lastName: "Неизвестно1",
+                fatherName: "Неизвестно1",
+                regNumber: "Неизвестно1",
+                regDate: "2024-01-01T00:00:00.000Z",
+                notes: "Неизвестно1",
+                executorId: adminSimple.id,
+            },
+        });
+        await prisma.raportTypes.create({
+            data: {
+                name: "ПНД2",
+                code: "nd2",
+                code_ru: "nd2",
+                code_uz: "nd2",
+                organization:
+                    "ГЛАВНОМУ ВРАЧУ ГОРОДСКОГО ПСИХОНЕВРОЛОГИЧЕСКОГО  ДИСПАНСЕРА №2 (ул. Лисунова, 25)",
+                requested_organization:
+                    "ГОСУДАРСТВЕННАЯ СЛУЖБА БЕЗОПАСНОСТИ ПРИ ПРЕЗИДЕНТЕ РЕСПУБЛИКИ УЗБЕКИСТАН",
+                signed_fio: "И.И.Иванов",
+                signed_position: "Генеральный директор",
+                link: "type3",
+                notes:
 
-          "В связи с возникшей необходимостью просим проверить по имеющимся учетам;Начальник подразделения",
-        executorId: admin.id,
-      },
-    });
-    return { id: admin.id, adminId: admin.id };
-  } catch (err) {
-    console.error(`Failed to insert record with data:`, err);
-  } finally {
-    await prisma.$disconnect();
-  }
+                    "В связи с возникшей необходимостью просим проверить по имеющимся учетам;Начальник подразделения",
+                executorId: admin.id,
+            },
+        });
+        return { id: admin.id, adminId: admin.id };
+    } catch (err) {
+        console.error(`Failed to insert record with data:`, err);
+    } finally {
+        await prisma.$disconnect();
+    }
 }
 
 async function migrateRegistrations(table) {
