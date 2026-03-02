@@ -169,7 +169,7 @@ function completeStatusReg(regDate, regEndDate, record) {
     if (regDate == '2020-01-01') return 'COMPLETED';
     if (record['Заключение, рег №, форма']?.includes(record['Регистрационный номер и гриф секр'])) return 'COMPLETED';
     if (regEndDate == null) return 'WAITING';
-    if (regEndDate != null && regEndDate <= regDate) return 'COMPLETED';
+    if (regEndDate != null && regEndDate >= regDate) return 'COMPLETED';
     return 'COMPLETED';
 }
 
@@ -177,7 +177,7 @@ function completeStatusReg4(regDate, regEndDate, record) {
     if (regDate == '2020-01-01') return 'COMPLETED';
     if (record['Заключение']?.includes(record['Рег №'])) return 'COMPLETED';
     if (regEndDate == null) return 'WAITING';
-    if (regEndDate != null && regEndDate <= regDate) return 'COMPLETED';
+    if (regEndDate != null && regEndDate >= regDate) return 'COMPLETED';
     return 'COMPLETED';
 }
 
