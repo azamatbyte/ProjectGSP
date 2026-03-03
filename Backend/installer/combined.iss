@@ -3,7 +3,7 @@
 
 #define MyAppName "GSPApp"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "GSP"
+#define MyAppPublisher "Shohruz Ochilov, Mirjalol Norqobilov, Azamat Aliqulov / Cyber park"
 #define MyAppURL "http://localhost"
 #define MyAppExeName "КОМПЛЕКС.exe"
 

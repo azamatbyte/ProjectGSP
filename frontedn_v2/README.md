@@ -58,6 +58,7 @@ Tray Menu:
 - Quit: shuts down the server & exits the app
 
 The app keeps running in the tray after closing the window; use Quit to fully exit.
+Uninstall is handled by Windows after installation, not from the app tray menu.
 
 ## Building a Windows Installer / Portable .exe
 

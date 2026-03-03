@@ -1,7 +1,7 @@
 ; Inno Setup script restored
 #define MyAppName "GSPApp"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "Your Company"
+#define MyAppPublisher "Shohruz Ochilov, Mirjalol Norqobilov, Azamat Aliqulov / Cyber park"
 #define MyAppURL "http://localhost"
 
 [Setup]

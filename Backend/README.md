@@ -19,6 +19,16 @@ npx prisma db push
 npm run dev
 ```
 
+## Offline Installer Build
+
+For the Windows offline installer build, use the repo root wrapper:
+
+```powershell
+.\pc_build.cmd
+```
+
+Full documentation is in [`installer/README-offline-installer.md`](/D:/Documents/react/ProjectGSP/Backend/installer/README-offline-installer.md).
+
 ## Access Database Migration
 
 The Backend includes an API endpoint to migrate data from Microsoft Access (.accdb) files to PostgreSQL.

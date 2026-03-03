@@ -120,7 +120,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
   // 🔹 Modal holati uchun
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedRaport, setSelectedRaport] = useState(null);
-  const [search, setSearch] = useState({ adminCheck: "all", operator: "all", discuss:"all", fullName: "", name: "", executor: "", registration4: "" });
+  const [search, setSearch] = useState({ adminCheck: "all", operator: "all", discuss: "all", fullName: "", name: "", executor: "", registration4: "" });
   const [fileList, setFileList] = useState([]);
   const [form] = Form.useForm();
   const [isModalVisibleType5, setIsModalVisibleType5] = useState(false);
@@ -563,7 +563,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
         const value = elm?.discussCheck;
         return (
           <Switch
-            checked={value==true}
+            checked={value == true}
             onChange={(checked) => handleLinkToggle(elm, 'discuss', checked)}
             checkedChildren={t('yes')}
             unCheckedChildren={t('no')}
@@ -1009,81 +1009,81 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
           }}
         >
           <Form layout="vertical" form={formUpk}>
-          <Row gutter={16}>
-            <Col span={12} md={12} xs={24}>
-              <Form.Item
-                label={t("passport")}
-                name="passport_number"
-                rules={[{ required: true, message: t("required_field") }]}
-              >
-                <Input
-                  placeholder={t("passport")}
-                  value={upkDisplayData?.passport}
-                  onChange={(e) =>
-                    setType5Data({ ...type5Data, passport: e.target.value })
-                  }
-                  autoFocus={isModalVisibleType5}
-                  tabIndex={1}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12} md={12} xs={24}>
-              <Form.Item
-                label={t("citezenship")}
-                name="citezenship"
-                rules={[{ required: true, message: t("required_field") }]}
-              >
-                <Input
-                  placeholder={t("citezenship")}
-                  value={upkDisplayData?.residence}
-                  onChange={(e) =>
-                    setType5Data({ ...type5Data, residence: e.target.value })
-                  }
-                  tabIndex={2}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12} md={12} xs={24}>
-              <Form.Item
-                label={t("when")}
-                name="when"
-                rules={[{ required: true, message: t("required_field") }]}
-              >
-                <Input
-                  placeholder={t("when")}
-                  value={upkDisplayData?.time_period}
-                  onChange={(e) =>
-                    setType5Data({ ...type5Data, time_period: e.target.value })
-                  }
-                  tabIndex={3}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12} md={12} xs={24}>
-              <Form.Item
-                label={t("signatories")}
-                name="signatories"
-                rules={[{ required: true, message: t("required_field") }]}
-                wrapperCol={{ span: 24 }}
-                style={{ cursor: "pointer" }}
-              >
-                <Select
-                  mode="multiple" // enable multiple selections
-                  showSearch
-                  className="w-100"
-                  style={{ width: 200, cursor: "pointer" }}
-                  optionFilterProp="children"
-                  onChange={handleSignedListChange}
-                  onSearch={debouncedFetchSignedList}
-                  loading={signedListFetching}
-                  filterOption={false}
-                  tabIndex={4}
-                  options={signedListOptions}
-                  value={selectedValues} // controlled component
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+            <Row gutter={16}>
+              <Col span={12} md={12} xs={24}>
+                <Form.Item
+                  label={t("passport")}
+                  name="passport_number"
+                  rules={[{ required: true, message: t("required_field") }]}
+                >
+                  <Input
+                    placeholder={t("passport")}
+                    value={upkDisplayData?.passport}
+                    onChange={(e) =>
+                      setType5Data({ ...type5Data, passport: e.target.value })
+                    }
+                    autoFocus={isModalVisibleType5}
+                    tabIndex={1}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12} md={12} xs={24}>
+                <Form.Item
+                  label={t("citezenship")}
+                  name="citezenship"
+                  rules={[{ required: true, message: t("required_field") }]}
+                >
+                  <Input
+                    placeholder={t("citezenship")}
+                    value={upkDisplayData?.residence}
+                    onChange={(e) =>
+                      setType5Data({ ...type5Data, residence: e.target.value })
+                    }
+                    tabIndex={2}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12} md={12} xs={24}>
+                <Form.Item
+                  label={t("when")}
+                  name="when"
+                  rules={[{ required: true, message: t("required_field") }]}
+                >
+                  <Input
+                    placeholder={t("when")}
+                    value={upkDisplayData?.time_period}
+                    onChange={(e) =>
+                      setType5Data({ ...type5Data, time_period: e.target.value })
+                    }
+                    tabIndex={3}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12} md={12} xs={24}>
+                <Form.Item
+                  label={t("signatories")}
+                  name="signatories"
+                  rules={[{ required: true, message: t("required_field") }]}
+                  wrapperCol={{ span: 24 }}
+                  style={{ cursor: "pointer" }}
+                >
+                  <Select
+                    mode="multiple" // enable multiple selections
+                    showSearch
+                    className="w-100"
+                    style={{ width: 200, cursor: "pointer" }}
+                    optionFilterProp="children"
+                    onChange={handleSignedListChange}
+                    onSearch={debouncedFetchSignedList}
+                    loading={signedListFetching}
+                    filterOption={false}
+                    tabIndex={4}
+                    options={signedListOptions}
+                    value={selectedValues} // controlled component
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
           </Form>
         </Modal>
         <Flex
@@ -1121,79 +1121,80 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
             </Flex>
           )}
 
-          <Flex className="mb-1" mobileFlex={false}>
-            <div className="mr-md-3 mb-3">
-              <Select
-                showSearch
-                placeholder={t("name")}
-                value={search?.name || undefined}
-                allowClear
-                onChange={(val) => {
-                  setSearch({ ...search, name: val || "" });
-                }}
-                options={categoriesOfRaports.map((it) => ({ value: it.key, label: it.label }))}
-                style={{ width: 150, marginRight: 8 }}
-              />
-              <Select
-                showSearch
-                allowClear
-                placeholder={t("executor")}
-                style={{ width: 150 }}
-                value={search.executor || undefined}
-                optionFilterProp="label"
-                onChange={(value) => setSearch({ ...search, executor: value || "" })}
-                onSearch={debouncedFetchExecutor}
-                loading={executorFetching}
-                filterOption={false}   // important for remote search
-                notFoundContent={executorFetching ? t("loading") : t("not_found")}
-                options={executorOptions}
-              />
-              <Select
-                placeholder={t("admin_check")}
-                value={search.adminCheck}
-                onChange={(val) => setSearch({ ...search, adminCheck: val })}
-                options={[
-                  { label: t('all_admin') || 'all', value: 'all' },
-                  { label: t('yes'), value: 'yes' },
-                  { label: t('no'), value: 'no' },
-                ]}
-                style={{ width: 150, marginLeft: 8, marginRight: 8 }}
-                optionFilterProp="label"
-              />
-              <Select
-                placeholder={t("operator")}
-                value={search.operator}
-                onChange={(val) => setSearch({ ...search, operator: val })}
-                options={[
-                  { label: t('all_operator') || 'all', value: 'all' },
-                  { label: t('yes'), value: 'yes' },
-                  { label: t('no'), value: 'no' },
-                ]}
-                style={{ width: 150 }}
-                optionFilterProp="label"
-              />
-              <Select
-                placeholder={t("discuss")}
-                value={search.discuss}
-                onChange={(val) => setSearch({ ...search, discuss: val })}
-                options={[
-                  { label: t('all_discuss') || 'all', value: 'all' },
-                  { label: t('yes'), value: 'yes' },
-                  { label: t('no'), value: 'no' },
-                ]}
-                style={{ width: 150, marginLeft: 8 }}
-                optionFilterProp="label"
-              />
-              <Input
-                placeholder={t("registration4")}
-                value={search.registration4}
-                onChange={(e) => setSearch({ ...search, registration4: e.target.value })}
-                style={{ width: 220, marginLeft: 8 }}
-                allowClear
-              />
-            </div>
-          </Flex>
 
+
+        </Flex>
+        <Flex className="mb-1" mobileFlex={false}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, width: '100%' }}>
+            <Select
+              showSearch
+              placeholder={t("name")}
+              value={search?.name || undefined}
+              allowClear
+              onChange={(val) => {
+                setSearch({ ...search, name: val || "" });
+              }}
+              options={categoriesOfRaports.map((it) => ({ value: it.key, label: it.label }))}
+              style={{ minWidth: 150 }}
+            />
+            <Select
+              showSearch
+              allowClear
+              placeholder={t("executor")}
+              style={{ minWidth: 150 }}
+              value={search.executor || undefined}
+              optionFilterProp="label"
+              onChange={(value) => setSearch({ ...search, executor: value || "" })}
+              onSearch={debouncedFetchExecutor}
+              loading={executorFetching}
+              filterOption={false}
+              notFoundContent={executorFetching ? t("loading") : t("not_found")}
+              options={executorOptions}
+            />
+            <Select
+              placeholder={t("admin_check")}
+              value={search.adminCheck}
+              onChange={(val) => setSearch({ ...search, adminCheck: val })}
+              options={[
+                { label: t('all_admin') || 'all', value: 'all' },
+                { label: t('yes'), value: 'yes' },
+                { label: t('no'), value: 'no' },
+              ]}
+              style={{ minWidth: 150 }}
+              optionFilterProp="label"
+            />
+            <Select
+              placeholder={t("operator")}
+              value={search.operator}
+              onChange={(val) => setSearch({ ...search, operator: val })}
+              options={[
+                { label: t('all_operator') || 'all', value: 'all' },
+                { label: t('yes'), value: 'yes' },
+                { label: t('no'), value: 'no' },
+              ]}
+              style={{ minWidth: 150 }}
+              optionFilterProp="label"
+            />
+            <Select
+              placeholder={t("discuss")}
+              value={search.discuss}
+              onChange={(val) => setSearch({ ...search, discuss: val })}
+              options={[
+                { label: t('all_discuss') || 'all', value: 'all' },
+                { label: t('yes'), value: 'yes' },
+                { label: t('no'), value: 'no' },
+              ]}
+              style={{ minWidth: 150 }}
+              optionFilterProp="label"
+            />
+            <Input
+              placeholder={t("registration4")}
+              value={search.registration4}
+              onChange={(e) => setSearch({ ...search, registration4: e.target.value })}
+              style={{ minWidth: 180, maxWidth: 220 }}
+              allowClear
+            />
+          </div>
         </Flex>
         <div className="table-responsive">
           <Table

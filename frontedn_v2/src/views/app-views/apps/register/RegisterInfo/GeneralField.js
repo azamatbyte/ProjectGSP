@@ -448,9 +448,9 @@ const GeneralField = (props) => {
                     />
                   </Form.Item>
                 </Col>
-              )}
+              )}              
               <Col xs={24} sm={12} md={12}>
-                <Form.Item name="recordNumber" label={t("record_list")}>
+                <Form.Item name="passport" label={t("passport")}>
                   <Input
                     className="w-100"
                     style={{ minWidth: 50 }}
@@ -468,7 +468,7 @@ const GeneralField = (props) => {
                 </Form.Item>
               </Col>
               <Col xs={24} sm={12} md={12}>
-                <Form.Item name="passport" label={t("passport")}>
+                <Form.Item name="recordNumber" label={t("record_list")}>
                   <Input
                     className="w-100"
                     style={{ minWidth: 50 }}

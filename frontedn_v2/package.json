@@ -2,7 +2,7 @@
   "name": "project-gsbp",
   "version": "1.0.0",
   "description": "Project GSBP",
-  "author": "Project GSBP",
+  "author": "Shohruz Ochilov, Mirjalol Norqobilov, Azamat Aliqulov / Cyber park",
   "private": true,
   "main": "electron/main.js",
   "engines": { "node": ">=18" },
