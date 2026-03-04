@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { Card, Table, Input, Button, message, Col, Row, Pagination } from "antd";
 import {
   EyeOutlined,
@@ -26,6 +26,24 @@ const RelationList = () => {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sortedColumns, setSortedColumns] = useState([]);
+
+  const handleTableChange = useCallback((pagination, filters, sorter) => {
+    const sorters = Array.isArray(sorter) ? sorter : [sorter];
+    const newSorted = sorters
+      .filter(s => s.order)
+      .map(s => ({ field: s.columnKey || s.field, order: s.order === 'ascend' ? 'ASC' : 'DESC' }));
+    setSortedColumns(newSorted);
+    setPageNumber(1);
+  }, []);
+
+  const sortOrderMap = useMemo(() => {
+    const map = {};
+    sortedColumns.forEach((s) => {
+      map[s.field] = s.order === 'ASC' ? 'ascend' : 'descend';
+    });
+    return map;
+  }, [sortedColumns]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -33,7 +51,8 @@ const RelationList = () => {
       const res = await RelationService.getRelationList(
         pageNumber,
         pageSize,
-        search
+        search,
+        sortedColumns
       );
       setList(res?.data?.relationDegrees);
       setTotal(res?.data?.total_relation_degrees);
@@ -44,7 +63,7 @@ const RelationList = () => {
     } finally {
       setLoading(false);
     }
-  }, [pageNumber, pageSize, search, t]);
+  }, [pageNumber, pageSize, search, sortedColumns, t]);
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -126,18 +145,27 @@ const RelationList = () => {
     {
       title: t("name"),
       dataIndex: "name",
+      key: "name",
       width: "70%",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "name"),
+      sorter: { multiple: 1 },
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sortOrderMap['name'] || null,
     },
     {
       title: t("updated_at"),
       dataIndex: "updatedAt",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "updatedAt"),
+      key: "updatedAt",
+      sorter: { multiple: 2 },
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sortOrderMap['updatedAt'] || null,
     },
     {
       title: t("created_at"),
       dataIndex: "createdAt",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "createdAt"),
+      key: "createdAt",
+      sorter: { multiple: 3 },
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sortOrderMap['createdAt'] || null,
     }
   ];
 
@@ -182,6 +210,7 @@ const RelationList = () => {
           }))}
           rowKey="id"
           loading={loading}
+          onChange={handleTableChange}
           pagination={false}
         />
         <Row

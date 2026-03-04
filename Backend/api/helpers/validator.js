@@ -140,6 +140,7 @@ const RaportTypeSchema = z.object({
   requested_organization: z.string().min(1, { message: "Requested organization is required" }),
   link: z.string().optional(),
   notes: z.string().optional(),
+  data: z.record(z.any()).optional(),
   executorId: z.string().optional(),
 });
 

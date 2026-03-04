@@ -3,8 +3,9 @@ import Request from "utils/request";
 
 const WorkPlaceService = {};
 
-WorkPlaceService.getList = function (pageNumber=1, pageSize=10,query="") {
-	return Request.getRequest(`workplaces/list?pageNumber=${pageNumber}&pageSize=${pageSize}&query=${query}`);
+WorkPlaceService.getList = function (pageNumber=1, pageSize=10,query="", sortFields=[]) {
+	const sortParam = sortFields.length > 0 ? `&sort=${encodeURIComponent(JSON.stringify(sortFields))}` : "";
+	return Request.getRequest(`workplaces/list?pageNumber=${pageNumber}&pageSize=${pageSize}&query=${query}${sortParam}`);
 };
 
 WorkPlaceService.createWorkplace = function (data) {

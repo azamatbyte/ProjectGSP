@@ -32,6 +32,7 @@
 	"last_name": "Last Name",
 	"father_name": "Father Name",
 	"notes": "Notes",
+	"editable_word": "Editable text",
 	"general": "General",
 	"basic_info": "Basic Info",
 	"info_initiator": "Info Initiator",

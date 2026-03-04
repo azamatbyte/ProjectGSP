@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Card, Table, Input, Button, Switch, message, Col, Row, Pagination } from "antd";
 import { EyeOutlined, DeleteOutlined, SearchOutlined, PlusCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, LeftCircleOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import AvatarStatus from "components/shared-components/AvatarStatus";
@@ -21,11 +21,29 @@ const AdminList = () => {
 	const [total, setTotal] = useState(0);
 	const [search, setSearch] = useState("");
 	const [loading, setLoading] = useState(true);
+	const [sortedColumns, setSortedColumns] = useState([]);
+
+	const handleTableChange = useCallback((pagination, filters, sorter) => {
+		const sorters = Array.isArray(sorter) ? sorter : [sorter];
+		const newSorted = sorters
+			.filter(s => s.order)
+			.map(s => ({ field: s.columnKey || s.field, order: s.order === 'ascend' ? 'ASC' : 'DESC' }));
+		setSortedColumns(newSorted);
+		setPageNumber(1);
+	}, []);
+
+	const sortOrderMap = useMemo(() => {
+		const map = {};
+		sortedColumns.forEach((s) => {
+			map[s.field] = s.order === 'ASC' ? 'ascend' : 'descend';
+		});
+		return map;
+	}, [sortedColumns]);
 
 	const fetchData = useCallback(async () => {
 		try {
 			setLoading(true);
-			const res = await AuthService.getList(pageNumber, pageSize, search);
+			const res = await AuthService.getList(pageNumber, pageSize, search, "", sortedColumns);
 			setList(res?.data?.users);
 			setTotal(res?.data?.total_users);
 		} catch (error) {
@@ -35,7 +53,7 @@ const AdminList = () => {
 		} finally {
 			setLoading(false);
 		}
-	}, [pageNumber, pageSize, search, t]);
+	}, [pageNumber, pageSize, search, sortedColumns, t]);
 
 	useEffect(() => {
 		fetchData();
@@ -132,6 +150,10 @@ const AdminList = () => {
 		{
 			title: t("full_name"),
 			dataIndex: "fullName",
+			key: "last_name",
+			sorter: { multiple: 1 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['last_name'] || null,
 			render: (_, record) => (
 				<div className="d-flex">
 					{record?.photo && record?.photo.includes("http") ? (
@@ -141,12 +163,14 @@ const AdminList = () => {
 					)}
 				</div>
 			),
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "fullName")
 		},
 		{
 			title: t("workplace"),
 			dataIndex: "workplace",
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "rank"),
+			key: "workplace",
+			sorter: { multiple: 2 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['workplace'] || null,
 			render: (rank) => (
 				<div className="d-flex">
 					<span>{rank ? rank : t("-")}</span>
@@ -156,7 +180,10 @@ const AdminList = () => {
 		{
 			title: t("rank"),
 			dataIndex: "rank",
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "position"),
+			key: "rank",
+			sorter: { multiple: 3 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['rank'] || null,
 			render: (position) => (
 				<div className="d-flex">
 					<span>{position ? position : t("-")}</span>
@@ -166,7 +193,10 @@ const AdminList = () => {
 		{
 			title: t("phone"),
 			dataIndex: "phone",
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "phone"),
+			key: "phone",
+			sorter: { multiple: 4 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['phone'] || null,
 			render: (phone) => (
 				<div className="d-flex">
 					<span>{phone ? phone : t("unknown")}</span>
@@ -176,12 +206,18 @@ const AdminList = () => {
 		{
 			title: t("username"),
 			dataIndex: "username",
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "username")
+			key: "username",
+			sorter: { multiple: 5 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['username'] || null,
 		},
 		{
 			title: t("role"),
 			dataIndex: "role",
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "role"),
+			key: "role",
+			sorter: { multiple: 6 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['role'] || null,
 			render: (role) => (
 				<span>{role === "admin" ? t("operator") : role === "superAdmin" ? t("super_admin") : role}</span>
 			)
@@ -189,10 +225,12 @@ const AdminList = () => {
 		{
 			title: t("status"),
 			dataIndex: "status",
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "status"),
+			key: "status",
+			sorter: { multiple: 7 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['status'] || null,
 			render: (text, record) => (
 				<Switch
-					// onClick={()=>{console.log(text);}}
 					checkedChildren={<CheckOutlined />}
 					unCheckedChildren={<CloseOutlined />}
 					checked={text === "active"}
@@ -203,8 +241,11 @@ const AdminList = () => {
 		{
 			title: t("created_at"),
 			dataIndex: "createdAt",
+			key: "createdAt",
 			width: "15%",
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "createdAt")
+			sorter: { multiple: 8 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['createdAt'] || null,
 		}
 	];
 
@@ -266,12 +307,7 @@ const AdminList = () => {
 					}))}
 					rowKey='id'
 					loading={loading}
-					// rowSelection={{
-					// 	selectedRowKeys: selectedRowKeys,
-					// 	type: 'checkbox',
-					// 	preserveSelectedRowKeys: false,
-					// 	...rowSelection,
-					// }}
+					onChange={handleTableChange}
 					pagination={false}
 				/>
 				<Row

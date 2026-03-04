@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Card,
   Table,
@@ -40,12 +40,29 @@ const SignedList = () => {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sortedColumns, setSortedColumns] = useState([]);
+
+  const handleTableChange = useCallback((pagination, filters, sorter) => {
+    const sorters = Array.isArray(sorter) ? sorter : [sorter];
+    const newSorted = sorters
+      .filter(s => s.order)
+      .map(s => ({ field: s.columnKey || s.field, order: s.order === 'ascend' ? 'ASC' : 'DESC' }));
+    setSortedColumns(newSorted);
+    setPageNumber(1);
+  }, []);
+
+  const sortOrderMap = useMemo(() => {
+    const map = {};
+    sortedColumns.forEach((s) => {
+      map[s.field] = s.order === 'ASC' ? 'ascend' : 'descend';
+    });
+    return map;
+  }, [sortedColumns]);
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await SignedListService.getList(pageNumber, pageSize, search);
-      console.log("res", res);
+      const res = await SignedListService.getList(pageNumber, pageSize, search, "", sortedColumns);
       setList(res?.data?.records);
       setTotal(res?.data?.total_records);
     } catch (error) {
@@ -55,7 +72,7 @@ const SignedList = () => {
     } finally {
       setLoading(false);
     }
-  }, [pageNumber, pageSize, search, t]);
+  }, [pageNumber, pageSize, search, sortedColumns, t]);
 
   useEffect(() => {
     fetchData();
@@ -153,6 +170,10 @@ const SignedList = () => {
     {
       title: t("full_name"),
       dataIndex: "fullName",
+      key: "lastName",
+      sorter: { multiple: 1 },
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sortOrderMap['lastName'] || null,
       render: (_, record) => (
         <div className="d-flex">
           {record?.photo && record?.photo.includes("http") ? (
@@ -182,22 +203,30 @@ const SignedList = () => {
           )}
         </div>
       ),
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "fullName"),
     },
     {
       title: t("workplace"),
       dataIndex: "workplace",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "workplace"),
+      key: "workplace",
+      sorter: { multiple: 2 },
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sortOrderMap['workplace'] || null,
     },
     {
       title: t("position"),
       dataIndex: "position",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "position"),
+      key: "position",
+      sorter: { multiple: 3 },
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sortOrderMap['position'] || null,
     },
     {
       title: t("rank"),
       dataIndex: "rank",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "rank"),
+      key: "rank",
+      sorter: { multiple: 4 },
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sortOrderMap['rank'] || null,
       render: (rank) => (
         <div className="d-flex">
           <span>{rank ? rank : t("-")}</span>
@@ -207,10 +236,12 @@ const SignedList = () => {
     {
       title: t("status"),
       dataIndex: "status",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "status"),
+      key: "status",
+      sorter: { multiple: 5 },
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sortOrderMap['status'] || null,
       render: (text, record) => (
         <Switch
-          // onClick={()=>{console.log(text);}}
           checkedChildren={<CheckOutlined />}
           unCheckedChildren={<CloseOutlined />}
           checked={text === "active"}
@@ -221,8 +252,11 @@ const SignedList = () => {
     {
       title: t("created_at"),
       dataIndex: "createdAt",
+      key: "createdAt",
       width: "15%",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "createdAt"),
+      sorter: { multiple: 6 },
+      sortDirections: ['ascend', 'descend'],
+      sortOrder: sortOrderMap['createdAt'] || null,
     },
   ];
 
@@ -291,12 +325,7 @@ const SignedList = () => {
           }))}
           rowKey="id"
           loading={loading}
-          // rowSelection={{
-          //   selectedRowKeys: selectedRowKeys,
-          //   type: "checkbox",
-          //   preserveSelectedRowKeys: false,
-          //   ...rowSelection,
-          // }}
+          onChange={handleTableChange}
           pagination={false}
         />
         <Row

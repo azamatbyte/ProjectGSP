@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const { InitiatorSchema } = require("../helpers/validator");
+const buildPrismaSortOrder = require("../helpers/buildPrismaSortOrder");
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
@@ -45,7 +46,7 @@ const prisma = require('../../db/database');
 exports.getList = async (req, res) => {
   try {
     // So'rov parametrlarini olish va tozalash
-    let { pageNumber = 1, pageSize = 10, query } = req.query;
+    let { pageNumber = 1, pageSize = 10, query, sortField, sortOrder, sort } = req.query;
 
     pageNumber = parseInt(pageNumber, 10);
     pageSize = parseInt(pageSize, 10);
@@ -78,7 +79,11 @@ exports.getList = async (req, res) => {
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: buildPrismaSortOrder(
+        sort, sortField, sortOrder,
+        ["first_name", "last_name", "father_name", "notes", "createdAt", "updatedAt"],
+        [{ createdAt: "desc" }]
+      ),
       skip: (pageNumber - 1) * pageSize,
       take: pageSize,
     });

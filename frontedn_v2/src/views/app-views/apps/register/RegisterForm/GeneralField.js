@@ -738,7 +738,7 @@ const GeneralField = (props) => {
                     />
                   </Form.Item>
                 </Col>
-                
+
               </Row>
             </Col>
             <Col xs={24} sm={24} md={8}>
@@ -1138,23 +1138,13 @@ const GeneralField = (props) => {
               </Col>
             )}
             <Col xs={24} sm={24} md={12}>
-              <Form.Item name="recordNumber" label={t("record_list")}>
+              <Form.Item name="passport" label={t("passport")}>
                 <Input
                   className="w-100"
                   style={{ minWidth: 90 }}
-                  tabIndex={14}
+                  tabIndex={15}
                   disabled={isReadOnly}
                   maxLength={255}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if ((e.target.value || "").trim()) {
-                        const nextInput = document.querySelector('[tabindex="14"]');
-                        if (nextInput) nextInput.focus();
-                      }
-                    }
-                  }}
-                // placeholder={t('record_number_placeholder')}
                 />
               </Form.Item>
             </Col>
@@ -1178,30 +1168,40 @@ const GeneralField = (props) => {
                 // placeholder={t('record_number_placeholder')}
                 />
               </Form.Item>
-            </Col>
+            </Col>            
             <Col xs={24} sm={24} md={12}>
-              <Form.Item name="passport" label={t("passport")}>
+              <Form.Item name="recordNumber" label={t("record_list")}>
                 <Input
                   className="w-100"
                   style={{ minWidth: 90 }}
-                  tabIndex={15}
+                  tabIndex={14}
                   disabled={isReadOnly}
                   maxLength={255}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if ((e.target.value || "").trim()) {
+                        const nextInput = document.querySelector('[tabindex="14"]');
+                        if (nextInput) nextInput.focus();
+                      }
+                    }
+                  }}
+                // placeholder={t('record_number_placeholder')}
                 />
               </Form.Item>
             </Col>
             {mode === "EDIT" && (
-                  <Col xs={24} sm={24} md={12}>
-                    <Form.Item label={t("executor")}>
-                      <Input
-                        className="w-100"
-                        value={executorFullName || "-"}
-                        readOnly
-                        disabled
-                      />
-                    </Form.Item>
-                  </Col>
-                )}
+              <Col xs={24} sm={24} md={12}>
+                <Form.Item label={t("executor")}>
+                  <Input
+                    className="w-100"
+                    value={executorFullName || "-"}
+                    readOnly
+                    disabled
+                  />
+                </Form.Item>
+              </Col>
+            )}
             <Col xs={24} sm={24} md={24}>
               <Form.Item name="notes" label={t("compr_info")} style={{ flex: 1 }}>
                 <Input.TextArea

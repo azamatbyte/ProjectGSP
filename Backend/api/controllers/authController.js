@@ -5,6 +5,7 @@ const { userLogger } = require("../helpers/logger");
 const { AdminSchema } = require("../helpers/validator");
 const { PrismaClient } = require("@prisma/client");
 const safeString = require("../helpers/safeString");
+const buildPrismaSortOrder = require("../helpers/buildPrismaSortOrder");
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
@@ -635,6 +636,9 @@ exports.getList = async (req, res) => {
       role,
       rank,
       status,
+      sortField,
+      sortOrder,
+      sort,
     } = req.query;
 
     pageNumber = parseInt(pageNumber, 10);
@@ -686,7 +690,11 @@ exports.getList = async (req, res) => {
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: buildPrismaSortOrder(
+        sort, sortField, sortOrder,
+        ["first_name", "last_name", "father_name", "workplace", "rank", "phone", "username", "role", "status", "createdAt", "updatedAt"],
+        [{ createdAt: "asc" }]
+      ),
       skip: (pageNumber - 1) * pageSize,
       take: pageSize,
     });

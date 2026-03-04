@@ -3,8 +3,9 @@ import Request from "utils/request";
 
 const RelationService = {};
 
-RelationService.getRelationList = function (pageNumber = 1, pageSize = 10, search = "") {
-	return Request.getRequest(`relationdgr/list?pageNumber=${pageNumber}&pageSize=${pageSize}&query=${search}`);
+RelationService.getRelationList = function (pageNumber = 1, pageSize = 10, search = "", sortFields = []) {
+	const sortParam = sortFields.length > 0 ? `&sort=${encodeURIComponent(JSON.stringify(sortFields))}` : "";
+	return Request.getRequest(`relationdgr/list?pageNumber=${pageNumber}&pageSize=${pageSize}&query=${search}${sortParam}`);
 };
 
 RelationService.create = function (values) {

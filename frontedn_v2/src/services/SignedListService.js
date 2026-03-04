@@ -15,8 +15,9 @@ SignedListService.deleteById = function (id) {
     return Request.deleteRequest(`signlist/deleteById/${id}`);
 };
 
-SignedListService.getList = function (pageNumber=1, pageSize=10,query="",status="") {
-	return Request.getRequest(`signlist/list?pageNumber=${pageNumber}&pageSize=${pageSize}&lastName=${query}&status=${status}`);
+SignedListService.getList = function (pageNumber=1, pageSize=10,query="",status="", sortFields=[]) {
+	const sortParam = sortFields.length > 0 ? `&sort=${encodeURIComponent(JSON.stringify(sortFields))}` : "";
+	return Request.getRequest(`signlist/list?pageNumber=${pageNumber}&pageSize=${pageSize}&lastName=${query}&status=${status}${sortParam}`);
 };
 
 SignedListService.update = function (id, data) {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import {
 	Card, Table, Input, Button, message, Row,
 	Col,
@@ -25,11 +25,29 @@ const InitiatorList = () => {
 	const [search, setSearch] = useState("");
 	const [loading, setLoading] = useState(true);
 	const { t } = useTranslation();
+	const [sortedColumns, setSortedColumns] = useState([]);
+
+	const handleTableChange = useCallback((pagination, filters, sorter) => {
+		const sorters = Array.isArray(sorter) ? sorter : [sorter];
+		const newSorted = sorters
+			.filter(s => s.order)
+			.map(s => ({ field: s.columnKey || s.field, order: s.order === 'ascend' ? 'ASC' : 'DESC' }));
+		setSortedColumns(newSorted);
+		setPageNumber(1);
+	}, []);
+
+	const sortOrderMap = useMemo(() => {
+		const map = {};
+		sortedColumns.forEach((s) => {
+			map[s.field] = s.order === 'ASC' ? 'ascend' : 'descend';
+		});
+		return map;
+	}, [sortedColumns]);
 
 	const fetchData = useCallback(async () => {
 		try {
 			setLoading(true);
-			const res = await InitiatorService.getList(pageNumber, pageSize, search);
+			const res = await InitiatorService.getList(pageNumber, pageSize, search, sortedColumns);
 			setList(res?.data?.data);
 			setTotal(res?.data?.total_number);
 		} catch (error) {
@@ -39,7 +57,7 @@ const InitiatorList = () => {
 		} finally {
 			setLoading(false);
 		}
-	}, [pageNumber, pageSize, search, t]);
+	}, [pageNumber, pageSize, search, sortedColumns, t]);
 
 	useEffect(() => {
 		fetchData();
@@ -120,22 +138,31 @@ const InitiatorList = () => {
 		{
 			title: t("full_name"),
 			dataIndex: "fullName",
+			key: "last_name",
+			sorter: { multiple: 1 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['last_name'] || null,
 			render: (_, record) => (
 				<div className="d-flex">
 					<AvatarStatus size={25} icon={<UserOutlined />} name={record.fullName} />
 				</div>
 			),
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "fullName")
 		},
 		{
 			title: t("notes"),
 			dataIndex: "notes",
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "notes"),
+			key: "notes",
+			sorter: { multiple: 2 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['notes'] || null,
 		},
 		{
 			title: t("createdAt"),
 			dataIndex: "createdAt",
-			// sorter: (a, b) => utils.antdTableSorter(a, b, "createdAt")
+			key: "createdAt",
+			sorter: { multiple: 3 },
+			sortDirections: ['ascend', 'descend'],
+			sortOrder: sortOrderMap['createdAt'] || null,
 		}
 
 	];
@@ -176,12 +203,7 @@ const InitiatorList = () => {
 					}))}
 					rowKey='id'
 					loading={loading}
-					// rowSelection={{
-					// 	selectedRowKeys: selectedRowKeys,
-					// 	type: 'checkbox',
-					// 	preserveSelectedRowKeys: false,
-					// 	...rowSelection,
-					// }}
+					onChange={handleTableChange}
 					pagination={false}
 				/>
 				<Row

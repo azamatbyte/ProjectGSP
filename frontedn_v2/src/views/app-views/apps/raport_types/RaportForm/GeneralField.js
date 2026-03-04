@@ -126,6 +126,15 @@ const GeneralField = props => {
 								/>
 							</Form.Item>
 						</Col>
+						<Col xs={24} sm={24} md={24}>
+							<Form.Item name="editable_word" label={t("editable_word")}>
+								<Input.TextArea
+									className="w-100"
+									rows={4}
+									tabIndex={10}
+								/>
+							</Form.Item>
+						</Col>
 					</Row>
 				</Card>
 			</Col>

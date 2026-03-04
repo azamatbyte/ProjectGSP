@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const { WorkPlaceSchema } = require("../helpers/validator");
+const buildPrismaSortOrder = require("../helpers/buildPrismaSortOrder");
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
@@ -136,7 +137,7 @@ exports.createWorkPlace = async (req, res) => {
 exports.getWorkPlaces = async (req, res) => {
   try {
     // So'rov parametrlarini olish va tekshirish
-    let { pageNumber = 1, pageSize = 10, query } = req.query;
+    let { pageNumber = 1, pageSize = 10, query, sortField, sortOrder, sort } = req.query;
 
     pageNumber = parseInt(pageNumber, 10);
     pageSize = parseInt(pageSize, 10);
@@ -161,7 +162,11 @@ exports.getWorkPlaces = async (req, res) => {
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: { updatedAt: "desc" },
+      orderBy: buildPrismaSortOrder(
+        sort, sortField, sortOrder,
+        ["name", "createdAt", "updatedAt"],
+        [{ updatedAt: "desc" }]
+      ),
       skip: (pageNumber - 1) * pageSize,
       take: pageSize,
     });

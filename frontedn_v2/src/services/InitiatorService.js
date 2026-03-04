@@ -2,8 +2,9 @@ import Request from "utils/request";
 
 const InitiatorService = {};
 
-InitiatorService.getList = function (pageNumber=1, pageSize=10,query="") {
-	return Request.getRequest(`initiator/list?pageNumber=${pageNumber}&pageSize=${pageSize}&query=${query}`);
+InitiatorService.getList = function (pageNumber=1, pageSize=10,query="", sortFields=[]) {
+	const sortParam = sortFields.length > 0 ? `&sort=${encodeURIComponent(JSON.stringify(sortFields))}` : "";
+	return Request.getRequest(`initiator/list?pageNumber=${pageNumber}&pageSize=${pageSize}&query=${query}${sortParam}`);
 };
 
 InitiatorService.create = function (values) {

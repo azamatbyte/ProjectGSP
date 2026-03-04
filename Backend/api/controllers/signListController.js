@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const safeString = require("../helpers/safeString");
+const buildPrismaSortOrder = require("../helpers/buildPrismaSortOrder");
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
@@ -357,6 +358,9 @@ exports.getList = async (req, res) => {
   rank,
       query,
       status,
+      sortField,
+      sortOrder,
+      sort,
     } = req.query;
 
     pageNumber = parseInt(pageNumber, 10);
@@ -397,7 +401,11 @@ exports.getList = async (req, res) => {
 
     const records = await prisma.signList.findMany({
       where: filters,
-      orderBy: { createdAt: "desc" },
+      orderBy: buildPrismaSortOrder(
+        sort, sortField, sortOrder,
+        ["firstName", "lastName", "fatherName", "workplace", "position", "rank", "status", "phone", "createdAt", "updatedAt"],
+        [{ createdAt: "desc" }]
+      ),
       skip: (pageNumber - 1) * pageSize,
       take: pageSize,
     });

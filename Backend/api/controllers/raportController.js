@@ -141,6 +141,14 @@ const selectRaportTypesByCodeOrFallback = async ({
 const formatSignerDisplayName = (item) =>
   `${item?.lastName ? item.lastName : ""} ${item?.firstName ? item.firstName.slice(0, 1) + "." : ""}${item?.fatherName ? item.fatherName.slice(0, 1) + "." : ""}`.trim();
 
+const formatQueryPersonDisplayName = (item) => {
+  const lastName = item?.last_name || item?.lastName || "";
+  const firstName = item?.first_name || item?.firstName || "";
+  const fatherName = item?.father_name || item?.fatherName || "";
+
+  return `${lastName}${firstName ? ` ${firstName.slice(0, 1)}.` : ""}${fatherName ? `${fatherName.slice(0, 1)}.` : ""}`.trim();
+};
+
 const buildQuerySignerLines = (signList, currentMonthRu, year) =>
   signList.map((item, idx) => {
     const nameLine = formatSignerDisplayName(item);
@@ -215,6 +223,27 @@ const buildQueryPersonPayload = async (data) => {
   }];
 };
 
+const formatQueryBirthDate = (birthDate, birthYear) => {
+  if (birthDate instanceof Date && !Number.isNaN(birthDate.getTime())) {
+    return birthDate.toLocaleDateString("ru-RU");
+  }
+
+  if (typeof birthDate === "string" && birthDate.trim()) {
+    const parsed = new Date(birthDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString("ru-RU");
+    }
+
+    return birthDate.trim();
+  }
+
+  if (birthYear !== undefined && birthYear !== null && `${birthYear}`.trim()) {
+    return `${birthYear}`.trim();
+  }
+
+  return "";
+};
+
 const buildMalumotnomaQueryDoc = async ({
   data,
   reqUserId,
@@ -246,8 +275,8 @@ const buildMalumotnomaQueryDoc = async ({
   const agreedLabel = buildQuerySignerLines(signList, currentMonthRu, year).slice(1);
   const persons = await buildQueryPersonPayload(data);
   const generator = name === "type9"
-    ? generateQueryDocxSgb
-    : generateQueryDocxGsbp;
+    ? generateQueryDocxSgbDedicated
+    : generateQueryDocxGsbpDedicated;
 
   return generator("ф-4 заключение.docx", {
     leftHeader: `${getAdmin?.first_name?.slice(0, 1)?.toLowerCase() || ""}${getAdmin?.last_name?.slice(0, 1)?.toLowerCase() || ""}-1`,
@@ -281,6 +310,20 @@ const buildMalumotnomaQueryDoc = async ({
     },
     recordNumbers: data?.regNumber || data?.recordNumber || "",
     recordNumber: data?.regNumber || data?.recordNumber || "",
+    queryExecutorName: getExecutorName || "Р¤.Р.Рћ.",
+    queryInitiatorName: formatQueryPersonDisplayName(data?.Initiator) || "Р¤.Р.Рћ.",
+    querySubjectBirthDate: formatQueryBirthDate(data?.birthDate, data?.birthYear),
+    queryRecipientRank: raportType?.signed_position || "звание",
+    queryRecipientName: conclusion?.to_who || raportType?.signed_fio || "Ф.И.О.",
+    querySourceText: persons?.[0]?.noteLabel || "",
+    queryEditableIntroText:
+      raportType?.data?.editableWord ||
+      conclusion?.first_input ||
+      "бу ерда узгартириш имкони булган маълумотлар киритилади",
+    queryEditableRequirementsText:
+      raportType?.data?.editableWord ||
+      conclusion?.second_input ||
+      "Бу ерда узгартириш имкони булган маълумотлар киритилади",
   });
 };
 
@@ -398,7 +441,7 @@ const generateDedicatedQueryRaportSGB = async (req, res, fixedName) => {
 
     await prisma.raportLink.create({
       data: {
-        code: fixedName,
+        code: "ЗАПРОС СГБ",
         raport: { connect: { id: raport.id } },
         registrations: { connect: { id } },
       },
@@ -488,7 +531,7 @@ const generateDedicatedQueryRaportGSBP = async (req, res, fixedName) => {
 
     await prisma.raportLink.create({
       data: {
-        code: fixedName,
+        code: "ЗАПРОС ГСБП",
         raport: { connect: { id: raport.id } },
         registrations: { connect: { id } },
       },
@@ -4627,6 +4670,713 @@ function generateQueryDocxSgb(outputPath = "ф-4 заключение.docx", dat
 
 function generateQueryDocxGsbp(outputPath = "ф-4 заключение.docx", data = {}) {
   return generateConclusionDocxF4(outputPath, { ...data });
+}
+
+function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»СЋС‡РµРЅРёРµ.docx", data = {}) {
+  const {
+    leftHeader = "бр-1",
+    approverTitle = "",
+    position = "",
+    fio = "",
+    person = [],
+    head = {},
+    recordNumber = "",
+    querySubjectBirthDate = "",
+    queryRecipientRank = "звание",
+    queryRecipientName = "Ф.И.О.",
+    querySourceText = "",
+    queryEditableIntroText = "бу ерда узгартириш имкони булган маълумотлар киритилади",
+    queryEditableRequirementsText = "Бу ерда узгартириш имкони булган маълумотлар киритилади",
+  } = data;
+
+  const noBorders = {
+    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  };
+
+  const p = (children, opts = {}) =>
+    new Paragraph({
+      children: Array.isArray(children) ? children : [children],
+      ...opts,
+    });
+
+  const t = (text, opts = {}) =>
+    new TextRun({
+      text,
+      font: "Times New Roman",
+      size: 28,
+      ...opts,
+    });
+
+  const primaryPerson = person?.[0] || {};
+  const recipientLine1 = approverTitle
+    ? `Начальнику ${approverTitle}`
+    : "Начальнику ______________";
+  const recipientLine2 = position || "__________________________";
+  const birthDate = querySubjectBirthDate || primaryPerson?.dob || "_____";
+  const birthPlace = primaryPerson?.birthplace || "…";
+  const subjectExtras = [
+    primaryPerson?.roleLabel,
+    primaryPerson?.workplace,
+    primaryPerson?.residence,
+  ].filter(Boolean);
+  const subjectDetails = subjectExtras.length
+    ? subjectExtras.join(", ")
+    : "узини маълумотлари";
+  const subjectLineBase = primaryPerson?.fullName || "__________________________";
+  const subjectLine = `${subjectLineBase}, ${birthDate} г.р., уроженец ${birthPlace} (${subjectDetails}).`;
+  const sourceText =
+    querySourceText || primaryPerson?.noteLabel || "компрматериалдаги маълумотлар";
+  const introEditableText =
+    String(queryEditableIntroText || "").trim() ||
+    "бу ерда узгартириш имкони булган маълумотлар киритилади";
+  const requirementsEditableText =
+    String(queryEditableRequirementsText || "").trim() ||
+    "Бу ерда узгартириш имкони булган маълумотлар киритилади";
+  const headLines = String(head?.data || "Начальник подразделения")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const signatureNote = recordNumber ? `(анкета № ${recordNumber})` : "(анкета №)";
+
+  const headerTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: noBorders,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            width: { size: 18, type: WidthType.PERCENTAGE },
+            children: [p([t(leftHeader)], { spacing: { after: 0 } })],
+          }),
+          new TableCell({
+            borders: noBorders,
+            width: { size: 52, type: WidthType.PERCENTAGE },
+            children: [
+              p(
+                [
+                  t("Подлежит возврату", {
+                    bold: true,
+                    underline: { type: UnderlineType.SINGLE, color: "000000" },
+                  }),
+                ],
+                { alignment: AlignmentType.CENTER, spacing: { after: 0 } }
+              ),
+            ],
+          }),
+          new TableCell({
+            borders: noBorders,
+            width: { size: 30, type: WidthType.PERCENTAGE },
+            children: [
+              p([t("Секретно")], {
+                alignment: AlignmentType.RIGHT,
+                spacing: { after: 0 },
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  const recipientTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: noBorders,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            width: { size: 52, type: WidthType.PERCENTAGE },
+            children: [p([t("")], { spacing: { after: 0 } })],
+          }),
+          new TableCell({
+            borders: noBorders,
+            width: { size: 48, type: WidthType.PERCENTAGE },
+            children: [
+              p([t(recipientLine1, { bold: true })], { spacing: { after: 0 } }),
+              p([t(recipientLine2, { bold: true })], { spacing: { after: 0 } }),
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: noBorders,
+                rows: [
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        borders: noBorders,
+                        width: { size: 40, type: WidthType.PERCENTAGE },
+                        children: [
+                          p([
+                            t(queryRecipientRank || "звание", {
+                              bold: true,
+                              underline: {
+                                type: UnderlineType.SINGLE,
+                                color: "000000",
+                              },
+                            }),
+                          ], {
+                            spacing: { after: 0 },
+                          }),
+                        ],
+                      }),
+                      new TableCell({
+                        borders: noBorders,
+                        width: { size: 60, type: WidthType.PERCENTAGE },
+                        children: [
+                          p([t(queryRecipientName || fio || "Ф.И.О.", { bold: true })], {
+                            alignment: AlignmentType.RIGHT,
+                            spacing: { after: 0 },
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  const signatureTable = new Table({
+    width: { size: 55, type: WidthType.PERCENTAGE },
+    borders: noBorders,
+    rows: [
+      ...(headLines.length ? headLines : ["Начальник подразделения"]).map(
+        (line) =>
+          new TableRow({
+            children: [
+              new TableCell({
+                borders: noBorders,
+                children: [
+                  p([t(line, { bold: true })], {
+                    spacing: { after: 0 },
+                  }),
+                ],
+              }),
+            ],
+          })
+      ),
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            children: [
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: noBorders,
+                rows: [
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        borders: noBorders,
+                        width: { size: 40, type: WidthType.PERCENTAGE },
+                        children: [
+                          p([t(head?.rank || "звание", { bold: true })], {
+                            spacing: { after: 0 },
+                          }),
+                        ],
+                      }),
+                      new TableCell({
+                        borders: noBorders,
+                        width: { size: 60, type: WidthType.PERCENTAGE },
+                        children: [
+                          p([t(head?.data1 || "Ф.И.О.", { bold: true })], {
+                            alignment: AlignmentType.RIGHT,
+                            spacing: { after: 0 },
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            children: [
+              p([t(head?.time || "«____» __________ 20__ года")], {
+                spacing: { after: 0 },
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  const children = [
+    headerTable,
+    p([t("Экз.№1")], { alignment: AlignmentType.RIGHT, spacing: { after: 120 } }),
+    p([t("")], { spacing: { after: 220 } }),
+    recipientTable,
+    p([t("")], { spacing: { after: 240 } }),
+    p(
+      [
+        t("В связи с "),
+        t(`(${introEditableText})`),
+        t(" проверяется:"),
+      ],
+      {
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { line: 324, after: 120 },
+        indent: { firstLine: 567 },
+      }
+    ),
+    p([t(subjectLine, { bold: true })], {
+      alignment: AlignmentType.JUSTIFIED,
+      indent: { left: 2832 },
+      spacing: { after: 160 },
+    }),
+    p([t(`По данным (${sourceText}).`)], {
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { after: 120 },
+    }),
+    p([t(`(${requirementsEditableText}).`)], {
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { after: 360 },
+    }),
+    signatureTable,
+    p([t(signatureNote)], {
+      alignment: AlignmentType.RIGHT,
+      spacing: { before: 240, after: 0 },
+    }),
+  ];
+
+  return {
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: { top: 850, bottom: 850, left: 1701, right: 850 },
+          },
+        },
+        children,
+      },
+    ],
+  };
+}
+
+function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {}) {
+  const {
+    leftHeader = "бр-1",
+    approverTitle = "",
+    position = "",
+    fio = "",
+    person = [],
+    head = {},
+    recordNumber = "",
+    querySubjectBirthDate = "",
+    queryRecipientRank = "звание",
+    queryRecipientName = "Ф.И.О.",
+    querySourceText = "",
+    queryEditableRequirementsText = "Бу ерда узгартириш имкони булган маълумотлар киритиб куйилади",
+    queryExecutorName = "Ф.И.О.",
+    queryInitiatorName = "Ф.И.О.",
+  } = data;
+
+  const noBorders = {
+    top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+    insideVertical: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+  };
+
+  const p = (children, opts = {}) =>
+    new Paragraph({
+      children: Array.isArray(children) ? children : [children],
+      ...opts,
+    });
+
+  const textRun = (text, opts = {}) =>
+    new TextRun({
+      text,
+      font: "Times New Roman",
+      size: 28,
+      ...opts,
+    });
+
+  const highlighted = (text, color, opts = {}) =>
+    textRun(text, {
+      ...(color ? { highlight: color } : {}),
+      ...opts,
+    });
+
+  const blankParagraph = () =>
+    p([textRun("")], {
+      spacing: { after: 0 },
+    });
+
+  const primaryPerson = person?.[0] || {};
+  const birthDate = querySubjectBirthDate || primaryPerson?.dob || "_____";
+  const birthPlace = primaryPerson?.birthplace || "…";
+  const workplace =
+    primaryPerson?.workplace ||
+    primaryPerson?.roleLabel ||
+    "базада кўрсатилган иш жойи";
+  const subjectName = primaryPerson?.fullName || "__________________________";
+  const sourceText =
+    String(
+      querySourceText ||
+      primaryPerson?.noteLabel ||
+      "компрматериалдаги маълумотлар"
+    ).trim();
+  const requirementsEditableText =
+    String(queryEditableRequirementsText || "").trim() ||
+    "Бу ерда узгартириш имкони булган маълумотлар киритиб куйилади";
+  const recipientLine1 = approverTitle
+    ? `Начальнику ${approverTitle}`
+    : "Начальнику ______________";
+  const recipientLine2 = position || "__________________________";
+  const headLines = String(head?.data || "Начальник подразделения")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const footerRecordText = recordNumber ? `№${recordNumber}-анкета` : "№-анкета";
+  const footerExecutorName = queryExecutorName || data?.operator?.data1 || "Ф.И.О.";
+  const footerInitiatorName = queryInitiatorName || "Ф.И.О.";
+  const footerDateText = head?.time || "«____» __________ 20__ года";
+
+  const headerTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: noBorders,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            width: { size: 18, type: WidthType.PERCENTAGE },
+            children: [
+              p([highlighted(leftHeader, "yellow")], {
+                spacing: { after: 0 },
+              }),
+            ],
+          }),
+          new TableCell({
+            borders: noBorders,
+            width: { size: 52, type: WidthType.PERCENTAGE },
+            children: [
+              p(
+                [
+                  highlighted("Подлежит возврату", "green", {
+                    bold: true,
+                    underline: { type: UnderlineType.SINGLE, color: "000000" },
+                  }),
+                ],
+                { alignment: AlignmentType.CENTER, spacing: { after: 0 } }
+              ),
+            ],
+          }),
+          new TableCell({
+            borders: noBorders,
+            width: { size: 30, type: WidthType.PERCENTAGE },
+            children: [
+              p([highlighted("Секретно", "green")], {
+                alignment: AlignmentType.RIGHT,
+                spacing: { after: 0 },
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  const recipientTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: noBorders,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            width: { size: 52, type: WidthType.PERCENTAGE },
+            children: [blankParagraph()],
+          }),
+          new TableCell({
+            borders: noBorders,
+            width: { size: 48, type: WidthType.PERCENTAGE },
+            children: [
+              p([highlighted(recipientLine1, "yellow", { bold: true })], {
+                spacing: { after: 0 },
+              }),
+              p([highlighted(recipientLine2, "yellow", { bold: true })], {
+                spacing: { after: 0 },
+              }),
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: noBorders,
+                rows: [
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        borders: noBorders,
+                        width: { size: 40, type: WidthType.PERCENTAGE },
+                        children: [
+                          p([
+                            highlighted(queryRecipientRank || "звание", "yellow", {
+                              bold: true,
+                              underline: {
+                                type: UnderlineType.SINGLE,
+                                color: "000000",
+                              },
+                            }),
+                          ], {
+                            spacing: { after: 0 },
+                          }),
+                        ],
+                      }),
+                      new TableCell({
+                        borders: noBorders,
+                        width: { size: 60, type: WidthType.PERCENTAGE },
+                        children: [
+                          p([highlighted(queryRecipientName || fio || "Ф.И.О.", "yellow", { bold: true })], {
+                            alignment: AlignmentType.RIGHT,
+                            spacing: { after: 0 },
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  const signatureTable = new Table({
+    width: { size: 55, type: WidthType.PERCENTAGE },
+    borders: noBorders,
+    rows: [
+      ...(headLines.length ? headLines : ["Начальник подразделения"]).map(
+        (line) =>
+          new TableRow({
+            children: [
+              new TableCell({
+                borders: noBorders,
+                children: [
+                  p([highlighted(line, "yellow", { bold: true })], {
+                    spacing: { after: 0 },
+                  }),
+                ],
+              }),
+            ],
+          })
+      ),
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            children: [
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: noBorders,
+                rows: [
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        borders: noBorders,
+                        width: { size: 40, type: WidthType.PERCENTAGE },
+                        children: [
+                          p([highlighted(head?.rank || "звание", "yellow", { bold: true })], {
+                            spacing: { after: 0 },
+                          }),
+                        ],
+                      }),
+                      new TableCell({
+                        borders: noBorders,
+                        width: { size: 60, type: WidthType.PERCENTAGE },
+                        children: [
+                          p([highlighted(head?.data1 || "Ф.И.О.", "yellow", { bold: true })], {
+                            alignment: AlignmentType.RIGHT,
+                            spacing: { after: 0 },
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  const footerTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: noBorders,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            width: { size: 55, type: WidthType.PERCENTAGE },
+            children: [
+              p([highlighted(footerDateText, "yellow")], {
+                spacing: { after: 0 },
+              }),
+            ],
+          }),
+          new TableCell({
+            borders: noBorders,
+            width: { size: 45, type: WidthType.PERCENTAGE },
+            children: [
+              p(
+                [
+                  highlighted("Исполнитель: ", "green"),
+                  highlighted(footerExecutorName, "yellow"),
+                ],
+                {
+                  alignment: AlignmentType.RIGHT,
+                  spacing: { after: 0 },
+                }
+              ),
+            ],
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            width: { size: 55, type: WidthType.PERCENTAGE },
+            children: [
+              p([highlighted(footerRecordText, "yellow")], {
+                spacing: { after: 0 },
+              }),
+            ],
+          }),
+          new TableCell({
+            borders: noBorders,
+            width: { size: 45, type: WidthType.PERCENTAGE },
+            children: [
+              p(
+                [
+                  highlighted("Инициатор: ", "green"),
+                  highlighted(footerInitiatorName, "yellow"),
+                ],
+                {
+                  alignment: AlignmentType.RIGHT,
+                  spacing: { after: 0 },
+                }
+              ),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  const legendParagraphs = [
+    p([textRun("Explanation of the colors shown in the above application:")], {
+      spacing: { after: 0 },
+    }),
+    p(
+      [
+        highlighted("GREEN", "green"),
+        textRun("  unchangeable entries"),
+      ],
+      { spacing: { after: 0 } }
+    ),
+    p(
+      [
+        highlighted("YELLOW", "yellow"),
+        textRun("  data retrieved from the database"),
+      ],
+      { spacing: { after: 0 } }
+    ),
+    p(
+      [
+        highlighted("RED", "red"),
+        textRun("  (Data that can be changed in the Requirements section of the program)"),
+      ],
+      { spacing: { after: 0 } }
+    ),
+  ];
+
+  const children = [
+    headerTable,
+    p([highlighted("Экз.№1", "green")], {
+      alignment: AlignmentType.RIGHT,
+      spacing: { after: 120 },
+    }),
+    blankParagraph(),
+    recipientTable,
+    p([textRun("")], { spacing: { after: 240 } }),
+    p(
+      [
+        highlighted("По результатам ", "green"),
+        highlighted("____________", "green"),
+        highlighted(" спецпроверки ", "green"),
+        highlighted(subjectName, "yellow", { bold: true }),
+        highlighted(", ", "yellow"),
+        highlighted(birthDate, "yellow"),
+        highlighted(" г.р., уроженец ", "yellow"),
+        highlighted(birthPlace, "yellow"),
+        highlighted(", который с ____ года работает в должности ", "green"),
+        highlighted(`(${workplace})`, "yellow"),
+        highlighted(", получена следующая информация.", "green"),
+      ],
+      {
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { line: 324, after: 120 },
+        indent: { firstLine: 567 },
+      }
+    ),
+    p(
+      [
+        highlighted("По данным, ", "green"),
+        highlighted(`(${sourceText})`, "yellow"),
+        textRun("."),
+      ],
+      {
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { line: 324, after: 120 },
+        indent: { firstLine: 567 },
+      }
+    ),
+    p([highlighted(requirementsEditableText.endsWith(".") ? requirementsEditableText : `${requirementsEditableText}.`, "red")], {
+      alignment: AlignmentType.JUSTIFIED,
+      spacing: { line: 324, after: 360 },
+      indent: { firstLine: 567 },
+    }),
+    signatureTable,
+    footerTable,
+    ...Array.from({ length: 20 }, () => blankParagraph()),
+    ...legendParagraphs,
+  ];
+
+  return {
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: { top: 850, bottom: 850, left: 1701, right: 850 },
+          },
+        },
+        children,
+      },
+    ],
+  };
 }
 
 //done
@@ -19832,6 +20582,7 @@ exports.updateRaportType = async (req, res) => {
       signed_position,
       link,
       notes,
+      data: payloadData = {},
     } = req.body;
 
     const raportType = await prisma.raportTypes.findUnique({
@@ -19857,6 +20608,13 @@ exports.updateRaportType = async (req, res) => {
         notes,
         signed_fio,
         signed_position,
+        data: {
+          ...(raportType?.data && typeof raportType.data === "object" ? raportType.data : {}),
+          editableWord:
+            payloadData?.editableWord !== undefined
+              ? payloadData?.editableWord || ""
+              : raportType?.data?.editableWord || "",
+        },
       },
     });
 
@@ -20034,6 +20792,7 @@ exports.createRaportType = async (req, res) => {
       requested_organization,
       link,
       notes,
+      data: payloadData = {},
     } = req.body;
 
     const raportType = await prisma.raportTypes.findFirst({
@@ -20060,6 +20819,9 @@ exports.createRaportType = async (req, res) => {
       executorId: req.userId,
       link,
       notes,
+      data: {
+        editableWord: payloadData?.editableWord || "",
+      },
     };
 
     const validate = RaportTypeSchema.safeParse(data);

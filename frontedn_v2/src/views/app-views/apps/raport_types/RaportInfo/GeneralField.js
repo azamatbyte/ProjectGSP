@@ -19,7 +19,10 @@ const GeneralField = (props) => {
         console.log(response?.data?.data);
         console.log(response);
         console.log("End");
-        setRegistrationData(response?.data?.data);
+        setRegistrationData({
+          ...response?.data?.data,
+          editable_word: response?.data?.data?.data?.editableWord || "",
+        });
         if (response.status !== 200) throw new Error("Failed to fetch data");
       } catch (error) {
         message.error("Failed to load raport data");
@@ -103,6 +106,11 @@ const GeneralField = (props) => {
               <Col xs={24} sm={24} md={12}>
                 <Form.Item name="notes" label={t("notes")}>
                   <Input className="w-100" tabIndex={9} readOnly />
+                </Form.Item>
+              </Col>
+              <Col xs={24} sm={24} md={24}>
+                <Form.Item name="editable_word" label={t("editable_word")}>
+                  <Input.TextArea className="w-100" rows={4} readOnly />
                 </Form.Item>
               </Col>
             </Row>

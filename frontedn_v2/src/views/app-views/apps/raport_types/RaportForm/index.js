@@ -59,6 +59,7 @@ const RaportForm = (props) => {
         signed_fio: response?.data?.data?.signed_fio,
         signed_position: response?.data?.data?.signed_position,
         notes: response?.data?.data?.notes,
+        editable_word: response?.data?.data?.data?.editableWord || "",
       });
     } catch (error) {
       console.log(error);
@@ -72,14 +73,26 @@ const RaportForm = (props) => {
   }, [mode, param, id, fetchRaportData]);
 
   const onFinish = async () => {
+    const buildPayload = (values) => {
+      const payload = {
+        ...values,
+        data: {
+          ...(values?.data && typeof values.data === "object" ? values.data : {}),
+          editableWord: values?.editable_word || "",
+        },
+      };
+
+      delete payload.editable_word;
+
+      return payload;
+    };
+
     if (mode === ADD) {
       await form
         .validateFields()
         .then(async (res) => {
           try {
-            console.log("resqqqqq", res);
-
-            await RaportTypesService.create(res);
+            await RaportTypesService.create(buildPayload(res));
             message.success(t("requirements_created_successfully"));
             navigate(-1);
           } catch (error) {
@@ -95,7 +108,7 @@ const RaportForm = (props) => {
       await form
         .validateFields()
         .then(async (res) => {
-          await RaportTypesService.update(id, res);
+          await RaportTypesService.update(id, buildPayload(res));
           message.success(t("requirements_updated_successfully"));
           navigate(-1);
         })
@@ -131,12 +144,12 @@ const RaportForm = (props) => {
                   className="mr-2"
                   type="primary"
                   htmlType="submit"
-                  tabIndex={10}
+                  tabIndex={11}
                 >
                   {mode === ADD ? <CheckCircleOutlined /> : <CheckCircleOutlined />}
                   {mode === ADD ? t("save") : t("update")}
                 </Button>
-                <Button className="mr-2" onClick={backHandle} tabIndex={11}>
+                <Button className="mr-2" onClick={backHandle} tabIndex={12}>
                   <LeftCircleOutlined /> {t("back")}
                 </Button>
               </div>

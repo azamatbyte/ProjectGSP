@@ -204,7 +204,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
   }, [isModalVisibleType4, isModalVisibleType5, applyRegistrationDefaults]);
 
   const [raport, setRaport] = useState("type123");
-  const [malumotnomaRaport, setMalumotnomaRaport] = useState("type8");
+  const [malumotnomaRaport, setMalumotnomaRaport] = useState("type10");
 
   const raports = [
     { key: "type123", label: t("OSUMVD_OSUSGB_USP") },
@@ -217,8 +217,8 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
   ];
 
   const malumotnomaRaports = [
-    { key: "type8", label: "ЗАПРОС ГСБП" },
-    { key: "type9", label: "ЗАПРОС СГБ" },
+    { key: "type10", label: t("bad_malumotnoma") },
+    { key: "type11", label: t("good_malumotnoma") },
   ];
 
   const categories = [...raports, ...malumotnomaRaports, { key: "Заключение", label: t("Заключение") }];

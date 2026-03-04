@@ -15,8 +15,9 @@ AuthService.getByToken = function () {
 	return Request.postRequest(get_user);
 };
 
-AuthService.getList = function (pageNumber = 1, pageSize = 10, query = "", status = "") {
-	return Request.getRequest(`auth/list?pageNumber=${pageNumber}&pageSize=${pageSize}&query=${query}&status=${status}`);
+AuthService.getList = function (pageNumber = 1, pageSize = 10, query = "", status = "", sortFields = []) {
+	const sortParam = sortFields.length > 0 ? `&sort=${encodeURIComponent(JSON.stringify(sortFields))}` : "";
+	return Request.getRequest(`auth/list?pageNumber=${pageNumber}&pageSize=${pageSize}&query=${query}&status=${status}${sortParam}`);
 };
 
 AuthService.create = function (data) {
