@@ -321,7 +321,7 @@ exports.countedRecords = async (req, res) => {
  */
 exports.formOverdueTrend = async (req, res) => {
   try {
-    const { x_axis, x_axsisi, month, year, form_reg } = req.body || {};
+    const { x_axis, x_axsisi, month, year } = req.body || {};
     const axisRaw = x_axis ?? x_axsisi;
     const axis = typeof axisRaw === "string" ? axisRaw.toUpperCase().trim() : "";
 
@@ -341,20 +341,8 @@ exports.formOverdueTrend = async (req, res) => {
       });
     }
 
-    const requestedForms = Array.isArray(form_reg)
-      ? [...new Set(form_reg.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean))]
-      : [];
-
-    if (requestedForms.length === 0) {
-      return res.status(400).json({
-        code: 400,
-        message: "form_reg must be a non-empty array of strings",
-      });
-    }
-
     const existingForms = await prisma.form.findMany({
       where: {
-        name: { in: requestedForms },
         status: true,
       },
       select: {
@@ -391,15 +379,15 @@ exports.formOverdueTrend = async (req, res) => {
             gte: startDate,
             lte: endDate,
           },
-          expired: {
+          expiredDate: {
             not: null,
-            lt: todayStartUTC,
           },
         },
         _count: {
           _all: true,
         },
       });
+      
 
       const valueMap = new Map(
         groups.map((item) => [item.form_reg || "", Number(item?._count?._all) || 0])

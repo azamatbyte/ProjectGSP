@@ -63,7 +63,7 @@ const RaportList = (props) => {
   const [executorFetching, setExecutorFetching] = useState(false);
   const [executorOptions, setExecutorOptions] = useState([]);
   const { setUploadedFile, setRaportId } = props;
-  const [search, setSearch] = useState({ adminCheck: "all", operator: "all", discuss:"all", fullName: "", name: "", executor: "", registration4: "",  });
+  const [search, setSearch] = useState({ adminCheck: "all", operator: "all", discuss: "all", fullName: "", name: "", executor: "", registration4: "", });
 
   // 🔹 Modal holati uchun
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -435,7 +435,7 @@ const RaportList = (props) => {
         const value = elm?.discussCheck;
         return (
           <Switch
-            checked={value==true}
+            checked={value == true}
             onChange={(checked) => handleLinkToggle(elm, 'discuss', checked)}
             checkedChildren={t('yes')}
             unCheckedChildren={t('no')}
@@ -563,17 +563,31 @@ const RaportList = (props) => {
     <>
       <Card>
         <Flex
-          alignItems="center"
-          justifyContent="space-between"
+          flexDirection="column"
           mobileFlex={false}
-        >
-          <Flex className="mb-1" mobileFlex={false}>
-            <div className="mr-md-3 mb-3">
+          style={{ width: '100%' }}
+        ><Flex className="mb-2" justifyContent="flex-end">
+            <div className="mb-3 d-flex gap-2" style={{ alignItems: 'center', gap: 12 }}>
+              <ProviderComponent rolePermission={["admin", "user", "superAdmin"]}>
+                {/* <Button
+                onClick={() => { goToSearch() }}
+                type="primary"
+                icon={<PlusCircleOutlined />}
+                block
+              >
+                {t("add")}
+              </Button> */}
+                <Button className="ml-2" onClick={() => { backHandle() }}><LeftCircleOutlined />{t("back")}</Button>
+              </ProviderComponent>
+            </div>
+          </Flex>
+          <div style={{ width: '100%', marginBottom: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, width: '100%' }}>
               <Input
                 placeholder={t("full_name")}
                 value={search.fullName}
                 onChange={(e) => setSearch({ ...search, fullName: e.target.value })}
-                style={{ width: 240, marginRight: 8 }}
+                style={{ flex: '1 1 200px', minWidth: 160 }}
                 allowClear
               />
               <Select
@@ -585,13 +599,13 @@ const RaportList = (props) => {
                   setSearch({ ...search, name: val || "" });
                 }}
                 options={categoriesOfRaports.map((it) => ({ value: it.key, label: it.label }))}
-                style={{ width: 200, marginRight: 8 }}
+                style={{ flex: '1 1 180px', minWidth: 150 }}
               />
               <Select
                 showSearch
                 allowClear
                 placeholder={t("executor")}
-                style={{ width: 200 }}
+                style={{ flex: '1 1 180px', minWidth: 150 }}
                 value={search.executor || undefined}
                 optionFilterProp="label"
                 onChange={(value) => setSearch({ ...search, executor: value || "" })}
@@ -610,7 +624,7 @@ const RaportList = (props) => {
                   { label: t('yes'), value: 'yes' },
                   { label: t('no'), value: 'no' },
                 ]}
-                style={{ width: 180, marginLeft: 8, marginRight: 8 }}
+                style={{ flex: '1 1 150px', minWidth: 130 }}
                 optionFilterProp="label"
               />
               <Select
@@ -622,7 +636,7 @@ const RaportList = (props) => {
                   { label: t('yes'), value: 'yes' },
                   { label: t('no'), value: 'no' },
                 ]}
-                style={{ width: 180 }}
+                style={{ flex: '1 1 150px', minWidth: 130 }}
                 optionFilterProp="label"
               />
               <Select
@@ -634,33 +648,19 @@ const RaportList = (props) => {
                   { label: t('yes'), value: 'yes' },
                   { label: t('no'), value: 'no' },
                 ]}
-                style={{ width: 180, marginLeft: 8 }}
+                style={{ flex: '1 1 150px', minWidth: 130 }}
                 optionFilterProp="label"
               />
               <Input
                 placeholder={t("registration4")}
                 value={search.registration4}
                 onChange={(e) => setSearch({ ...search, registration4: e.target.value })}
-                style={{ width: 240, marginLeft: 8 }}
+                style={{ flex: '1 1 200px', minWidth: 160 }}
                 allowClear
               />
             </div>
-          </Flex>
-          <Flex className="mb-1">
-            <div className="mb-3 d-flex gap-2" style={{ alignItems: 'center', gap: 12 }}>
-              <ProviderComponent rolePermission={["admin", "user", "superAdmin"]}>
-                {/* <Button
-                onClick={() => { goToSearch() }}
-                type="primary"
-                icon={<PlusCircleOutlined />}
-                block
-              >
-                {t("add")}
-              </Button> */}
-                <Button className="ml-2" onClick={() => { backHandle() }}><LeftCircleOutlined />{t("back")}</Button>
-              </ProviderComponent>
-            </div>
-          </Flex>
+          </div>
+
         </Flex>
         <div className="table-responsive">
           <Table
