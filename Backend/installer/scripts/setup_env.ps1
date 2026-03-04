@@ -43,6 +43,13 @@ function New-SecureString {
     return $result
 }
 
+function Get-ServerUrl([hashtable]$EnvMap) {
+    $host = if ($EnvMap['HOST']) { $EnvMap['HOST'] } else { '0.0.0.0' }
+    $port = if ($EnvMap['PORT']) { $EnvMap['PORT'] } else { '8080' }
+    $connectHost = if ($host -eq '0.0.0.0' -or $host -eq '::') { '127.0.0.1' } else { $host }
+    return "http://${connectHost}:${port}"
+}
+
 # If .env exists and not forcing, just ensure required keys
 if ((Test-Path $EnvFile) -and -not $Force) {
     Log "Environment file exists. Checking required keys..."
@@ -73,6 +80,7 @@ if ((Test-Path $EnvFile) -and -not $Force) {
             $envMap[$matches[1].Trim()] = $matches[2].Trim()
         }
     }
+    $serverUrl = Get-ServerUrl $envMap
     $user = if ($envMap['PGUSER']) { $envMap['PGUSER'] } else { 'appuser' }
     $pass = if ($envMap['PGPASSWORD']) { $envMap['PGPASSWORD'] } else { $pgPass }
     $port = if ($envMap['PGPORT']) { $envMap['PGPORT'] } else { '5433' }
@@ -114,6 +122,11 @@ if ((Test-Path $EnvFile) -and -not $Force) {
         Log "Added PG_ICU_LOCALE"
         $needsUpdate = $true
     }
+    if ($content -notmatch 'SERVER_URL\s*=') {
+        Add-Content -Path $EnvFile -Value "SERVER_URL=$serverUrl"
+        Log "Added SERVER_URL"
+        $needsUpdate = $true
+    }
 
     # Check for DATABASE_URL
     if ($content -notmatch 'DATABASE_URL\s*=\s*\S+') {
@@ -140,9 +153,10 @@ if (Test-Path $TemplateFile) {
     # Create minimal template
     @(
         '# GSPApp Configuration',
-        'HOST=127.0.0.1',
+        'HOST=0.0.0.0',
         'PORT=8080',
         'NODE_ENV=production',
+        'SERVER_URL=http://127.0.0.1:8080',
         '',
         '# PostgreSQL',
         'PGPORT=5433',

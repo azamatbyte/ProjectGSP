@@ -582,6 +582,23 @@ try {
 }
 Log "Seed log: $seedLog"
 
+# -- Windows Firewall --------------------------------------------------------
+Log "========== FIREWALL CONFIGURATION =========="
+try {
+    $fwPort = if ($env:PORT) { $env:PORT } else { '8080' }
+    $fwRuleName = "GSPApp Backend (TCP $fwPort)"
+    $existing = Get-NetFirewallRule -DisplayName $fwRuleName -ErrorAction SilentlyContinue
+    if (-not $existing) {
+        New-NetFirewallRule -DisplayName $fwRuleName -Direction Inbound -Protocol TCP -LocalPort $fwPort -Action Allow -Profile Any | Out-Null
+        Log "Created firewall rule: $fwRuleName"
+    } else {
+        Log "Firewall rule already exists: $fwRuleName"
+    }
+} catch {
+    LogErr "Firewall rule creation failed: $_"
+    LogErr "You may need to manually allow TCP port $fwPort in Windows Firewall"
+}
+
 # -- Node server --------------------------------------------------------------
 # Start Node AFTER database is ready with schema and seed data.
 # Skipped during installer run (-SkipNodeStart); Electron's ensureBackendRunning() starts it instead.

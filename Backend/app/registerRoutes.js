@@ -15,6 +15,11 @@ function registerRoutes(app) {
     maxAge: '1y',
     immutable: true,
     setHeaders: (res, filePath) => {
+      if (/runtime-config\.js$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        return;
+      }
+
       if (/\.html$/.test(filePath)) {
         res.setHeader('Cache-Control', 'no-cache');
       }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { host } from "utils/api_urls";
+import { apiBaseUrl } from "utils/api_urls";
 
 const StatusIndicators = () => {
     const { t } = useTranslation();
@@ -9,16 +9,23 @@ const StatusIndicators = () => {
 
     const checkHealth = useCallback(async () => {
         try {
-            const res = await fetch(`${host}/api/v1/health`, {
+            const res = await fetch(`${apiBaseUrl}health`, {
                 method: "GET",
                 headers: { "Content-Type": "application/json" },
             });
+
+            if (!res.ok) {
+                setBackendOk(false);
+                setDatabaseOk(null);
+                return;
+            }
+
             const data = await res.json();
             setBackendOk(data.backend === true);
             setDatabaseOk(data.database === true);
         } catch {
             setBackendOk(false);
-            setDatabaseOk(false);
+            setDatabaseOk(null);
         }
     }, []);
 

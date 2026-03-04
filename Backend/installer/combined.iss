@@ -73,11 +73,14 @@ Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\s
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\backend\scripts\init_db.ps1"" -AppRoot ""{app}\backend"""; StatusMsg: "Initializing database..."; Components: backend; Flags: runhidden
 ; Start services (must wait for completion so database is created, schema pushed, and seeded)
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NoProfile -File ""{app}\backend\scripts\start_services.ps1"" -AppRoot ""{app}\backend"" -SkipNodeStart"; StatusMsg: "Setting up database (first install may take 3-5 minutes, please wait)..."; Components: backend; Flags: runhidden
+; Configure Windows Firewall
+Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""GSPApp Backend"" dir=in action=allow protocol=TCP localport=8080"; StatusMsg: "Configuring firewall..."; Components: backend; Flags: runhidden
 ; Launch frontend after install
 Filename: "{app}\frontend\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Components: frontend; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\backend\scripts\stop_services.ps1"" -AppRoot ""{app}\backend"""; Components: backend; Flags: runhidden
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""GSPApp Backend"""; Flags: runhidden
 
 [Icons]
 ; Start Menu - Backend controls
@@ -115,13 +118,16 @@ begin
   // Create custom page for host/port configuration
   HostPage := CreateInputQueryPage(wpSelectComponents,
     'Server Configuration', 'Configure the backend server settings',
-    'Enter the host and port for the backend server. Leave default for local use.');
+    'Enter the backend bind host or connect IP.' + #13#10 +
+    'Use 0.0.0.0 to accept connections from all machines (recommended for servers).' + #13#10 +
+    'Use 127.0.0.1 for local access only.' + #13#10 +
+    'For frontend-only installs, enter the reachable IP address of the backend server.');
   HostPage.Add('Host:', False);
   HostPage.Add('API Port:', False);
   HostPage.Add('Database Port:', False);
   
   // Set defaults
-  HostPage.Values[0] := '127.0.0.1';
+  HostPage.Values[0] := '0.0.0.0';
   HostPage.Values[1] := '8080';
   HostPage.Values[2] := '5433';
 end;
@@ -129,31 +135,53 @@ end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   Result := False;
-  // Skip host config page if only installing frontend
+  // Show host config for both backend and frontend-only installs
+  // Skip only if neither component is selected (shouldn't happen)
   if PageID = HostPage.ID then
-    Result := not IsComponentSelected('backend');
+    Result := not (IsComponentSelected('backend') or IsComponentSelected('frontend'));
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   EnvContent: String;
   EnvFile: String;
+  RuntimeConfig: String;
+  RuntimeConfigFile: String;
+  ConnectHost: String;
+  ServerUrl: String;
 begin
   if CurStep = ssPostInstall then
   begin
-    // Create initial .env in ProgramData if backend selected
-    if IsComponentSelected('backend') then
+    EnvFile := ExpandConstant('{commonappdata}\GSPApp\.env');
+    ConnectHost := HostPage.Values[0];
+    if (ConnectHost = '0.0.0.0') or (ConnectHost = '::') then
+      ConnectHost := '127.0.0.1';
+    ServerUrl := 'http://' + ConnectHost + ':' + HostPage.Values[1];
+
+    // Write .env for both backend and frontend-only installs
+    if IsComponentSelected('backend') or IsComponentSelected('frontend') then
     begin
-      EnvFile := ExpandConstant('{commonappdata}\GSPApp\.env');
       if not FileExists(EnvFile) then
       begin
         EnvContent := '# GSPApp Configuration' + #13#10 +
                       'HOST=' + HostPage.Values[0] + #13#10 +
                       'PORT=' + HostPage.Values[1] + #13#10 +
+                      'SERVER_URL=' + ServerUrl + #13#10 +
                       'PGPORT=' + HostPage.Values[2] + #13#10 +
                       'NODE_ENV=production' + #13#10 +
-                      '# REACT_APP_SITE_BACKEND is not needed; frontend uses relative URLs' + #13#10;
+                      '# CORS_ALLOWED_ORIGINS=http://192.168.1.50:3000' + #13#10 +
+                      '# REACT_APP_SITE_BACKEND is not needed; frontend uses runtime-config.js or same-origin' + #13#10;
         SaveStringToFile(EnvFile, EnvContent, False);
+      end;
+
+      if IsComponentSelected('backend') then
+      begin
+        RuntimeConfigFile := ExpandConstant('{app}\backend\app\build\runtime-config.js');
+        RuntimeConfig := 'window.__GSP_RUNTIME_CONFIG__ = {' + #13#10 +
+                         '  apiBaseUrl: "",' + #13#10 +
+                         '  debugApiResolution: false' + #13#10 +
+                         '};' + #13#10;
+        SaveStringToFile(RuntimeConfigFile, RuntimeConfig, False);
       end;
     end;
   end;

@@ -347,9 +347,11 @@ $EnvTemplate = @"
 # This file is a template. Runtime config is stored in %ProgramData%\GSPApp\.env
 
 # Server Configuration
-HOST=127.0.0.1
+HOST=0.0.0.0
 PORT=8080
 NODE_ENV=production
+SERVER_URL=http://127.0.0.1:8080
+# CORS_ALLOWED_ORIGINS=http://192.168.1.50:3000
 
 # PostgreSQL Configuration
 PGPORT=5433
@@ -368,7 +370,7 @@ DB_NAME=appdb
 # Security (auto-generated on first run)
 # JWT_SECRET_KEY=<generated>
 
-# Frontend API Connection (only needed in development; production uses relative URLs)
+# Frontend API Connection (development only; production uses runtime-config.js or same-origin)
 # REACT_APP_SITE_BACKEND=http://127.0.0.1:8080
 "@
 $EnvTemplate | Set-Content -Path (Join-Path $BuildDir 'env.template') -Encoding utf8

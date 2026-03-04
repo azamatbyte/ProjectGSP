@@ -3,13 +3,17 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import { getStorage, getStorageR, setStorage, setStorageR, clearStorage } from "./storage";
 import Request  from "./request";
-import { host, refresh_token } from "./api_urls";
+import { apiBaseUrl, refresh_token, shouldLogApiBaseUrl } from "./api_urls";
 
 // Enable UTC plugin for dayjs
 dayjs.extend(utc);
 
+if (shouldLogApiBaseUrl) {
+  console.info(`[API] Base URL: ${apiBaseUrl}`);
+}
+
 const instance = axios.create({
-  baseURL: host + "/api/v1/",
+  baseURL: apiBaseUrl,
 });
 
 instance.interceptors.request.use(

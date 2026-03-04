@@ -43,8 +43,25 @@ const envPath = fs.existsSync(ENV_PROGRAMDATA)
 
 const envConfig = envPath ? parseEnvFile(envPath) : {};
 
+function parseServerUrl(value) {
+  try {
+    return new URL(value);
+  } catch (_) {
+    return null;
+  }
+}
+
 // ── Configuration ───────────────────────────────────────────────────────
-const BACKEND_PORT = parseInt(envConfig.PORT) || 8080;
+const configuredServerUrl = parseServerUrl(envConfig.SERVER_URL);
+const BACKEND_PORT = configuredServerUrl
+  ? parseInt(configuredServerUrl.port || '80', 10)
+  : parseInt(envConfig.PORT) || 8080;
+// 0.0.0.0 is a bind address, not a connect address — map to localhost
+const BACKEND_HOST = configuredServerUrl
+  ? configuredServerUrl.hostname
+  : (envConfig.HOST && envConfig.HOST !== '0.0.0.0' && envConfig.HOST !== '::')
+    ? envConfig.HOST
+    : 'localhost';
 const SCREEN_PROTECTION = (envConfig.SCREEN_PROTECTION || 'true') !== 'false';
 const ICON_PATH = path.join(__dirname, 'icon.png');
 
@@ -95,7 +112,7 @@ function runPowerShellSync(scriptPath, args, timeout) {
 
 function isBackendRunning() {
   return new Promise(resolve => {
-    const req = http.get(`http://localhost:${BACKEND_PORT}/status`, res => {
+    const req = http.get(`http://${BACKEND_HOST}:${BACKEND_PORT}/status`, res => {
       let body = '';
       res.on('data', d => body += d);
       res.on('end', () => {
@@ -263,7 +280,7 @@ async function createWindow() {
     try { mainWindow.setContentProtection(true); } catch (_) { }
   }
 
-  mainWindow.loadURL(`http://localhost:${BACKEND_PORT}`);
+  mainWindow.loadURL(`http://${BACKEND_HOST}:${BACKEND_PORT}`);
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
   // Minimize to tray on close button instead of destroying window

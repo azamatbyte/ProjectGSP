@@ -10,6 +10,7 @@ const { startRefreshTokenCleanup } = require('./api/helpers/refreshTokenCleanup'
 
 const PORT = env.PORT;
 const HOST = env.HOST;
+const SERVER_URL = env.SERVER_URL;
 
 async function bootstrap() {
   await connectDatabase();
@@ -26,12 +27,13 @@ async function bootstrap() {
   });
 
   const app = createApp();
-  app.listen(PORT, (err) => {
+  app.listen(PORT, HOST, (err) => {
     if (err) {
       console.log(`Error:${err}`);
       return;
     }
-    console.log(`Running on port http://${HOST}:${PORT}/api/v1/api-docs, SUCCESSFULLY!`);
+    console.log(`Listening on http://${HOST}:${PORT}`);
+    console.log(`Public URL ${SERVER_URL}/api/v1/api-docs`);
   });
 }
 
