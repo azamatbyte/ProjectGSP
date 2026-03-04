@@ -39,6 +39,14 @@ RaportService.exportSpecialMalumotnoma = function (data) {
 	return Request.postRequest("raport/createMalumotnoma", data);
 };
 
+RaportService.exportQuerySgb = function (data) {
+	return Request.postRequest("raport/createQuerySgb", data);
+};
+
+RaportService.exportQueryGsbp = function (data) {
+	return Request.postRequest("raport/createQueryGsbp", data);
+};
+
 RaportService.exportSpecialMalumotnomaList = function (data) {
 	return Request.postRequest("raport/generateMalumotnomaList", data);
 };

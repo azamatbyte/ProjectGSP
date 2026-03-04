@@ -210,13 +210,15 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
     { key: "type123", label: t("OSUMVD_OSUSGB_USP") },
     { key: "type6", label: t("ND_ND1") },
     { key: "type7", label: t("ND_ND2") },
+    { key: "type9", label: "ЗАПРОС СГБ" },
+    { key: "type8", label: "ЗАПРОС ГСБП" },
     { key: "type4", label: t("AVR") },
     { key: "type5", label: t("UPK") },
   ];
 
   const malumotnomaRaports = [
-    { key: "type8", label: t("bad_malumotnoma") },
-    { key: "type9", label: t("good_malumotnoma") },
+    { key: "type8", label: "ЗАПРОС ГСБП" },
+    { key: "type9", label: "ЗАПРОС СГБ" },
   ];
 
   const categories = [...raports, ...malumotnomaRaports, { key: "Заключение", label: t("Заключение") }];
@@ -688,18 +690,38 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
       formUpk.resetFields();
     }
   };
+  const getQueryFilename = (name) => {
+    if (name === "type9") return "ЗАПРОС СГБ";
+    if (name === "type8") return "ЗАПРОС ГСБП";
+    return raportStatusMap[name] || "МАЛУМОТНОМА";
+  };
+
+  const exportQueryReport = async (name) => {
+    const payload = {
+      id,
+      signListIds: selectedValues,
+    };
+
+    if (name === "type9") {
+      return RaportService.exportQuerySgb(payload);
+    }
+
+    return RaportService.exportQueryGsbp(payload);
+  };
+
   const generateReportMalumotnoma = async (name) => {
     try {
-      const response = await RaportService.exportSpecialMalumotnoma({
-        id: id,
-        name: name,
-        code: name,
-        signListIds: selectedValues,
-      });
+      if (!selectedValues?.length) {
+        message.warning(t("required_field"));
+        return;
+      }
+
+      const response = await exportQueryReport(name);
+      const queryFilename = getQueryFilename(name);
       const filename = raportStatusMap[name] || "МАЛУМОТНОМА";
       const link = document.createElement("a");
-      link.href = response?.data?.link + "?newFileName=" + filename + "_" + regNumber;
-      link.setAttribute("download", filename);
+      link.href = response?.data?.link + "?newFileName=" + queryFilename + "_" + regNumber;
+      link.setAttribute("download", queryFilename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -727,6 +749,22 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+      } else if (name === "type8" || name === "type9") {
+        if (!selectedValues?.length) {
+          message.warning(t("required_field"));
+          return;
+        }
+
+        const response = await exportQueryReport(name);
+        const queryFilename = getQueryFilename(name);
+        const filename = raportStatusMap[name] || "МАЛУМОТНОМА";
+        const link = document.createElement("a");
+        link.href = response?.data?.link + "?newFileName=" + queryFilename + "_" + regNumber;
+        link.setAttribute("download", queryFilename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setIsModalVisible(false);
       } else if (name === "type4") {
         try {
           setIsModalVisible(false);
@@ -847,7 +885,11 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
             ))}
           </Select>
 
-          {(raport === "type123" || raport === "type6" || raport === "type7") && (
+          {(raport === "type123" ||
+            raport === "type6" ||
+            raport === "type7" ||
+            raport === "type8" ||
+            raport === "type9") && (
             <Select
               mode="multiple"
               showSearch

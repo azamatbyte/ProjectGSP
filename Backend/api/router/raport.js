@@ -15,10 +15,13 @@ const {
   generateAVR,
   generateUPK,
   generateMalumotnoma,
+  generateQuerySgb,
+  generateQueryGsbp,
   generateOPRaport,
   generateMalumotnomaList,
   searchRelativesByRaportId,
   updateRaportLinkStatus
+  
 } = require("../controllers/raportController");
 const {
   verifyToken,
@@ -41,6 +44,8 @@ router.post("/searchRelativesByRaportId", verifyToken, permissionCheck("admin"),
 router.post("/createAVR", verifyToken, permissionCheck("admin"), generateAVR);
 router.post("/createUPK", verifyToken, permissionCheck("admin"), generateUPK);
 router.post("/createMalumotnoma", verifyToken, permissionCheck("admin"), generateMalumotnoma);
+router.post("/createQuerySgb", verifyToken, permissionCheck("admin"), generateQuerySgb);
+router.post("/createQueryGsbp", verifyToken, permissionCheck("admin"), generateQueryGsbp);
 router.get("/get", verifyToken, permissionCheck("admin"), getRaportById);
 router.post("/update", verifyToken, permissionCheck("admin"), updateRaport);
 

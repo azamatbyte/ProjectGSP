@@ -138,6 +138,380 @@ const selectRaportTypesByCodeOrFallback = async ({
   return raportTypes;
 };
 
+const formatSignerDisplayName = (item) =>
+  `${item?.lastName ? item.lastName : ""} ${item?.firstName ? item.firstName.slice(0, 1) + "." : ""}${item?.fatherName ? item.fatherName.slice(0, 1) + "." : ""}`.trim();
+
+const buildQuerySignerLines = (signList, currentMonthRu, year) =>
+  signList.map((item, idx) => {
+    const nameLine = formatSignerDisplayName(item);
+    const positionLine = item?.position ? item.position : "";
+    const workPlaceLine = item?.workplace ? item.workplace : "";
+    const rankLine = item?.rank ? item.rank : "";
+
+    if (idx === signList.length - 1) {
+      return `«СОГЛАСОВАНО»\n${positionLine}\n${workPlaceLine}\n${rankLine}     ${nameLine}\n«____» ${currentMonthRu} ${year} года`;
+    }
+
+    return `${positionLine}\n${workPlaceLine}\n${rankLine}     ${nameLine}\n«____» ${currentMonthRu} ${year} года\n`;
+  });
+
+const buildQueryPersonPayload = async (data) => {
+  const fullName = data?.fullName
+    || `${data?.lastName ? data.lastName : ""} ${data?.firstName ? data.firstName : ""} ${data?.fatherName ? data.fatherName : ""}`.trim();
+
+  const dob = data?.birthDate
+    ? data.birthDate instanceof Date
+      ? String(data.birthDate.getFullYear())
+      : String(data.birthDate)
+    : data?.birthYear
+      ? String(data.birthYear)
+      : "";
+
+  if (data?.model !== MODEL_TYPE.REGISTRATION_FOUR) {
+    return [{
+      fullName,
+      roleLabel: data?.position || "",
+      dob,
+      birthplace: data?.birthPlace || "",
+      noteLabel: data?.notes || "",
+      residence: data?.residence || "",
+      workplace: data?.workplace || "",
+    }];
+  }
+
+  const relatives = await prisma.relatives.findMany({
+    where: {
+      registrationId: data.id,
+      AND: [
+        { notes: { not: null } },
+        { notes: { not: "" } },
+      ],
+    },
+    select: {
+      relationDegree: true,
+      fullName: true,
+      notes: true,
+      birthDate: true,
+      birthYear: true,
+      birthPlace: true,
+    },
+  });
+
+  const relativeNotes = (relatives || []).map((relative) =>
+    `${relative.relationDegree} - ${relative.fullName}, ${relative.birthDate
+      ? relative.birthDate.toLocaleDateString("ru-RU")
+      : (relative.birthYear || "")
+    }, уроженец ${relative.birthPlace || ""}, ${relative.notes || ""}`
+  );
+
+  return [{
+    fullName,
+    roleLabel: data?.position || "",
+    dob,
+    birthplace: data?.birthPlace || "",
+    noteLabel: [data?.notes || "", relativeNotes.join("; ")].filter(Boolean).join(", "),
+    residence: data?.residence || "",
+    workplace: data?.workplace || "",
+  }];
+};
+
+const buildMalumotnomaQueryDoc = async ({
+  data,
+  reqUserId,
+  signList,
+  raportType,
+  name,
+}) => {
+  const getExecutor = await prisma.admin.findUnique({
+    where: { id: reqUserId },
+  });
+
+  const getExecutorName = getExecutor
+    ? `${getExecutor?.last_name ? getExecutor.last_name : ""} ${getExecutor?.first_name ? getExecutor.first_name.slice(0, 1) + "." : ""}${getExecutor?.father_name ? getExecutor.father_name.slice(0, 1) + "." : ""}`
+    : "";
+
+  const getAdmin = await prisma.admin.findUnique({
+    where: { id: reqUserId },
+    select: { first_name: true, last_name: true },
+  });
+
+  const conclusionCheck = await readConclusions();
+  const conclusion = conclusionCheck.find((item) => item.name === "Conclusion");
+
+  const currentMonthRu = new Date().toLocaleString("ru-RU", {
+    month: "long",
+  });
+  const year = new Date().getFullYear();
+  const signListFormatted = signList.map(formatSignerDisplayName);
+  const agreedLabel = buildQuerySignerLines(signList, currentMonthRu, year).slice(1);
+  const persons = await buildQueryPersonPayload(data);
+  const generator = name === "type9"
+    ? generateQueryDocxSgb
+    : generateQueryDocxGsbp;
+
+  return generator("ф-4 заключение.docx", {
+    leftHeader: `${getAdmin?.first_name?.slice(0, 1)?.toLowerCase() || ""}${getAdmin?.last_name?.slice(0, 1)?.toLowerCase() || ""}-1`,
+    rightHeader: "Секретно \n Экз.№ 1",
+    rightHeader2: conclusion?.title ?? "У Т В Е Р Ж Д А Ю",
+    approverTitle: conclusion?.to_organization ?? "РУКОВОДИТЕЛЬ",
+    position: conclusion?.to_position ?? "Должность",
+    sign: "подпись",
+    fio: conclusion?.to_who ?? "Ф.И.О.",
+    operatorName: "А.Ахмадов",
+    chiefName: "А.Ахмадов",
+    monthLabel: "«25» июля",
+    year,
+    heading: raportType?.name || conclusion?.title_center || "Заключение",
+    intro1: conclusion?.first_input ?? "Текст вводится самостоятельно:",
+    person: persons,
+    intro2: conclusion?.second_input ?? "Текст вводится самостоятельно.",
+    agreedLabel,
+    underline: false,
+    operator: {
+      data: `${getExecutor?.workplace ?? "Оператор подразделения"}`,
+      rank: `${getExecutor?.rank ?? "Должность"}`,
+      data1: `${getExecutorName}`,
+      time: `«____» ${currentMonthRu} ${year} года`,
+    },
+    head: {
+      data: `${(signList[0]?.position ?? "Начальник подразделения")}, ${signList[0]?.workplace ?? "Должность"}`,
+      rank: `${signList[0]?.rank ?? "Должность"}`,
+      data1: `${signListFormatted[0] || ""}`,
+      time: `«____» ${currentMonthRu} ${year} года`,
+    },
+    recordNumbers: data?.regNumber || data?.recordNumber || "",
+    recordNumber: data?.regNumber || data?.recordNumber || "",
+  });
+};
+
+const loadQueryRaportSourceData = async (id) => {
+  let data = await prisma.registration.findUnique({
+    where: { id },
+    include: {
+      Initiator: {
+        select: {
+          first_name: true,
+          last_name: true,
+          father_name: true,
+        },
+      },
+      executor: {
+        select: {
+          first_name: true,
+          last_name: true,
+          father_name: true,
+          phone: true,
+        },
+      },
+    },
+  });
+
+  if (!data) {
+    data = await prisma.relatives.findUnique({
+      where: { id },
+      include: {
+        Initiator: {
+          select: {
+            first_name: true,
+            last_name: true,
+            father_name: true,
+          },
+        },
+        executor: {
+          select: {
+            first_name: true,
+            last_name: true,
+            father_name: true,
+            phone: true,
+          },
+        },
+      },
+    });
+  }
+
+  return data;
+};
+
+const generateDedicatedQueryRaportSGB = async (req, res, fixedName) => {
+  try {
+    const { id, signListIds } = req.body;
+
+    if (!signListIds || signListIds.length === 0) {
+      return res
+        .status(404)
+        .json({ code: 404, message: "signListIds not found" });
+    }
+
+    const signList = (
+      await Promise.all(
+        signListIds.map((signListId) =>
+          prisma.signList.findUnique({ where: { id: signListId } })
+        )
+      )
+    ).filter(Boolean);
+
+    if (!signList.length) {
+      return res.status(404).json({ code: 404, message: "signList not found" });
+    }
+
+    const data = await loadQueryRaportSourceData(id);
+
+    if (!data) {
+      return res.status(404).json({ code: 404, message: "data not found" });
+    }
+
+    const raportTypes = await selectRaportTypesByCodeOrFallback({
+      code: fixedName,
+      name: fixedName,
+    });
+
+    if (!raportTypes?.length) {
+      return res
+        .status(404)
+        .json({ code: 404, message: "raport type not found" });
+    }
+
+    const queryDoc = await buildMalumotnomaQueryDoc({
+      data,
+      reqUserId: req.userId,
+      signList,
+      raportType: raportTypes[0],
+      name: fixedName,
+    });
+
+    const combinedDoc = new Document({
+      sections: [...queryDoc.sections],
+    });
+
+    const buffer = await Packer.toBuffer(combinedDoc);
+    const randomFileName = `${uuidv4()}.docx`;
+    const filePath = path.join(__dirname, "../../uploads", randomFileName);
+
+    const raport = await prisma.raport.create({
+      data: {
+        name: fixedName,
+        executorId: req.userId,
+        link: SERVER_URL + "/api/v1/download/" + randomFileName,
+        notes: "",
+      },
+    });
+
+    await prisma.raportLink.create({
+      data: {
+        code: fixedName,
+        raport: { connect: { id: raport.id } },
+        registrations: { connect: { id } },
+      },
+    });
+
+    fs.writeFileSync(filePath, buffer);
+
+    return res.status(200).json({
+      code: 200,
+      message: "Document generated and saved successfully",
+      link: SERVER_URL + "/api/v1/download/" + randomFileName,
+    });
+  } catch (error) {
+    console.log(error);
+    console.error("Error generating report:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+const generateDedicatedQueryRaportGSBP = async (req, res, fixedName) => {
+  try {
+    const { id, signListIds } = req.body;
+
+    if (!signListIds || signListIds.length === 0) {
+      return res
+        .status(404)
+        .json({ code: 404, message: "signListIds not found" });
+    }
+
+    const signList = (
+      await Promise.all(
+        signListIds.map((signListId) =>
+          prisma.signList.findUnique({ where: { id: signListId } })
+        )
+      )
+    ).filter(Boolean);
+
+    if (!signList.length) {
+      return res.status(404).json({ code: 404, message: "signList not found" });
+    }
+
+    const data = await loadQueryRaportSourceData(id);
+
+    if (!data) {
+      return res.status(404).json({ code: 404, message: "data not found" });
+    }
+
+    const raportTypes = await selectRaportTypesByCodeOrFallback({
+      code: fixedName,
+      name: fixedName,
+    });
+
+    if (!raportTypes?.length) {
+      return res
+        .status(404)
+        .json({ code: 404, message: "raport type not found" });
+    }
+
+    const queryDoc = await buildMalumotnomaQueryDoc({
+      data,
+      reqUserId: req.userId,
+      signList,
+      raportType: raportTypes[0],
+      name: fixedName,
+    });
+
+    const combinedDoc = new Document({
+      sections: [...queryDoc.sections],
+    });
+
+    const buffer = await Packer.toBuffer(combinedDoc);
+    const randomFileName = `${uuidv4()}.docx`;
+    const filePath = path.join(__dirname, "../../uploads", randomFileName);
+
+    const raport = await prisma.raport.create({
+      data: {
+        name: fixedName,
+        executorId: req.userId,
+        link: SERVER_URL + "/api/v1/download/" + randomFileName,
+        notes: "",
+      },
+    });
+
+    await prisma.raportLink.create({
+      data: {
+        code: fixedName,
+        raport: { connect: { id: raport.id } },
+        registrations: { connect: { id } },
+      },
+    });
+
+    fs.writeFileSync(filePath, buffer);
+
+    return res.status(200).json({
+      code: 200,
+      message: "Document generated and saved successfully",
+      link: SERVER_URL + "/api/v1/download/" + randomFileName,
+    });
+  } catch (error) {
+    console.log(error);
+    console.error("Error generating report:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 /**
  * @swagger
  * /api/v1/raport/create:
@@ -2810,13 +3184,15 @@ exports.generateMalumotnoma = async (req, res) => {
         .json({ code: 404, message: "signListIds not found" });
     }
 
-    const signList = await prisma.signList.findMany({
-      where: {
-        id: { in: signListIds },
-      },
-    });
+    const signList = (
+      await Promise.all(
+        signListIds.map((signListId) =>
+          prisma.signList.findUnique({ where: { id: signListId } })
+        )
+      )
+    ).filter(Boolean);
 
-    if (!signList) {
+    if (!signList.length) {
       return res.status(404).json({ code: 404, message: "signList not found" });
     }
 
@@ -2933,8 +3309,6 @@ exports.generateMalumotnoma = async (req, res) => {
       ? safeString(new Date(data.birthDate).getFullYear())
       : "";
 
-    const documents = [];
-
     const raportTypes = await selectRaportTypesByCodeOrFallback({ code, name });
 
     if (!raportTypes?.length) {
@@ -2942,6 +3316,8 @@ exports.generateMalumotnoma = async (req, res) => {
         .status(404)
         .json({ code: 404, message: "raport type not found" });
     }
+
+    const documents = [];
 
     const type_of_raport =
       name === "type8"
@@ -4241,6 +4617,16 @@ function generateConclusionDocxF4(outputPath = "ф-4 заключение.docx",
       },
     ],
   };
+}
+
+// Separate entry points for the new request templates so they can diverge later
+// without changing the controller routing.
+function generateQueryDocxSgb(outputPath = "ф-4 заключение.docx", data = {}) {
+  return generateConclusionDocx(outputPath, { ...data });
+}
+
+function generateQueryDocxGsbp(outputPath = "ф-4 заключение.docx", data = {}) {
+  return generateConclusionDocxF4(outputPath, { ...data });
 }
 
 //done
@@ -19379,6 +19765,12 @@ exports.getRaportTypeById = async (req, res) => {
 
   }
 };
+
+exports.generateQuerySgb = async (req, res) =>
+  generateDedicatedQueryRaportSGB(req, res, "type9");
+
+exports.generateQueryGsbp = async (req, res) =>
+  generateDedicatedQueryRaportGSBP(req, res, "type8");
 
 /**
  * @swagger
