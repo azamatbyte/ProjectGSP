@@ -373,6 +373,17 @@ export const DefaultDashboard = () => {
     legend: {
       show: false,
     },
+    yaxis: {
+      decimalsInFloat: 0,
+      labels: {
+        formatter: (val) => `${Math.round(Number(val) || 0)}`,
+      },
+    },
+    tooltip: {
+      y: {
+        formatter: (val) => `${Math.round(Number(val) || 0)}`,
+      },
+    },
   }), []);
 
   const latestTransactionOption = useMemo(() => ([

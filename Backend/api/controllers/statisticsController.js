@@ -1,4 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Prisma } = require("@prisma/client");
 const {
   Document,
   Packer,
@@ -263,7 +263,6 @@ exports.countedRecords = async (req, res) => {
  *             type: object
  *             required:
  *               - x_axis
- *               - form_reg
  *             properties:
  *               x_axis:
  *                 type: string
@@ -279,6 +278,7 @@ exports.countedRecords = async (req, res) => {
  *                 example: 5
  *               form_reg:
  *                 type: array
+ *                 description: "Optional and ignored by this endpoint; active forms are resolved from database"
  *                 items:
  *                   type: string
  *                 example: ["Form A", "Form B"]
@@ -344,13 +344,18 @@ exports.formOverdueTrend = async (req, res) => {
     const existingForms = await prisma.form.findMany({
       where: {
         status: true,
+        type: "registration",
       },
       select: {
         name: true,
       },
     });
 
-    const validForms = existingForms.map((item) => item.name).filter(Boolean);
+    const validForms = [...new Set(
+      existingForms
+        .map((item) => (typeof item?.name === "string" ? item.name.trim() : ""))
+        .filter(Boolean)
+    )];
     if (validForms.length === 0) {
       return res.status(400).json({
         code: 400,
@@ -370,27 +375,22 @@ exports.formOverdueTrend = async (req, res) => {
       const endDate = new Date(bucket.endDate);
       endDate.setUTCHours(23, 59, 59, 999);
 
-      const groups = await prisma.registration.groupBy({
-        by: ["form_reg"],
-        where: {
-          form_reg: { in: validForms },
-          regDate: {
-            not: null,
-            gte: startDate,
-            lte: endDate,
-          },
-          expiredDate: {
-            not: null,
-          },
-        },
-        _count: {
-          _all: true,
-        },
-      });
-      
+      const groups = await prisma.$queryRaw`
+        SELECT
+          BTRIM(COALESCE("form_reg", '')) AS form_key,
+          COUNT(*)::bigint AS value
+        FROM "Registration"
+        WHERE "regDate" IS NOT NULL
+          AND "regDate" >= ${startDate}
+          AND "regDate" <= ${endDate}
+          AND "completeStatus" = 'WAITING'
+          AND ("expiredDate" IS NULL OR "expiredDate" < ${todayStartUTC})
+          AND BTRIM(COALESCE("form_reg", '')) IN (${Prisma.join(validForms)})
+        GROUP BY form_key
+      `;
 
       const valueMap = new Map(
-        groups.map((item) => [item.form_reg || "", Number(item?._count?._all) || 0])
+        groups.map((item) => [item?.form_key || "", Number(item?.value) || 0])
       );
 
       for (const formName of validForms) {
