@@ -56,4 +56,8 @@ StatisticsService.topOtk1Workplaces = function (data) {
   return Request.postRequest("statistics/top_otk1_workplaces", data);
 };
 
+StatisticsService.exportDashboardChart = function (data) {
+  return Request.postRequest("statistics/dashboard_chart_export", data);
+};
+
 export default StatisticsService;

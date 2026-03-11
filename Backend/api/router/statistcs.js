@@ -13,6 +13,7 @@ const {
   updateSimilarityThreshold,
   latestTransactions,
   topOtk1Workplaces,
+  exportDashboardChart,
 } = require("../controllers/statisticsController");
 const { verifyToken, checkAdminAccess } = require("../middleware/auth");
 
@@ -42,4 +43,6 @@ router.post("/similarity_threshold_update", verifyToken, checkAdminAccess(3), up
 router.post("/latest_transactions", verifyToken, checkAdminAccess(3), latestTransactions);
 // top otk1 workplaces
 router.post("/top_otk1_workplaces", verifyToken, checkAdminAccess(3), topOtk1Workplaces);
+// dashboard chart export to excel
+router.post("/dashboard_chart_export", verifyToken, checkAdminAccess(3), exportDashboardChart);
 module.exports = router;

@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import ApexChart from "react-apexcharts";
 import Card from "components/shared-components/Card";
-import { InputNumber, Spin, message } from "antd";
+import { Button, InputNumber, Spin, Tooltip, message } from "antd";
+import { FileExcelOutlined } from "@ant-design/icons";
 import { useTranslation } from "react-i18next";
 import StatisticsService from "services/StattisticsService";
 
@@ -18,7 +19,14 @@ const COLORS = [
   "#ffce56",
 ];
 
-const SalesBarChart = ({ cardMinHeight = 430, height = 320, model = "registration" }) => {
+const SalesBarChart = ({
+  cardMinHeight = 430,
+  height = 320,
+  model = "registration",
+  chartId,
+  onExport,
+  exporting = false,
+}) => {
   const { t } = useTranslation();
   const [years, setYears] = useState(5);
   const [data, setData] = useState([]);
@@ -51,7 +59,7 @@ const SalesBarChart = ({ cardMinHeight = 430, height = 320, model = "registratio
     return () => {
       cancelled = true;
     };
-  }, [years, t]);
+  }, [years, model, t]);
 
   const categories = useMemo(() => data.map((item) => String(item?.year || "")), [data]);
 
@@ -76,6 +84,12 @@ const SalesBarChart = ({ cardMinHeight = 430, height = 320, model = "registratio
   }, [data, allWorkplaces]);
 
   const options = useMemo(() => ({
+    chart: {
+      id: chartId,
+      toolbar: {
+        show: false,
+      },
+    },
     plotOptions: {
       bar: {
         horizontal: false,
@@ -134,26 +148,37 @@ const SalesBarChart = ({ cardMinHeight = 430, height = 320, model = "registratio
         },
       },
     ],
-  }), [categories, allWorkplaces]);
+  }), [categories, allWorkplaces, chartId]);
 
   return (
     <Card
-      title={model=="registration4"?t("dashboard_otk1_forms_title"):t("dashboard_otk1_title")}
+      title={model === "registration4" ? t("dashboard_otk1_forms_title") : t("dashboard_otk1_title")}
       style={{ minHeight: cardMinHeight }}
       bodyStyle={{ padding: "12px 12px 8px" }}
       extra={
-        <InputNumber
-          min={1}
-          max={10}
-          value={years}
-          onChange={(val) => {
-            if (val && val >= 1 && val <= 10) setYears(val);
-          }}
-          size="small"
-          style={{ width: 70 }}
-          addonAfter={t("dashboard_otk1_years_label")}
-          disabled={loading}
-        />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <InputNumber
+            min={1}
+            max={10}
+            value={years}
+            onChange={(val) => {
+              if (val && val >= 1 && val <= 10) setYears(val);
+            }}
+            size="small"
+            style={{ width: 70 }}
+            addonAfter={t("dashboard_otk1_years_label")}
+            disabled={loading || exporting}
+          />
+          <Tooltip title={t("export")}>
+            <Button
+              size="small"
+              icon={<FileExcelOutlined />}
+              onClick={() => onExport?.({ years, model })}
+              loading={exporting}
+              disabled={loading || exporting}
+            />
+          </Tooltip>
+        </div>
       }
     >
       <Spin spinning={loading}>

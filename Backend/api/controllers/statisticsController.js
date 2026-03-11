@@ -16,6 +16,7 @@ const {
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
+const ExcelJS = require("exceljs");
 const { getDateDayString, formatRussianDateTime } = require("../helpers/time");
 const safeString = require("../helpers/safeString");
 const { SERVER_URL } = require("../helpers/constants");
@@ -344,7 +345,6 @@ exports.formOverdueTrend = async (req, res) => {
     const existingForms = await prisma.form.findMany({
       where: {
         status: true,
-        type: "registration",
       },
       select: {
         name: true,
@@ -384,7 +384,8 @@ exports.formOverdueTrend = async (req, res) => {
           AND "regDate" >= ${startDate}
           AND "regDate" <= ${endDate}
           AND "completeStatus" = 'WAITING'
-          AND ("expiredDate" IS NULL OR "expiredDate" < ${todayStartUTC})
+          AND LOWER("accessStatus") = LOWER('ПРОВЕРКА')
+          AND ("expiredDate" < ${todayStartUTC})
           AND BTRIM(COALESCE("form_reg", '')) IN (${Prisma.join(validForms)})
         GROUP BY form_key
       `;
@@ -596,6 +597,11 @@ exports.updateSimilarityThreshold = async (req, res) => {
  *                 type: integer
  *                 minimum: 1
  *                 example: 2026
+ *               forms:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Ф-1", "Ф-2"]
  *     responses:
  *       200:
  *         description: "Latest transactions fetched successfully"
@@ -606,7 +612,7 @@ exports.updateSimilarityThreshold = async (req, res) => {
  */
 exports.latestTransactions = async (req, res) => {
   try {
-    const { pageNumber, pageSize, year, sortFields } = req.body || {};
+    const { pageNumber, pageSize, year, sortFields, forms } = req.body || {};
 
     const parsedPageNumber = parsePositiveInt(pageNumber, 1);
     const parsedPageSize = parsePositiveInt(pageSize, 10);
@@ -640,6 +646,51 @@ exports.latestTransactions = async (req, res) => {
         gte: periodStart,
         lte: periodEnd,
       };
+    }
+
+    let formRegWhere = undefined;
+
+    if (!(forms === undefined || forms === null || forms === "")) {
+      if (!Array.isArray(forms)) {
+        return res.status(400).json({
+          code: 400,
+          message: "forms must be an array of active registration or registration4 form names",
+        });
+      }
+
+      const normalizedForms = [...new Set(
+        forms
+          .map((item) => (typeof item === "string" ? item.trim() : ""))
+          .filter(Boolean)
+      )];
+
+      if (normalizedForms.length > 0) {
+        const activeForms = await prisma.form.findMany({
+          where: {
+            name: { in: normalizedForms },
+            status: true,
+            type: { in: ["registration", "registration4"] },
+          },
+          select: {
+            name: true,
+          },
+        });
+
+        const activeFormNames = activeForms
+          .map((item) => (typeof item?.name === "string" ? item.name.trim() : ""))
+          .filter(Boolean);
+
+        if (activeFormNames.length !== normalizedForms.length) {
+          return res.status(400).json({
+            code: 400,
+            message: "forms contains inactive or unknown registration/registration4 form names",
+          });
+        }
+
+        formRegWhere = {
+          in: activeFormNames,
+        };
+      }
     }
 
     const safePageSize = Math.min(parsedPageSize, 100);
@@ -688,6 +739,7 @@ exports.latestTransactions = async (req, res) => {
           where: {
             executorId: { in: adminIds },
             ...(regDateWhere ? { regDate: regDateWhere } : {}),
+            ...(formRegWhere ? { form_reg: formRegWhere } : {}),
           },
           _count: {
             _all: true,
@@ -698,6 +750,7 @@ exports.latestTransactions = async (req, res) => {
           where: {
             executorId: { in: adminIds },
             ...(regDateWhere ? { regDate: regDateWhere } : {}),
+            ...(formRegWhere ? { form_reg: formRegWhere } : {}),
             expired: {
               not: null,
               lt: todayStartUTC,
@@ -1328,9 +1381,6 @@ exports.reportFromForm = async (req, res) => {
     const form_registration4_names = form_registration4.map(
       (item) => item.name
     );
-
-    console.log("form_registration4_names");
-    console.log(form_registration4_names);
 
     const statements = [];
 
@@ -6781,6 +6831,470 @@ exports.topOtk1Workplaces = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+function createBadRequestError(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+}
+
+function getExcelColumnName(index) {
+  let current = index;
+  let output = "";
+
+  while (current > 0) {
+    const remainder = (current - 1) % 26;
+    output = String.fromCharCode(65 + remainder) + output;
+    current = Math.floor((current - 1) / 26);
+  }
+
+  return output;
+}
+
+function parseImageDataUrl(dataUrl) {
+  const value = typeof dataUrl === "string" ? dataUrl.trim() : "";
+  const match = value.match(/^data:image\/(png|jpg|jpeg);base64,(.+)$/i);
+  if (!match) {
+    throw createBadRequestError("imageDataUrl must be a valid base64 image data URL");
+  }
+
+  const extension = match[1].toLowerCase() === "png" ? "png" : "jpeg";
+  const buffer = Buffer.from(match[2], "base64");
+
+  if (!buffer.length) {
+    throw createBadRequestError("imageDataUrl contains empty image data");
+  }
+
+  return { extension, buffer };
+}
+
+function getExportDateTimeString() {
+  return new Date().toLocaleString("ru-RU", {
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+async function getCountedRecordsRows(filters = {}) {
+  const { x_axis, month, year } = filters || {};
+  const axis = typeof x_axis === "string" ? x_axis.toUpperCase().trim() : "";
+
+  if (!["MONTH", "YEAR"].includes(axis)) {
+    throw createBadRequestError("filters.x_axis must be one of: MONTH, YEAR");
+  }
+
+  const monthCount = parsePositiveInt(month, 18);
+  const yearCount = parsePositiveInt(year, 6);
+
+  if (monthCount === null || yearCount === null) {
+    throw createBadRequestError("filters.month and filters.year must be positive integers");
+  }
+
+  const buckets = axis === "MONTH" ? getMonthlyBuckets(monthCount) : getYearlyBuckets(yearCount);
+  const localeMap = {
+    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
+    5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
+    9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec",
+  };
+
+  const rows = await Promise.all(
+    buckets.map(async (bucket) => {
+      const { startDate, endDate } = bucket;
+      const [open_count, close_count, access_count, otk1_count] = await Promise.all([
+        prisma.registration.count({
+          where: { regDate: { gte: startDate, lte: endDate } },
+        }),
+        prisma.registration.count({
+          where: { regEndDate: { gte: startDate, lte: endDate } },
+        }),
+        prisma.registration.count({
+          where: {
+            regEndDate: { gte: startDate, lte: endDate },
+            OR: [
+              { accessStatus: "Р”РћРџРЈРЎРљ" },
+              { accessStatus: { contains: "СЃРЅСЏС‚" } },
+              { accessStatus: { contains: "РЎРќРЇРў" } },
+            ],
+          },
+        }),
+        prisma.registration.count({
+          where: {
+            regEndDate: { gte: startDate, lte: endDate },
+            AND: [{ accessStatus: { contains: "РћРўРљРђР—-1" } }],
+          },
+        }),
+      ]);
+
+      const period = axis === "MONTH"
+        ? `${localeMap[bucket.month] || bucket.month}.${bucket.year}`
+        : String(bucket.year);
+
+      return {
+        period,
+        reject_count: Number(otk1_count) || 0,
+        opened_count: Number(open_count) || 0,
+        completed_count: Number(close_count) || 0,
+        access_count: Number(access_count) || 0,
+      };
+    })
+  );
+
+  return {
+    columns: [
+      { key: "period", title: "Период", width: 18 },
+      { key: "reject_count", title: "ОТКАЗ-1", width: 14 },
+      { key: "opened_count", title: "Регистрация", width: 16 },
+      { key: "completed_count", title: "Завершено", width: 14 },
+      { key: "access_count", title: "Доступ", width: 12 },
+    ],
+    rows,
+  };
+}
+
+async function getFormOverdueTrendRows(filters = {}) {
+  const { x_axis, x_axsisi, month, year } = filters || {};
+  const axisRaw = x_axis ?? x_axsisi;
+  const axis = typeof axisRaw === "string" ? axisRaw.toUpperCase().trim() : "";
+
+  if (!["MONTH", "YEAR"].includes(axis)) {
+    throw createBadRequestError("filters.x_axis must be one of: MONTH, YEAR");
+  }
+
+  const monthCount = parsePositiveInt(month, 12);
+  const yearCount = parsePositiveInt(year, 5);
+  if (monthCount === null || yearCount === null) {
+    throw createBadRequestError("filters.month and filters.year must be positive integers");
+  }
+
+  const existingForms = await prisma.form.findMany({
+    where: {
+      status: true,
+      type: "registration",
+    },
+    select: {
+      name: true,
+    },
+  });
+
+  const validForms = [...new Set(
+    existingForms
+      .map((item) => (typeof item?.name === "string" ? item.name.trim() : ""))
+      .filter(Boolean)
+  )];
+
+  if (validForms.length === 0) {
+    throw createBadRequestError("No active registration forms found for export");
+  }
+
+  const buckets = axis === "MONTH" ? getMonthlyBuckets(monthCount) : getYearlyBuckets(yearCount);
+  const todayStartUTC = new Date();
+  todayStartUTC.setUTCHours(0, 0, 0, 0);
+  const monthMap = {
+    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
+    5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
+    9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec",
+  };
+
+  const rows = [];
+
+  for (const bucket of buckets) {
+    const startDate = new Date(bucket.startDate);
+    startDate.setUTCHours(0, 0, 0, 0);
+
+    const endDate = new Date(bucket.endDate);
+    endDate.setUTCHours(23, 59, 59, 999);
+
+    const groups = await prisma.$queryRaw`
+      SELECT
+        BTRIM(COALESCE("form_reg", '')) AS form_key,
+        COUNT(*)::bigint AS value
+      FROM "Registration"
+      WHERE "regDate" IS NOT NULL
+        AND "regDate" >= ${startDate}
+        AND "regDate" <= ${endDate}
+        AND "completeStatus" = 'WAITING'
+        AND ("expiredDate" IS NULL OR "expiredDate" < ${todayStartUTC})
+        AND BTRIM(COALESCE("form_reg", '')) IN (${Prisma.join(validForms)})
+      GROUP BY form_key
+    `;
+
+    const valueMap = new Map(
+      groups.map((item) => [item?.form_key || "", Number(item?.value) || 0])
+    );
+
+    const period = axis === "MONTH"
+      ? `${monthMap[bucket.month] || bucket.month}.${bucket.year}`
+      : String(bucket.year);
+
+    for (const formName of validForms) {
+      rows.push({
+        period,
+        form_name: formName,
+        overdue_count: valueMap.get(formName) || 0,
+      });
+    }
+  }
+
+  return {
+    columns: [
+      { key: "period", title: "Период", width: 18 },
+      { key: "form_name", title: "Форма", width: 35 },
+      { key: "overdue_count", title: "Просрочено", width: 14 },
+    ],
+    rows,
+  };
+}
+
+async function getTopOtk1Rows(filters = {}, model = "registration") {
+  const { year } = filters || {};
+  const yearCount = parsePositiveInt(year, 5);
+
+  if (yearCount === null || yearCount > 10) {
+    throw createBadRequestError("filters.year must be a positive integer between 1 and 10");
+  }
+
+  const buckets = getYearlyBuckets(yearCount);
+  const rows = [];
+
+  for (const bucket of buckets) {
+    const groups = await prisma.registration.groupBy({
+      by: ["workplace"],
+      where: {
+        regEndDate: { gte: bucket.startDate, lte: bucket.endDate },
+        accessStatus: { contains: "РћРўРљРђР—-1" },
+        workplace: { not: "" },
+        model,
+      },
+      _count: { id: true },
+      orderBy: { _count: { id: "desc" } },
+      take: 3,
+    });
+
+    if (groups.length === 0) {
+      rows.push({
+        year: bucket.year,
+        rank: "-",
+        workplace: "-",
+        reject_count: 0,
+      });
+      continue;
+    }
+
+    groups.forEach((item, index) => {
+      rows.push({
+        year: bucket.year,
+        rank: index + 1,
+        workplace: item.workplace || "-",
+        reject_count: Number(item?._count?.id) || 0,
+      });
+    });
+  }
+
+  return {
+    columns: [
+      { key: "year", title: "Год", width: 10 },
+      { key: "rank", title: "Топ", width: 8 },
+      { key: "workplace", title: "Подразделение", width: 35 },
+      { key: "reject_count", title: "ОТКАЗ-1", width: 14 },
+    ],
+    rows,
+  };
+}
+
+async function buildDashboardChartExportData(chartKey, filters) {
+  if (chartKey === "counted_records") {
+    return getCountedRecordsRows(filters);
+  }
+
+  if (chartKey === "form_overdue_trend") {
+    return getFormOverdueTrendRows(filters);
+  }
+
+  if (chartKey === "top_otk1_registration") {
+    return getTopOtk1Rows(filters, "registration");
+  }
+
+  if (chartKey === "top_otk1_registration4") {
+    return getTopOtk1Rows(filters, "registration4");
+  }
+
+  throw createBadRequestError("Unsupported chartKey value");
+}
+
+function applyWorksheetHeaderStyles(worksheet, totalColumns) {
+  const lastColumn = getExcelColumnName(totalColumns);
+
+  worksheet.mergeCells(`A1:${lastColumn}1`);
+  worksheet.getCell("A1").font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+  worksheet.getCell("A1").fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF2F5597" },
+  };
+  worksheet.getCell("A1").alignment = { vertical: "middle", horizontal: "left" };
+  worksheet.getRow(1).height = 30;
+
+  worksheet.mergeCells(`A2:${lastColumn}2`);
+  worksheet.getCell("A2").font = { size: 11, color: { argb: "FF333333" } };
+  worksheet.getCell("A2").alignment = { vertical: "middle", horizontal: "left" };
+
+  worksheet.mergeCells(`A3:${lastColumn}3`);
+  worksheet.getCell("A3").font = { size: 11, color: { argb: "FF333333" } };
+  worksheet.getCell("A3").alignment = { vertical: "middle", horizontal: "left" };
+}
+
+function styleTableRange(worksheet, startRow, endRow, totalColumns) {
+  for (let rowIndex = startRow; rowIndex <= endRow; rowIndex++) {
+    for (let colIndex = 1; colIndex <= totalColumns; colIndex++) {
+      const cell = worksheet.getCell(rowIndex, colIndex);
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFD9D9D9" } },
+        left: { style: "thin", color: { argb: "FFD9D9D9" } },
+        bottom: { style: "thin", color: { argb: "FFD9D9D9" } },
+        right: { style: "thin", color: { argb: "FFD9D9D9" } },
+      };
+      cell.alignment = { vertical: "middle", horizontal: "left", wrapText: true };
+    }
+  }
+}
+
+/**
+ * @swagger
+ * /api/v1/statistics/dashboard_chart_export:
+ *   post:
+ *     summary: "Export dashboard chart data to Excel with embedded chart image"
+ *     tags: [Statistics]
+ *     security:
+ *       - apiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: "Dashboard chart exported successfully"
+ *       400:
+ *         description: "Validation error"
+ *       500:
+ *         description: "Internal server error"
+ */
+exports.exportDashboardChart = async (req, res) => {
+  try {
+    const { chartKey, title, imageDataUrl, periodLabel, filters } = req.body || {};
+    const allowedChartKeys = new Set([
+      "counted_records",
+      "form_overdue_trend",
+      "top_otk1_registration",
+      "top_otk1_registration4",
+    ]);
+
+    if (!allowedChartKeys.has(chartKey)) {
+      throw createBadRequestError("chartKey must be a supported dashboard chart key");
+    }
+
+    const chartTitle = typeof title === "string" ? title.trim() : "";
+    if (!chartTitle) {
+      throw createBadRequestError("title is required");
+    }
+
+    const chartPeriod = typeof periodLabel === "string" ? periodLabel.trim() : "";
+    if (!chartPeriod) {
+      throw createBadRequestError("periodLabel is required");
+    }
+
+    if (!filters || typeof filters !== "object" || Array.isArray(filters)) {
+      throw createBadRequestError("filters must be an object");
+    }
+
+    const { extension, buffer } = parseImageDataUrl(imageDataUrl);
+    const dataset = await buildDashboardChartExportData(chartKey, filters);
+    const columns = Array.isArray(dataset?.columns) ? dataset.columns : [];
+    const rows = Array.isArray(dataset?.rows) ? dataset.rows : [];
+
+    if (columns.length === 0) {
+      throw createBadRequestError("No columns available for export");
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Dashboard Export");
+    const exportDateText = getExportDateTimeString();
+    const totalColumns = Math.max(columns.length, 6);
+
+    applyWorksheetHeaderStyles(worksheet, totalColumns);
+    worksheet.getCell("A1").value = chartTitle;
+    worksheet.getCell("A2").value = `Дата выгрузки: ${exportDateText}`;
+    worksheet.getCell("A3").value = `Период: ${chartPeriod}`;
+
+    for (let i = 1; i <= totalColumns; i++) {
+      worksheet.getColumn(i).width = 18;
+    }
+
+    columns.forEach((column, index) => {
+      const excelColumn = worksheet.getColumn(index + 1);
+      excelColumn.width = Number(column.width) || 18;
+    });
+
+    const imageId = workbook.addImage({
+      buffer,
+      extension,
+    });
+
+    worksheet.addImage(imageId, {
+      tl: { col: 0, row: 4 },
+      ext: { width: 920, height: 340 },
+    });
+
+    const tableStartRow = 24;
+    const headerRowValues = columns.map((column) => column.title);
+    worksheet.getRow(tableStartRow).values = [null, ...headerRowValues];
+    worksheet.getRow(tableStartRow).height = 24;
+
+    for (let i = 1; i <= columns.length; i++) {
+      const headerCell = worksheet.getCell(tableStartRow, i);
+      headerCell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      headerCell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF4F81BD" },
+      };
+      headerCell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    }
+
+    rows.forEach((rowItem, rowIndex) => {
+      const targetRowNumber = tableStartRow + 1 + rowIndex;
+      const rowValues = columns.map((column) => rowItem?.[column.key] ?? "");
+      worksheet.getRow(targetRowNumber).values = [null, ...rowValues];
+    });
+
+    const tableEndRow = tableStartRow + Math.max(rows.length, 1);
+    styleTableRange(worksheet, tableStartRow, tableEndRow, columns.length);
+
+    const uploadDir = path.join(__dirname, "..", "..", "uploads");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const randomFileName = `${uuidv4()}.xlsx`;
+    const filePath = path.join(uploadDir, randomFileName);
+    await workbook.xlsx.writeFile(filePath);
+
+    return res.status(200).json({
+      code: 200,
+      message: "Dashboard chart exported successfully",
+      link: `${SERVER_URL}/api/v1/download/${randomFileName}`,
+    });
+  } catch (error) {
+    console.error("Error exporting dashboard chart:", error);
+
+    const statusCode = Number(error?.statusCode) || 500;
+    return res.status(statusCode).json({
+      code: statusCode,
+      message: statusCode === 400 ? error.message : "Internal server error",
       error: error.message,
     });
   }

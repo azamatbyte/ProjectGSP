@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Row, Col, Avatar, Dropdown, Table, Select, Slider, Button, message } from "antd";
+import { Row, Col, Avatar, Dropdown, Table, Select, Slider, Button, Tooltip, message } from "antd";
 import ChartWidget from "components/shared-components/ChartWidget";
 import GoalWidget from "components/shared-components/GoalWidget";
 import Card from "components/shared-components/Card";
 import Flex from "components/shared-components/Flex";
+import ApexCharts from "apexcharts";
 import StatisticsService from "services/StattisticsService";
 import FormService from "services/FormService";
 import SalesBarChart from "./components/SalesBarChart";
@@ -32,6 +33,24 @@ const LATEST_TABLE_DEFAULT_PAGE_SIZE = 5;
 const SIMILARITY_THRESHOLD_DEFAULT = 75;
 const SIMILARITY_THRESHOLD_MIN = 50;
 const SIMILARITY_THRESHOLD_MAX = 100;
+const DEFAULT_HERO_MONTH_RANGE = 18;
+const DEFAULT_HERO_YEAR_RANGE = 6;
+const HERO_CHART_ID = "dashboard-records-chart";
+const TREND_CHART_ID = "dashboard-overdue-trend-chart";
+const OTK1_REGISTRATION_CHART_ID = "dashboard-otk1-registration-chart";
+const OTK1_REGISTRATION4_CHART_ID = "dashboard-otk1-registration4-chart";
+const LATEST_FORM_TYPES = ["registration", "registration4"];
+
+const toSafeFileToken = (value, fallback = "dashboard_chart") => {
+  const normalized = typeof value === "string" ? value : "";
+  const ascii = normalized
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return ascii || fallback;
+};
 
 const formatLastLogin = (value) => {
   if (!value) return "-";
@@ -40,6 +59,24 @@ const formatLastLogin = (value) => {
 
   const pad = (number) => String(number).padStart(2, "0");
   return `${pad(date.getHours())}:${pad(date.getMinutes())} ${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
+};
+
+const normalizeFormNames = (forms) => [...new Set(
+  (Array.isArray(forms) ? forms : [])
+    .map((item) => (typeof item?.name === "string" ? item.name.trim() : ""))
+    .filter(Boolean)
+)];
+
+const fetchActiveLatestFormNames = async (query = "") => {
+  const responses = await Promise.all(
+    LATEST_FORM_TYPES.map((type) => FormService.listWithStatus(1, 500, query, type))
+  );
+
+  const mergedForms = responses.flatMap((response) => (
+    Array.isArray(response?.data?.forms) ? response.data.forms : []
+  ));
+
+  return normalizeFormNames(mergedForms);
 };
 
 const CardDropdown = ({ items }) => {
@@ -79,7 +116,11 @@ export const DefaultDashboard = () => {
   const [latestPageSize, setLatestPageSize] = useState(LATEST_TABLE_DEFAULT_PAGE_SIZE);
   const [latestTotal, setLatestTotal] = useState(0);
   const [latestYear, setLatestYear] = useState(() => new Date().getFullYear());
+  const [latestForms, setLatestForms] = useState([]);
+  const [latestFormOptions, setLatestFormOptions] = useState([]);
+  const [latestFormsLoading, setLatestFormsLoading] = useState(false);
   const [latestSortedColumns, setLatestSortedColumns] = useState([]);
+  const [exportingCharts, setExportingCharts] = useState({});
   const { direction } = useSelector(state => state.theme);
   const { role } = useSelector(state => state.auth);
 
@@ -116,6 +157,27 @@ export const DefaultDashboard = () => {
     });
     return map;
   }, [latestSortedColumns]);
+
+  const loadLatestFormOptions = useCallback(async (query = "") => {
+    setLatestFormsLoading(true);
+    try {
+      const formNames = await fetchActiveLatestFormNames(query);
+      const mergedNames = [...new Set([...latestForms, ...formNames])];
+
+      setLatestFormOptions(mergedNames.map((formName) => ({
+        value: formName,
+        label: formName,
+      })));
+    } catch (error) {
+      setLatestFormOptions(latestForms.map((formName) => ({
+        value: formName,
+        label: formName,
+      })));
+      message.error(t("dashboard_form_overdue_loading_error"));
+    } finally {
+      setLatestFormsLoading(false);
+    }
+  }, [latestForms, t]);
 
   const heroCategories = useMemo(() => {
     const localeMap = { ru: "ru-RU", uz: "uz-UZ", en: "en-US" };
@@ -154,24 +216,21 @@ export const DefaultDashboard = () => {
   ];
 
   const heroChartOptions = useMemo(() => {
-    const leftAxisMaxValue = Math.max(
+    const axisMaxValue = Math.max(
       ...heroRows.map((item) => Math.max(
         Number(item?.otk1_count) || 0,
+        Number(item?.open_count) || 0,
         Number(item?.close_count) || 0,
         Number(item?.access_count) || 0
       )),
       0
     );
-    const rightAxisMaxValue = Math.max(
-      ...heroRows.map((item) => Number(item?.open_count) || 0),
-      0
-    );
-    const normalizedLeftMax = leftAxisMaxValue <= 5 ? 5 : Math.ceil(leftAxisMaxValue * 1.15);
-    const normalizedRightMax = rightAxisMaxValue <= 5 ? 5 : Math.ceil(rightAxisMaxValue * 1.15);
+    const normalizedAxisMax = axisMaxValue <= 5 ? 5 : Math.ceil(axisMaxValue * 1.15);
 
     return {
       colors: ["#f4c430", "#5b9bd5", "#ed7d31", "#a5a5a5"],
       chart: {
+        id: HERO_CHART_ID,
         toolbar: {
           show: false,
         },
@@ -203,75 +262,20 @@ export const DefaultDashboard = () => {
       markers: {
         size: 0,
       },
-      yaxis: [
-        {
-          seriesName: t("dashboard_series_reject"),
-          show: true,
-          min: 0,
-          max: normalizedLeftMax,
-          tickAmount: 6,
-          forceNiceScale: true,
-          decimalsInFloat: 0,
-          crosshairs: {
-            show: false,
-          },
-          tooltip: {
-            enabled: false,
-          },
-        },
-        {
-          seriesName: t("dashboard_series_registered_forms_lists"),
-          show: true,
-          opposite: true,
-          min: 0,
-          max: normalizedRightMax,
-          tickAmount: 6,
-          decimalsInFloat: 0,
-          axisBorder: {
-            show: true,
-            color: "#5b9bd5",
-          },
-          axisTicks: {
-            show: true,
-            color: "#5b9bd5",
-          },
-          labels: {
-            style: {
-              colors: ["#5b9bd5"],
-            },
-          },
-          title: {
-            text: t("dashboard_series_registered_forms_lists"),
-            style: {
-              color: "#5b9bd5",
-            },
-          },
-          crosshairs: {
-            show: false,
-          },
-          tooltip: {
-            enabled: false,
-          },
-        },
-        {
-          seriesName: t("dashboard_series_reject"),
+      yaxis: {
+        show: true,
+        min: 0,
+        max: normalizedAxisMax,
+        tickAmount: 6,
+        forceNiceScale: true,
+        decimalsInFloat: 0,
+        crosshairs: {
           show: false,
-          min: 0,
-          max: normalizedLeftMax,
-          tickAmount: 6,
-          forceNiceScale: true,
-          decimalsInFloat: 0,
         },
-        {
-          seriesName: t("dashboard_series_reject"),
-          show: false,
-          min: 0,
-          max: normalizedLeftMax,
-          tickAmount: 6,
-          forceNiceScale: true,
-          decimalsInFloat: 0,
+        tooltip: {
+          enabled: false,
         },
-      ],
+      },
       xaxis: {
         type: "category",
         categories: heroCategories,
@@ -370,6 +374,12 @@ export const DefaultDashboard = () => {
   }, [trendRows, trendAxis, i18n.language]);
 
   const trendChartOptions = useMemo(() => ({
+    chart: {
+      id: TREND_CHART_ID,
+      toolbar: {
+        show: false,
+      },
+    },
     legend: {
       show: false,
     },
@@ -525,11 +535,7 @@ export const DefaultDashboard = () => {
         const response = await FormService.listWithStatus(1, 500, "", "registration");
         if (cancelled) return;
 
-        const forms = Array.isArray(response?.data?.forms)
-          ? [...new Set(response.data.forms
-            .map((item) => (typeof item?.name === "string" ? item.name.trim() : ""))
-            .filter(Boolean))]
-          : [];
+        const forms = normalizeFormNames(response?.data?.forms);
 
         setTrendForms(forms);
       } catch (error) {
@@ -749,6 +755,7 @@ export const DefaultDashboard = () => {
           pageNumber: latestPageNumber,
           pageSize: latestPageSize,
           year: latestYear,
+          forms: latestForms,
           sortFields: latestSortedColumns,
         });
 
@@ -775,7 +782,124 @@ export const DefaultDashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [latestPageNumber, latestPageSize, latestSortedColumns, latestYear, t]);
+  }, [latestForms, latestPageNumber, latestPageSize, latestSortedColumns, latestYear, t]);
+
+  const runChartExport = useCallback(async ({
+    chartStateKey,
+    chartKey,
+    chartId,
+    title,
+    periodLabel,
+    filters,
+    fileNamePrefix,
+  }) => {
+    setExportingCharts((prev) => ({ ...prev, [chartStateKey]: true }));
+
+    try {
+      const chartImagePayload = await ApexCharts.exec(chartId, "dataURI");
+      const imageDataUrl = chartImagePayload?.imgURI;
+
+      if (typeof imageDataUrl !== "string" || !imageDataUrl.startsWith("data:image")) {
+        throw new Error("Unable to capture chart image");
+      }
+
+      const response = await StatisticsService.exportDashboardChart({
+        chartKey,
+        title,
+        periodLabel,
+        imageDataUrl,
+        filters,
+      });
+
+      const link = response?.data?.link;
+      if (response?.data?.code !== 200 || typeof link !== "string" || !link) {
+        throw new Error("Invalid export response");
+      }
+
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+      const safePrefix = toSafeFileToken(fileNamePrefix, "dashboard_chart");
+      const downloadName = `${safePrefix}_${timestamp}`;
+      const separator = link.includes("?") ? "&" : "?";
+      const downloadUrl = `${link}${separator}newFileName=${encodeURIComponent(downloadName)}`;
+
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.setAttribute("download", downloadName);
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+
+      message.success(t("report_downloaded_successfully"));
+    } catch (error) {
+      message.error(t("report_download_failed"));
+    } finally {
+      setExportingCharts((prev) => ({ ...prev, [chartStateKey]: false }));
+    }
+  }, [t]);
+
+  useEffect(() => {
+    loadLatestFormOptions("");
+  }, [loadLatestFormOptions]);
+
+  const handleHeroChartExport = useCallback(() => {
+    const periodLabel = axis === "MONTH"
+      ? `${t("dashboard_axis_month")} (${DEFAULT_HERO_MONTH_RANGE})`
+      : `${t("dashboard_axis_year")} (${DEFAULT_HERO_YEAR_RANGE})`;
+
+    runChartExport({
+      chartStateKey: "counted_records",
+      chartKey: "counted_records",
+      chartId: HERO_CHART_ID,
+      title: t("dashboard_records_title"),
+      periodLabel,
+      filters: {
+        x_axis: axis,
+        month: DEFAULT_HERO_MONTH_RANGE,
+        year: DEFAULT_HERO_YEAR_RANGE,
+      },
+      fileNamePrefix: t("dashboard_records_title"),
+    });
+  }, [axis, runChartExport, t]);
+
+  const handleTrendChartExport = useCallback(() => {
+    const selectedRange = trendAxis === "MONTH" ? trendMonthRange : trendYearRange;
+    const periodLabel = trendAxis === "MONTH"
+      ? `${selectedRange} ${t("dashboard_axis_month")}`
+      : `${selectedRange} ${t("dashboard_axis_year")}`;
+
+    runChartExport({
+      chartStateKey: "form_overdue_trend",
+      chartKey: "form_overdue_trend",
+      chartId: TREND_CHART_ID,
+      title: t("dashboard_unique_visitors_title"),
+      periodLabel,
+      filters: {
+        x_axis: trendAxis,
+        month: trendMonthRange,
+        year: trendYearRange,
+      },
+      fileNamePrefix: t("dashboard_unique_visitors_title"),
+    });
+  }, [trendAxis, trendMonthRange, trendYearRange, runChartExport, t]);
+
+  const handleTopOtk1ChartExport = useCallback(({ years, model }) => {
+    const isRegistration4 = model === "registration4";
+    const chartKey = isRegistration4 ? "top_otk1_registration4" : "top_otk1_registration";
+    const chartId = isRegistration4 ? OTK1_REGISTRATION4_CHART_ID : OTK1_REGISTRATION_CHART_ID;
+    const title = isRegistration4 ? t("dashboard_otk1_forms_title") : t("dashboard_otk1_title");
+
+    runChartExport({
+      chartStateKey: chartKey,
+      chartKey,
+      chartId,
+      title,
+      periodLabel: `${years} ${t("dashboard_otk1_years_label")}`,
+      filters: {
+        year: years,
+      },
+      fileNamePrefix: title,
+    });
+  }, [runChartExport, t]);
 
   return (
     <>
@@ -790,7 +914,7 @@ export const DefaultDashboard = () => {
             type="line"
             customOptions={heroChartOptions}
             extra={
-              <div style={{ marginTop: 26 }}>
+              <div style={{ marginTop: 26, display: "flex", gap: 8 }}>
                 <Select
                   value={axis}
                   options={axisOptions}
@@ -798,7 +922,17 @@ export const DefaultDashboard = () => {
                   style={{ minWidth: 140 }}
                   onChange={(value) => setAxis(value)}
                   loading={heroLoading}
+                  disabled={exportingCharts.counted_records}
                 />
+                <Tooltip title={t("export")}>
+                  <Button
+                    size="small"
+                    icon={<FileExcelOutlined />}
+                    onClick={handleHeroChartExport}
+                    loading={Boolean(exportingCharts.counted_records)}
+                    disabled={heroLoading || Boolean(exportingCharts.counted_records)}
+                  />
+                </Tooltip>
               </div>
             }
           />
@@ -821,10 +955,22 @@ export const DefaultDashboard = () => {
       </Row>
       <Row gutter={16}>
         <Col xs={24} sm={24} md={24} lg={8}>
-          <SalesBarChart cardMinHeight={KPI_CARD_MIN_HEIGHT} model="registration" />
+          <SalesBarChart
+            cardMinHeight={KPI_CARD_MIN_HEIGHT}
+            model="registration"
+            chartId={OTK1_REGISTRATION_CHART_ID}
+            onExport={handleTopOtk1ChartExport}
+            exporting={Boolean(exportingCharts.top_otk1_registration)}
+          />
         </Col>
         <Col xs={24} sm={24} md={24} lg={8}>
-          <SalesBarChart cardMinHeight={KPI_CARD_MIN_HEIGHT} model="registration4" />
+          <SalesBarChart
+            cardMinHeight={KPI_CARD_MIN_HEIGHT}
+            model="registration4"
+            chartId={OTK1_REGISTRATION4_CHART_ID}
+            onExport={handleTopOtk1ChartExport}
+            exporting={Boolean(exportingCharts.top_otk1_registration4)}
+          />
         </Col>
         <Col xs={24} sm={24} md={24} lg={8}>
           <ChartWidget
@@ -835,7 +981,7 @@ export const DefaultDashboard = () => {
             direction={direction}
             customOptions={trendChartOptions}
             extra={
-              <div style={{ marginTop: 26, display: "flex", gap: 8 }}>
+              <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "flex-start", width: "100%" }}>
                 <Select
                   value={trendAxis}
                   options={axisOptions}
@@ -857,7 +1003,17 @@ export const DefaultDashboard = () => {
                     }
                   }}
                   loading={trendLoading}
+                  disabled={Boolean(exportingCharts.form_overdue_trend)}
                 />
+                <Tooltip title={t("export")}>
+                  <Button
+                    size="small"
+                    icon={<FileExcelOutlined />}
+                    onClick={handleTrendChartExport}
+                    loading={Boolean(exportingCharts.form_overdue_trend)}
+                    disabled={trendLoading || Boolean(exportingCharts.form_overdue_trend)}
+                  />
+                </Tooltip>
               </div>
             }
           />
@@ -869,6 +1025,26 @@ export const DefaultDashboard = () => {
             title={t("dashboard_latest_title")}
             extra={(
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <Select
+                  mode="multiple"
+                  value={latestForms}
+                  options={latestFormOptions}
+                  size="small"
+                  style={{ minWidth: 220, maxWidth: 360 }}
+                  placeholder={t("select_form")}
+                  onChange={(value) => {
+                    setLatestPageNumber(1);
+                    setLatestForms(value);
+                  }}
+                  loading={latestFormsLoading}
+                  disabled={latestLoading || latestFormsLoading}
+                  showSearch
+                  filterOption={false}
+                  onSearch={loadLatestFormOptions}
+                  onClear={() => loadLatestFormOptions("")}
+                  allowClear
+                  maxTagCount="responsive"
+                />
                 <Select
                   value={latestYear}
                   options={latestYearOptions}

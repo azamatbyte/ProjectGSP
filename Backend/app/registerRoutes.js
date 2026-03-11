@@ -43,18 +43,38 @@ function registerRoutes(app) {
       const originalFileName = path.basename(req.path);
 
       if (originalFileName) {
-        const extension = path.extname(originalFileName);
-        let desiredFileName;
+        try {
+          const extension = path.extname(originalFileName);
+          let desiredFileName;
 
-        if (req.query.newFileName) {
-          const safeNewFileName = path.basename(req.query.newFileName, path.extname(req.query.newFileName));
-          desiredFileName = safeNewFileName + extension;
-        } else {
-          desiredFileName = originalFileName;
+          if (req.query.newFileName) {
+            const rawName = String(req.query.newFileName || '');
+            const baseName = path.basename(rawName, path.extname(rawName));
+            const safeBaseName = baseName
+              .replace(/[\\/:*?"<>|]+/g, '_')
+              .replace(/\s+/g, ' ')
+              .trim();
+            desiredFileName = `${safeBaseName || 'download'}${extension}`;
+          } else {
+            desiredFileName = originalFileName;
+          }
+
+          const asciiFallback = desiredFileName
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\x20-\x7E]/g, '_')
+            .replace(/["\\]/g, '_')
+            .replace(/\s+/g, ' ')
+            .trim() || originalFileName;
+
+          const encodedFileName = encodeURIComponent(desiredFileName);
+          res.setHeader(
+            'Content-Disposition',
+            `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodedFileName}`
+          );
+        } catch (error) {
+          res.setHeader('Content-Disposition', `attachment; filename="${originalFileName}"`);
         }
-
-        const encodedFileName = encodeURIComponent(desiredFileName);
-        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedFileName}`);
       }
 
       next();

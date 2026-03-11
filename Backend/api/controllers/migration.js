@@ -125,6 +125,12 @@ function normalizeOptionalText(value) {
     return normalized;
 }
 
+function concatOptionalText(...values) {
+    return values
+        .map((value) => normalizeOptionalText(value) ?? "")
+        .join("");
+}
+
 function expiredDateFunc(regDate, regEndDate, formLength) {
     const thresholdDate = new Date('2010-01-01');
     const registrationDate = new Date(regDate);
@@ -210,8 +216,8 @@ function mapRecordToRegistrationData(record, initiatorId, executorId, formId, no
         position: record['Место работы и должность'] == '-' ? null : record['Место работы и должность']?.split(',')[1]?.trim(),
         accessStatus,
         notes: normalizeOptionalText(record['Примечания']),
-        additionalNotes: normalizeOptionalText(notes?.additionalNotes),
-        externalNotes: normalizeOptionalText(notes?.externalNotes),
+        additionalNotes: "",
+        externalNotes: concatOptionalText(notes?.additionalNotes, notes?.externalNotes),
         or_tab: initiatorId,
         executorId,
         whoAdd: executorId,
@@ -242,9 +248,9 @@ function mapRecordToRegistration4Data(record, initiatorId, executorId, formId, n
         workplace: record['Место работы'] == '-' ? null : record['Место работы']?.split(',')[0]?.trim(),
         position: record['Место работы'] == '-' ? null : record['Место работы']?.split(',')[1]?.trim(),
         accessStatus,
-        notes: normalizeOptionalText(record['Компроматериалы']),
-        additionalNotes: normalizeOptionalText(notes?.additionalNotes),
-        externalNotes: normalizeOptionalText(notes?.externalNotes),
+        notes: record['Компроматериалы'] == '-' ? null : record['Компроматериалы'],
+        additionalNotes: "",
+        externalNotes: record['Компроматериалы1'] == '-' ? null : record['Компроматериалы1'],
         or_tab: initiatorId,
         executorId,
         whoAdd: executorId,
