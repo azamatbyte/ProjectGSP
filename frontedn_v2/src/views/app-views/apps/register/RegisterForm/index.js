@@ -6,7 +6,6 @@ import GeneralField from "./GeneralField";
 // StatusField currently unused; keep file if needed in future
 // import StatusField from "./StatusField";
 import RegistrationService from "services/RegistrationService";
-import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { CompleteStatus } from "constants/CompleteStatus";
@@ -15,6 +14,11 @@ import { MODEL_TYPES } from "utils/sessions";
 import { DATE_FORMAT_DD_MM_YYYY_WITH_DOT } from "constants/DateConstant";
 import debounce from "lodash/debounce";
 import AccessStatusService from "services/AccessStatusService";
+import {
+  useFormDirtyState,
+  useGuardedNavigate,
+  useUnsavedChangesGuard,
+} from "utils/hooks/useUnsavedChangesGuard";
 // set, values imported previously but unused
 // import { set, values } from "lodash";
 const ADD = "ADD";
@@ -60,12 +64,21 @@ const RegisterForm = (props) => {
   const [isDone, setIsDone] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
-  const navigate = useNavigate();
+  const guardedNavigate = useGuardedNavigate();
   const [model, setModel] = useState("");
   const [isReadOnly, setIsReadOnly] = useState(false);
   const [accessStatusOptions, setAccessStatusOptions] = useState([]);
   const [accessStatusFetching, setAccessStatusFetching] = useState(false);
   const [executorFullName, setExecutorFullName] = useState("");
+  const { captureBaseline, isDirty } = useFormDirtyState(form);
+
+  useUnsavedChangesGuard({
+    when: isDirty,
+    title: t("warning"),
+    content: t("exit_confirmation"),
+    okText: t("yes"),
+    cancelText: t("no"),
+  });
 
   const registerInformation = useCallback(
     async (id) => {
@@ -106,7 +119,7 @@ const RegisterForm = (props) => {
         }
         setModel(model);
         setExecutorFullName(formatExecutorFullName(executor));
-        form.setFieldsValue({
+        const initialValues = {
           first_name,
           last_name,
           form_reg,
@@ -135,13 +148,22 @@ const RegisterForm = (props) => {
           passport,
           model1: model,
           conclusion_compr,
+        };
+
+        form.setFieldsValue(initialValues);
+        captureBaseline({
+          ...initialValues,
+          ...(model === "registration4"
+            ? { birthYear: response?.data?.data?.birthYear }
+            : {}),
         });
       } catch (error) {
         console.error("Xatolik:", error);
+        captureBaseline(form.getFieldsValue(true));
         message.error(t("data_not_found"));
       }
     },
-    [form, param?.id, t]
+    [captureBaseline, form, param?.id, t]
   );
 
   useEffect(() => {
@@ -151,16 +173,22 @@ const RegisterForm = (props) => {
   }, [mode, id, registerInformation]);
 
   const backHandle = useCallback(() => {
-    Modal.confirm({
-      title: t("warning"),
-      content: t("exit_confirmation"),
-      okText: t("yes"),
-      cancelText: t("no"),
-      onOk: () => {
-        navigate(-1);
-      },
-    });
-  }, [navigate, t]);
+    guardedNavigate(-1);
+  }, [guardedNavigate]);
+
+  useEffect(() => {
+    if (mode !== ADD) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      captureBaseline(form.getFieldsValue(true));
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [captureBaseline, form, mode]);
 
   useEffect(() => {
     const handleEscKey = (event) => {
@@ -178,7 +206,7 @@ const RegisterForm = (props) => {
   }, [backHandle]);
 
   const addRelative = (data) => {
-    navigate(`/app/apps/relative/add-relative/${data}`);
+    guardedNavigate(`/app/apps/relative/add-relative/${data}`);
   };
 
   const onFinish = async (values) => {
@@ -213,6 +241,7 @@ const RegisterForm = (props) => {
               initiatorId: res?.data?.data?.or_tab,
             });
             setIsDone(true);
+            captureBaseline();
           }
         } catch (error) {
           if (error.response.data.message === "Full name already exists") {
@@ -249,6 +278,7 @@ const RegisterForm = (props) => {
           const res = await RegistrationService.update(param?.id, values);
           if (res.status === 200) {
             message.success(t("register_successfully_updated"));
+            captureBaseline();
           }
         } catch (error) {
           message.error(t("register_not_updated"));
@@ -260,7 +290,7 @@ const RegisterForm = (props) => {
   };
 
   const viewDetails = (id) => {
-    navigate(`/app/apps/register/info-register/${id}`);
+    guardedNavigate(`/app/apps/register/info-register/${id}`);
   };
   useEffect(() => {
     const fetchData = async () => {

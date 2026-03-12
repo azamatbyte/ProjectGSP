@@ -116,10 +116,12 @@ export const HeaderNav = props => {
 					</NavEdge>
 					{!isMobile && (
 						<NavEdge left>
-							<ProviderComponent rolePermission={["superAdmin"]}>
-								<NavBackup />
-							</ProviderComponent>
-							{user?.username === "admin01" && <NavMigration />}
+							<div style={{ display: "flex", alignItems: "flex-start" }}>
+								<ProviderComponent rolePermission={["superAdmin"]}>
+									<NavBackup />
+								</ProviderComponent>
+								{user?.username === "admin01" && <NavMigration />}
+							</div>
 						</NavEdge>
 					)}
 

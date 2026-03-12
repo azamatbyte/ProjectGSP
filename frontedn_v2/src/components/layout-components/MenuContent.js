@@ -1,5 +1,4 @@
 import React, { useMemo } from "react";
-import { Link } from "react-router-dom";
 import { Menu, Grid } from "antd";
 import IntlMessage from "../util-components/IntlMessage";
 import Icon from "../util-components/Icon";
@@ -8,6 +7,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { SIDE_NAV_LIGHT, NAV_TYPE_SIDE } from "constants/ThemeConstant";
 import utils from "utils";
 import { onMobileNavToggle } from "store/slices/themeSlice";
+import { GuardedLink } from "utils/hooks/useUnsavedChangesGuard";
 
 const { useBreakpoint } = Grid;
 
@@ -44,7 +44,7 @@ const MenuItem = ({ title, icon, path }) => {
 		<>
 			{icon && <Icon type={icon} />}
 			<span>{setLocale(title)}</span>
-			{path && <Link onClick={closeMobileNav} to={path} />}
+			{path && <GuardedLink onNavigate={closeMobileNav} to={path} />}
 		</>
 	);
 };

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, message, Modal, Upload, Input } from "antd";
+import { Button, message, Modal, Upload, Input, Select } from "antd";
 import { useTranslation } from "react-i18next";
 import {
   DownloadOutlined,
@@ -11,9 +11,12 @@ import AuthService from "services/AuthService";
 export const NavBackup = ({ compact = false, onAction }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [fileList, setFileList] = useState([]);
   const [password, setPassword] = useState("");
+  const [backupType, setBackupType] = useState("csv");
+  const [restoreType, setRestoreType] = useState("csv");
 
   /* ================= DOWNLOAD ================= */
   const downloadBlob = (blob, filename) => {
@@ -27,28 +30,42 @@ export const NavBackup = ({ compact = false, onAction }) => {
     window.URL.revokeObjectURL(url);
   };
 
-  const handleClick = async () => {
+  const handleOpenDownloadModal = () => {
+    if (onAction) {
+      onAction();
+    }
+    setDownloadModalOpen(true);
+  };
+
+  const handleDownload = async () => {
     try {
-      if (onAction) {
-        onAction();
-      }
       setLoading(true);
 
-      const response = await AuthService.backup({
-        format: "csv",
-        compress: true,
-      });
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-");
+
+      let response;
+      let filename;
+
+      if (backupType === "pg") {
+        response = await AuthService.backupPg();
+        filename = `pgdump_${timestamp}.zip`;
+      } else {
+        response = await AuthService.backup({
+          format: "csv",
+          compress: true,
+        });
+        filename = `export_${timestamp}.zip`;
+      }
 
       const passwordFromHeader =
         response.headers?.["x-backup-password"];
       const blob = response.data;
 
       if (blob instanceof Blob) {
-        const timestamp = new Date()
-          .toISOString()
-          .replace(/[:.]/g, "-");
-
-        downloadBlob(blob, `export_${timestamp}.zip`);
+        downloadBlob(blob, filename);
+        setDownloadModalOpen(false);
 
         if (passwordFromHeader) {
           message.success({
@@ -62,7 +79,10 @@ export const NavBackup = ({ compact = false, onAction }) => {
                     color: "#ff4d4f",
                   }}
                 >
-                  Password: {passwordFromHeader}
+                  ZIP Password: {passwordFromHeader}
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  Use this password to extract the ZIP in Windows Explorer.
                 </div>
               </div>
             ),
@@ -98,11 +118,18 @@ export const NavBackup = ({ compact = false, onAction }) => {
 
     try {
       setLoading(true);
+      let response;
 
-      await AuthService.restoreFromZip(formData);
+      if (restoreType === "pg") {
+        response = await AuthService.restorePg(formData);
+      } else {
+        response = await AuthService.restoreFromZip(formData);
+      }
 
       message.success(
-        t("restore_success") || "Backup restored successfully"
+        response?.data?.message ||
+          t("restore_success") ||
+          "Backup restored successfully"
       );
 
       setUploadModalOpen(false);
@@ -110,11 +137,27 @@ export const NavBackup = ({ compact = false, onAction }) => {
       setPassword("");
     } catch (e) {
       console.error(e);
-      message.error(t("restore_failed") || "Restore failed");
+      message.error(
+        e?.response?.data?.message ||
+          t("restore_failed") ||
+          "Restore failed"
+      );
     } finally {
       setLoading(false);
     }
   };
+
+  const backupSelect = (
+    <Select
+      value={backupType}
+      onChange={setBackupType}
+      style={{ width: "100%", marginBottom: 8 }}
+      options={[
+        { value: "csv", label: t("backup_type_csv") },
+        { value: "pg", label: t("backup_type_pg") },
+      ]}
+    />
+  );
 
   return (
     <>
@@ -124,7 +167,7 @@ export const NavBackup = ({ compact = false, onAction }) => {
             type="primary"
             icon={loading ? <LoadingOutlined spin /> : <DownloadOutlined />}
             loading={loading}
-            onClick={handleClick}
+            onClick={handleOpenDownloadModal}
             disabled={loading}
             block
             style={{ height: 40 }}
@@ -147,30 +190,47 @@ export const NavBackup = ({ compact = false, onAction }) => {
           </Button>
         </div>
       ) : (
-        <>
-          {/* BACKUP */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginTop: 12,
+            whiteSpace: "nowrap",
+          }}
+        >
           <Button
             type="primary"
             icon={loading ? <LoadingOutlined spin /> : <DownloadOutlined />}
             loading={loading}
-            onClick={handleClick}
+            onClick={handleOpenDownloadModal}
             disabled={loading}
-            className="mr-2"
-            style={{ marginTop: 12, height: 48 }}
+            style={{ height: 48 }}
           >
             {t("backup")}
           </Button>
 
-          {/* RESTORE */}
           <Button
             icon={<UploadOutlined />}
             onClick={() => setUploadModalOpen(true)}
-            style={{ marginTop: 12, height: 48 }}
+            style={{ height: 48 }}
           >
             {t("upload_backup")}
           </Button>
-        </>
+        </div>
       )}
+
+      <Modal
+        title={t("backup")}
+        open={downloadModalOpen}
+        onOk={handleDownload}
+        onCancel={() => setDownloadModalOpen(false)}
+        confirmLoading={loading}
+        okText={t("backup")}
+        cancelText={t("cancel")}
+      >
+        {backupSelect}
+      </Modal>
 
       <Modal
         title={t("upload_backup")}
@@ -182,6 +242,21 @@ export const NavBackup = ({ compact = false, onAction }) => {
         cancelText={t("cancel")}
         okType="danger"
       >
+        {/* RESTORE TYPE SELECT */}
+        <Select
+          value={restoreType}
+          onChange={(val) => {
+            setRestoreType(val);
+            setFileList([]);
+            setPassword("");
+          }}
+          style={{ width: "100%", marginBottom: 16 }}
+          options={[
+            { value: "csv", label: t("restore_type_csv") },
+            { value: "pg", label: t("restore_type_pg") },
+          ]}
+        />
+
         {/* ZIP FILE */}
         <Upload
           accept=".zip"

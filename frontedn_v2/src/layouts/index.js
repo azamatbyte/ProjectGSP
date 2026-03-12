@@ -5,6 +5,7 @@ import Loading from "components/shared-components/Loading";
 import { lightTheme, darkTheme } from "configs/ThemeConfig";
 import { resources } from "lang";
 import useBodyClass from "utils/hooks/useBodyClass";
+import { NavigationGuardProvider } from "utils/hooks/useUnsavedChangesGuard";
 import Routes from "routes";
 
 const AppLayout = lazy(() => import("./AppLayout"));
@@ -31,11 +32,13 @@ const Layouts = () => {
 
 	return (
 		<ConfigProvider theme={themeConfig} direction={direction} locale={currentAppLocale.antd}>
-			<Suspense fallback={<Loading cover="content"/>}>
-				<Layout>
-					<Routes />
-				</Layout>
-			</Suspense>
+			<NavigationGuardProvider>
+				<Suspense fallback={<Loading cover="content"/>}>
+					<Layout>
+						<Routes />
+					</Layout>
+				</Suspense>
+			</NavigationGuardProvider>
 		</ConfigProvider>
 	);
 };

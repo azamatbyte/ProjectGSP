@@ -5,7 +5,7 @@ import {
   UnorderedListOutlined,
   PlusCircleOutlined,
 } from "@ant-design/icons";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import RelativeService from "services/RelativeService";
 import RegistrationService from "services/RegistrationService";
 import { useTranslation } from "react-i18next";
@@ -14,6 +14,7 @@ import EllipsisDropdown from "components/shared-components/EllipsisDropdown";
 import Flex from "components/shared-components/Flex";
 import SessionService from "services/SessionService";
 import { SESSION_TYPES } from "utils/sessions";
+import { useGuardedNavigate } from "utils/hooks/useUnsavedChangesGuard";
 
 const RelativeTable = ({
   id,
@@ -35,7 +36,7 @@ const RelativeTable = ({
   });
   const [sortedColumns, setSortedColumns] = useState([]);
 
-  const navigate = useNavigate();
+  const navigate = useGuardedNavigate();
 
   const fetchData = useCallback(async () => {
     try {

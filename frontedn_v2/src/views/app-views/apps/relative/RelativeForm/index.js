@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PageHeaderAlt from "components/layout-components/PageHeaderAlt";
-import { Tabs, Form, Button, message, Modal } from "antd";
+import { Tabs, Form, Button, message } from "antd";
 import Flex from "components/shared-components/Flex";
 import GeneralField from "./GeneralField";
 import { useNavigate, useParams } from "react-router-dom";
@@ -9,18 +9,33 @@ import RelativeService from "services/RelativeService";
 import RegistrationService from "services/RegistrationService";
 import { useTranslation } from "react-i18next";
 import { LeftCircleOutlined, PlusCircleOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import {
+  useFormDirtyState,
+  useGuardedNavigate,
+  useUnsavedChangesGuard,
+} from "utils/hooks/useUnsavedChangesGuard";
 export const ADD = "ADD";
 export const EDIT = "EDIT";
 
 const AdminForm = (props) => {
   const params = useParams();
   const navigate = useNavigate();
+  const guardedNavigate = useGuardedNavigate();
   const { mode = ADD } = props;
   const [form] = Form.useForm();
   const [submitLoading, setSubmitLoading] = useState(false);
   const { t } = useTranslation();
+  const { captureBaseline, isDirty } = useFormDirtyState(form);
 
   const { id = "" } = params;
+
+  useUnsavedChangesGuard({
+    when: isDirty,
+    title: t("warning"),
+    content: t("exit_confirmation"),
+    okText: t("yes"),
+    cancelText: t("no"),
+  });
 
   const userInformation = useCallback(async (id) => {
     try {
@@ -29,7 +44,7 @@ const AdminForm = (props) => {
       const initiatorName =
         data?.Initiator?.first_name + " " + data?.Initiator?.last_name;
       console.log(data?.birthYear);
-      form.setFieldsValue({
+      const initialValues = {
         relationshipName: data?.registration?.fullName
           ? data?.registration?.fullName
           : "",
@@ -51,26 +66,32 @@ const AdminForm = (props) => {
         accessStatus: data?.accessStatus ? data?.accessStatus : "",
         createdAt: data?.createdAt ? dayjs(data?.createdAt) : null,
         updatedAt: data?.updatedAt ? dayjs(data?.updatedAt) : null,
-      });
+      };
+      form.setFieldsValue(initialValues);
+      captureBaseline(initialValues);
     } catch (error) {
+      captureBaseline(form.getFieldsValue(true));
       message.error(t("data_not_found"));
     }
-  }, [form, t]);
+  }, [captureBaseline, form, t]);
 
   const userInformationEdit = useCallback(async (id) => {
     try {
       const response = await RegistrationService.getById(id);
       const data = response?.data?.data;
-      form.setFieldsValue({
+      const initialValues = {
         relationshipName: data?.fullName ? data?.fullName : "",
         relationship: data?.id,
         or_tab: data?.Initiator?.id,
-      });
+      };
+      form.setFieldsValue(initialValues);
+      captureBaseline(initialValues);
     } catch (error) {
       console.error("Xatolik:", error);
+      captureBaseline(form.getFieldsValue(true));
       message.error(t("data_not_found"));
     }
-  }, [form, t]);
+  }, [captureBaseline, form, t]);
 
   useEffect(() => {
     if (mode === EDIT) {
@@ -81,16 +102,8 @@ const AdminForm = (props) => {
   }, [mode, params?.id, userInformation, userInformationEdit]);
 
   const backHandle = useCallback(() => {
-    Modal.confirm({
-      title: t("warning"),
-      content: t("exit_confirmation"),
-      okText: t("yes"),
-      cancelText: t("no"),
-      onOk: () => {
-        navigate(-1);
-      },
-    });
-  }, [navigate, t]);
+    guardedNavigate(-1);
+  }, [guardedNavigate]);
 
   const onFinish = async () => {
     setSubmitLoading(true);
@@ -105,6 +118,7 @@ const AdminForm = (props) => {
             await RelativeService.create(res);
             setSubmitLoading(false);
             message.success("Relative created successfully");
+            captureBaseline();
             navigate(-1);
           } catch (error) {
             setSubmitLoading(false);
@@ -128,6 +142,7 @@ const AdminForm = (props) => {
           console.log("response", response);
           setSubmitLoading(false);
           message.success("Relative updated successfully");
+          captureBaseline();
           navigate(-1);
         })
         .catch((info) => {
@@ -157,7 +172,7 @@ const AdminForm = (props) => {
   }, [backHandle]);
 
   const viewDetails = (id) => {
-    navigate(`/app/apps/relative/info-relative/${id}`);
+    guardedNavigate(`/app/apps/relative/info-relative/${id}`);
   };
 
   return (

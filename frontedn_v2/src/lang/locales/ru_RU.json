@@ -567,5 +567,11 @@
     "left_percent": "Осталось",
     "rows_done": "Обработано строк",
     "rows_left": "Осталось строк",
-    "upload_processing_started": "Файл принят. Начата обработка."
+    "upload_processing_started": "Файл принят. Начата обработка.",
+    "backup_type_csv": "CSV резервная копия",
+    "backup_type_pg": "PostgreSQL полный дамп",
+    "restore_type_csv": "Восстановление из CSV",
+    "restore_type_pg": "Восстановление из PostgreSQL дампа",
+    "only_sql_allowed": "Разрешены только файлы .sql",
+    "backup_failed": "Не удалось создать резервную копию"
 }

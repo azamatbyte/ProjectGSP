@@ -7,7 +7,6 @@ import {
 	FileTextOutlined,
 	SearchOutlined
 } from "@ant-design/icons";
-import { Link } from "react-router-dom";
 import { AutoComplete, Input } from "antd";
 import IntlMessage from "components/util-components/IntlMessage";
 import navigationConfig from "configs/NavigationConfig";
@@ -15,6 +14,7 @@ import { BODY_BACKGROUND, GRAY_SCALE, DARK_MODE } from "constants/ThemeConstant"
 import Flex from "components/shared-components/Flex";
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import { GuardedLink } from "utils/hooks/useUnsavedChangesGuard";
 
 const SearchResultIcon = styled.div(() => ({
 	fontSize: "1.5rem",
@@ -57,12 +57,12 @@ const getCategoryIcon = category => {
 	}
 };
 
-const searchResult = (mode) => optionList.map((item) => {
+const searchResult = (mode, onNavigate) => optionList.map((item) => {
 	const category = item.key.split("-")[0];
 	return {
 		value: item.path,
 		label: (
-			<Link to={item.path}>
+			<GuardedLink onNavigate={onNavigate} to={item.path}>
 				<Flex alignItems="center" padding="7px 12px">
 					<SearchResultIcon>
 						{getCategoryIcon(category)}
@@ -74,7 +74,7 @@ const searchResult = (mode) => optionList.map((item) => {
 						<div className="font-size-sm text-muted">{category} </div>
 					</div>
 				</Flex>
-			</Link>
+			</GuardedLink>
 		),
 	};
 });
@@ -95,7 +95,7 @@ const SearchInput = props => {
 
 	const onSearch = searchText => {
 		setValue(searchText);
-		setOptions(!searchText ? [] : searchResult(mode));
+		setOptions(!searchText ? [] : searchResult(mode, onSelect));
 	};
 	
 	const autofocus = () => {

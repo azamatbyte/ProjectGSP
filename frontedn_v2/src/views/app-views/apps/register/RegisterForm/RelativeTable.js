@@ -4,13 +4,14 @@ import {
   EyeOutlined,
   UnorderedListOutlined
 } from "@ant-design/icons";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import RelativeService from "services/RelativeService";
 import RegistrationService from "services/RegistrationService";
 import { useTranslation } from "react-i18next";
 import { getDateDayString } from "utils/aditionalFunctions";
 import EllipsisDropdown from "components/shared-components/EllipsisDropdown";
 import Flex from "components/shared-components/Flex";
+import { useGuardedNavigate } from "utils/hooks/useUnsavedChangesGuard";
 const RelativeTable = ({
   id,
   redirect,
@@ -20,7 +21,7 @@ const RelativeTable = ({
   relativeData,
 }) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
+  const navigate = useGuardedNavigate();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState({
     items: [],

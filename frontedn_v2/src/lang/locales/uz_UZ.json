@@ -566,5 +566,11 @@
     "left_percent": "Qoldi",
     "rows_done": "Qayta ishlangan qatorlar",
     "rows_left": "Qolgan qatorlar",
-    "upload_processing_started": "Fayl qabul qilindi. Qayta ishlash boshlandi."
+    "upload_processing_started": "Fayl qabul qilindi. Qayta ishlash boshlandi.",
+    "backup_type_csv": "CSV захира нусхаси",
+    "backup_type_pg": "PostgreSQL тўлиқ дамп",
+    "restore_type_csv": "CSV дан тиклаш",
+    "restore_type_pg": "PostgreSQL дампдан тиклаш",
+    "only_sql_allowed": "Фақат .sql файллар рухсат этилади",
+    "backup_failed": "Захира нусхасини яратиб бўлмади"
 }

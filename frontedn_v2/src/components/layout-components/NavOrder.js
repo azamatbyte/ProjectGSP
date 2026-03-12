@@ -1,10 +1,10 @@
 import React from "react";
 import { Button } from "antd";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useGuardedNavigate } from "utils/hooks/useUnsavedChangesGuard";
 
 export const NavOrder = ({ mode, compact = false, onAction }) => {
-  const navigate = useNavigate();
+  const navigate = useGuardedNavigate();
   const { t } = useTranslation();
 
   const handleClick = () => {

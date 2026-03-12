@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import PageHeaderAlt from "components/layout-components/PageHeaderAlt";
-import { Tabs, Form, Button, message, Modal } from "antd";
+import { Tabs, Form, Button, message } from "antd";
 import Flex from "components/shared-components/Flex";
 import GeneralField from "./GeneralField";
 import RegistrationService from "services/RegistrationService";
-import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { useTranslation } from "react-i18next";
 import { LeftCircleOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import {
+  useFormDirtyState,
+  useGuardedNavigate,
+  useUnsavedChangesGuard,
+} from "utils/hooks/useUnsavedChangesGuard";
 const ADD = "ADD";
 const EDIT = "EDIT";
 
@@ -24,11 +28,20 @@ const RegisterForm = (props) => {
   const [form] = Form.useForm();
   const [id, setId] = useState({ id: param?.id, initiatorId: "" });
   const [isEdit, setIsEdit] = useState(false);
-  const navigate = useNavigate();
+  const guardedNavigate = useGuardedNavigate();
   const [model, setModel] = useState("");
   const [regNumber, setRegNumber] = useState("");
 
   const [updateCompany, setUpdateCompany] = useState(0);
+  const { captureBaseline, isDirty } = useFormDirtyState(form);
+
+  useUnsavedChangesGuard({
+    when: isDirty,
+    title: t("warning"),
+    content: t("exit_confirmation"),
+    okText: t("yes"),
+    cancelText: t("no"),
+  });
 
   const registerInformation = useCallback(async (id) => {
     try {
@@ -63,7 +76,7 @@ const RegisterForm = (props) => {
         });
       }
       setModel(model);
-      form.setFieldsValue({
+      const initialValues = {
         first_name,
         last_name,
         form_reg,
@@ -86,12 +99,20 @@ const RegisterForm = (props) => {
         notes,
         additionalNotes,
         model,
+      };
+      form.setFieldsValue(initialValues);
+      captureBaseline({
+        ...initialValues,
+        ...(model === "registration4"
+          ? { birthYear: response?.data?.data?.birthYear }
+          : {}),
       });
     } catch (error) {
       console.error("Xatolik:", error);
+      captureBaseline(form.getFieldsValue(true));
       message.error(t("data_not_found"));
     }
-  }, [form, param?.id, t]);
+  }, [captureBaseline, form, param?.id, t]);
 
   useEffect(() => {
     if (mode === EDIT) {
@@ -100,16 +121,22 @@ const RegisterForm = (props) => {
   }, [mode, id, registerInformation]);
 
   const backHandle = useCallback(() => {
-    Modal.confirm({
-      title: t("warning"),
-      content: t("exit_confirmation"),
-      okText: t("yes"),
-      cancelText: t("no"),
-      onOk: () => {
-        navigate(-1);
-      },
-    });
-  }, [navigate, t]);
+    guardedNavigate(-1);
+  }, [guardedNavigate]);
+
+  useEffect(() => {
+    if (mode !== ADD) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      captureBaseline(form.getFieldsValue(true));
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [captureBaseline, form, mode]);
 
   useEffect(() => {
     const handleEscKey = (event) => {
@@ -127,7 +154,7 @@ const RegisterForm = (props) => {
   }, [backHandle]);
 
   const addRelative = (data) => {
-    navigate(
+    guardedNavigate(
       `/app/apps/relative/add-relative/${data}`
     );
   };
@@ -152,6 +179,7 @@ const RegisterForm = (props) => {
               id: res?.data?.data?.id,
               initiatorId: res?.data?.data?.or_tab,
             });
+            captureBaseline();
           }
         } catch (error) {
           console.log("error", error);
@@ -173,6 +201,7 @@ const RegisterForm = (props) => {
           const res = await RegistrationService.update(param?.id, values);
           if (res.status === 200) {
             message.success(t("register_successfully_updated"));
+            captureBaseline();
           }
         } catch (error) {
           console.log("error", error);

@@ -1,8 +1,9 @@
 import React, { Component } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Breadcrumb } from "antd";
 import navigationConfig from "configs/NavigationConfig";
 import IntlMessage from "components/util-components/IntlMessage";
+import { GuardedLink } from "utils/hooks/useUnsavedChangesGuard";
 
 let breadcrumbData = { 
 	"/app" : <IntlMessage id="Dashboard" />
@@ -29,7 +30,7 @@ const BreadcrumbRoute = props => {
 	const breadcrumbItems = pathSnippets.map((_, index) => {
 		const url = `/${pathSnippets.slice(0, index + 1).join("/")}`;
 		return {
-			title: <Link to={url}>{breadcrumbData[url]}</Link>
+			title: <GuardedLink to={url}>{breadcrumbData[url]}</GuardedLink>
 		};
 	});
   

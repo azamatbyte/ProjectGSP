@@ -63,7 +63,15 @@ AuthService.backup = function (data) {
 };
 
 AuthService.restoreFromZip = function (data) {
-	return Request.postRequestBlob(`auth/restore-from-zip`, data);
+	return Request.postRequest(`auth/restore-from-zip`, data);
+};
+
+AuthService.backupPg = function () {
+	return Request.postRequestBlob(`auth/backup-pg`, {});
+};
+
+AuthService.restorePg = function (data) {
+	return Request.postRequest(`auth/restore-pg`, data);
 };
 
 export default AuthService;
