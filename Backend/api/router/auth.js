@@ -18,7 +18,7 @@ const {
   checkUsernameUpdate,
 } = require("../controllers/authController");
 const { verifyToken, permissionCheck } = require("../middleware/auth");
-const { exportData, importData, restoreFromZip, uploadZipFile } = require("../controllers/registerController");
+const { exportData, importData, restoreFromZip, uploadZipFile, exportPgDump, restorePgDump, uploadSqlFile } = require("../controllers/registerController");
 
 router.post("/signup", verifyToken, permissionCheck("superAdmin"), signup);
 
@@ -58,5 +58,8 @@ router.post("/backup", verifyToken, permissionCheck("superAdmin"), exportData);
 router.post("/restore",verifyToken, permissionCheck("superAdmin"), importData);
 
 router.post("/restore-from-zip",verifyToken, permissionCheck("superAdmin"), uploadZipFile, restoreFromZip);
+
+router.post("/backup-pg", verifyToken, permissionCheck("superAdmin"), exportPgDump);
+router.post("/restore-pg", verifyToken, permissionCheck("superAdmin"), uploadSqlFile, restorePgDump);
 
 module.exports = router;

@@ -14,6 +14,7 @@ const multer = require("multer");
 const csvParser = require("csv-parser");
 const AdmZip = require("adm-zip");
 const crypto = require("crypto");
+const { spawn } = require('child_process');
 const { extractFull } = require('node-7z');
 const { MODEL_TYPE } = require("../helpers/constants");
 const { buildSearchQuery, buildCountQuery } = require("../helpers/globalSearchQueryBuilder");
@@ -79,6 +80,70 @@ function generateSecurePassword(length = 16) {
   }
 
   return password;
+}
+
+// Resolve pg_dump / psql binary path
+function findPgBinPath(executable) {
+  // 1. Explicit override via env
+  if (process.env.PG_BIN_DIR) {
+    const p = path.join(process.env.PG_BIN_DIR, executable);
+    if (fs.existsSync(p)) return p;
+    if (process.platform === 'win32' && fs.existsSync(p + '.exe')) return p + '.exe';
+  }
+
+  // 2. Portable install bundled with app
+  const portablePath = path.join(__dirname, '..', '..', 'build', 'pg', 'bin', executable);
+  if (fs.existsSync(portablePath)) return portablePath;
+  if (process.platform === 'win32' && fs.existsSync(portablePath + '.exe')) return portablePath + '.exe';
+
+  // 3. Common Windows PostgreSQL install paths
+  if (process.platform === 'win32') {
+    for (let ver = 17; ver >= 13; ver--) {
+      const winPath = path.join(`C:\\Program Files\\PostgreSQL\\${ver}\\bin`, executable + '.exe');
+      if (fs.existsSync(winPath)) return winPath;
+    }
+  }
+
+  // 4. Fallback to bare command (must be on system PATH)
+  return executable;
+}
+
+// Parse DATABASE_URL into connection components
+function parseDatabaseUrl() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error('DATABASE_URL is not set');
+  const match = url.match(/postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+?)(\?.*)?$/);
+  if (!match) throw new Error('Invalid DATABASE_URL format');
+  return {
+    user: decodeURIComponent(match[1]),
+    password: decodeURIComponent(match[2]),
+    host: match[3],
+    port: match[4],
+    database: match[5]
+  };
+}
+
+function sanitizePgDumpSql(sqlFilePath) {
+  const unsupportedSettings = [
+    'transaction_timeout'
+  ];
+
+  let sql = fs.readFileSync(sqlFilePath, 'utf8');
+  const removedSettings = [];
+
+  for (const setting of unsupportedSettings) {
+    const pattern = new RegExp(`^SET\\s+${setting}\\s*=\\s*.*;\\r?\\n?`, 'gm');
+    if (pattern.test(sql)) {
+      sql = sql.replace(pattern, '');
+      removedSettings.push(setting);
+    }
+  }
+
+  if (removedSettings.length > 0) {
+    fs.writeFileSync(sqlFilePath, sql, 'utf8');
+  }
+
+  return removedSettings;
 }
 
 // Local helper to format dates consistently for logs (no GMT/timezone text)
@@ -4605,7 +4670,8 @@ exports.exportData = async (req, res) => {
     const output = fs.createWriteStream(zipPath);
     const archive = archiver('zip-encrypted', {
       zlib: { level: 6 },
-      encryptionMethod: 'aes256',
+      // Windows File Explorer can extract ZipCrypto archives but not AES-encrypted ZIPs.
+      encryptionMethod: 'zip20',
       password: zipPassword
     });
 
@@ -4613,7 +4679,7 @@ exports.exportData = async (req, res) => {
       res.setHeader('X-Backup-Password', zipPassword);
       res.setHeader('X-Backup-Info', JSON.stringify({
         password: zipPassword,
-        message: 'IMPORTANT: Save this password securely! It cannot be recovered if lost.',
+        message: 'Use this password to extract the ZIP file. Save it securely; it cannot be recovered if lost.',
         filename: `export_${timestamp}.zip`,
         exportedAt: new Date().toISOString(),
         models: backupModelConfigs.map((config) => config.jsonKey),
@@ -4863,6 +4929,228 @@ exports.restoreFromZip = async (req, res) => {
 
 // Export multer upload middleware for use in routes
 exports.uploadZipFile = upload.single('file');
+
+// ==================== PostgreSQL Full Dump Backup ====================
+
+exports.exportPgDump = async (req, res) => {
+  const tempDir = getBackupTempDir();
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const sqlPath = path.join(tempDir, `pgdump_${timestamp}.sql`);
+  const zipPath = path.join(tempDir, `pgdump_${timestamp}.zip`);
+
+  try {
+    const dbConfig = parseDatabaseUrl();
+    const pgDumpBin = findPgBinPath('pg_dump');
+
+    const args = [
+      '-h', dbConfig.host,
+      '-p', dbConfig.port,
+      '-U', dbConfig.user,
+      '-d', dbConfig.database,
+      '-F', 'p',
+      '--clean',
+      '--if-exists',
+      '--no-owner',
+      '--no-acl',
+      '-f', sqlPath
+    ];
+
+    await new Promise((resolve, reject) => {
+      const proc = spawn(pgDumpBin, args, {
+        env: { ...process.env, PGPASSWORD: dbConfig.password },
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+
+      let stderr = '';
+      proc.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+
+      proc.on('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`pg_dump exited with code ${code}: ${stderr}`));
+      });
+
+      proc.on('error', (err) => {
+        if (err.code === 'ENOENT') {
+          reject(new Error(`pg_dump not found at "${pgDumpBin}". Please install PostgreSQL or set PG_BIN_DIR.`));
+        } else {
+          reject(err);
+        }
+      });
+    });
+
+    const removedSettings = sanitizePgDumpSql(sqlPath);
+    if (removedSettings.length > 0) {
+      console.warn(`Sanitized pg_dump SQL by removing unsupported settings: ${removedSettings.join(', ')}`);
+    }
+
+    const zipPassword = generateSecurePassword(16);
+    const output = fs.createWriteStream(zipPath);
+    const archive = archiver('zip-encrypted', {
+      zlib: { level: 6 },
+      // Windows File Explorer can extract ZipCrypto archives but not AES-encrypted ZIPs.
+      encryptionMethod: 'zip20',
+      password: zipPassword
+    });
+
+    await new Promise((resolve, reject) => {
+      output.on('close', resolve);
+      archive.on('error', reject);
+      archive.pipe(output);
+      archive.file(sqlPath, { name: `pgdump_${timestamp}.sql` });
+      archive.finalize();
+    });
+
+    res.setHeader('X-Backup-Password', zipPassword);
+    res.setHeader('Content-Disposition', `attachment; filename="pgdump_${timestamp}.zip"`);
+    res.setHeader('Content-Type', 'application/zip');
+
+    res.sendFile(zipPath, (err) => {
+      for (const f of [sqlPath, zipPath]) {
+        try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch (_) {}
+      }
+      if (err && !res.headersSent) {
+        res.status(500).json({ error: 'Error sending pg dump file' });
+      }
+    });
+  } catch (error) {
+    console.error('pg_dump export error:', error);
+    for (const f of [sqlPath, zipPath]) {
+      try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch (_) {}
+    }
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Failed to create PostgreSQL backup',
+        message: error.message
+      });
+    }
+  }
+};
+
+// ==================== PostgreSQL Full Dump Restore ====================
+
+const uploadSqlZip = multer({
+  storage: uploadStorage,
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/zip' || file.mimetype === 'application/x-zip-compressed' || (file.originalname || '').toLowerCase().endsWith('.zip')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only ZIP files are allowed'));
+    }
+  }
+});
+
+exports.uploadSqlFile = uploadSqlZip.single('file');
+
+exports.restorePgDump = async (req, res) => {
+  const uploadedFilePath = req.file ? req.file.path : null;
+  const extractDir = uploadedFilePath ? path.join(path.dirname(uploadedFilePath), `extract_pg_${Date.now()}`) : null;
+  const password = req.body?.password;
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ code: 400, message: 'No file uploaded. Please upload a ZIP file.' });
+    }
+
+    if (!password) {
+      return res.status(400).json({ code: 400, message: 'Password is required.' });
+    }
+
+    if (!fs.existsSync(extractDir)) {
+      fs.mkdirSync(extractDir, { recursive: true });
+    }
+
+    // Extract ZIP with password using 7z
+    try {
+      const sevenBin = require('7zip-bin').path7za;
+      const stream = extractFull(uploadedFilePath, extractDir, {
+        password,
+        $bin: sevenBin
+      });
+
+      await new Promise((resolve, reject) => {
+        stream.on('end', resolve);
+        stream.on('error', reject);
+      });
+    } catch (zipError) {
+      const errorMessage = zipError.message || String(zipError);
+      return res.status(400).json({
+        code: 400,
+        message: errorMessage.includes('password') || errorMessage.includes('Wrong password')
+          ? 'Incorrect password. Please check your backup password and try again.'
+          : 'Failed to extract ZIP file. Please verify the password is correct.',
+        error: errorMessage
+      });
+    }
+
+    // Find the .sql file inside the extracted archive
+    const sqlFiles = fs.readdirSync(extractDir).filter((f) => f.toLowerCase().endsWith('.sql'));
+    if (sqlFiles.length === 0) {
+      return res.status(400).json({ code: 400, message: 'No .sql file found inside the ZIP archive.' });
+    }
+
+    const sqlFilePath = path.join(extractDir, sqlFiles[0]);
+    const removedSettings = sanitizePgDumpSql(sqlFilePath);
+    if (removedSettings.length > 0) {
+      console.warn(`Sanitized restored pg_dump SQL by removing unsupported settings: ${removedSettings.join(', ')}`);
+    }
+
+    const dbConfig = parseDatabaseUrl();
+    const psqlBin = findPgBinPath('psql');
+
+    const args = [
+      '-h', dbConfig.host,
+      '-p', dbConfig.port,
+      '-U', dbConfig.user,
+      '-d', dbConfig.database,
+      '-v', 'ON_ERROR_STOP=1',
+      '--single-transaction',
+      '-f', sqlFilePath
+    ];
+
+    await new Promise((resolve, reject) => {
+      const proc = spawn(psqlBin, args, {
+        env: { ...process.env, PGPASSWORD: dbConfig.password },
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+
+      let stdout = '';
+      let stderr = '';
+      proc.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+      proc.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+
+      proc.on('close', (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`psql exited with code ${code}: ${stderr || stdout}`));
+      });
+
+      proc.on('error', (err) => {
+        if (err.code === 'ENOENT') {
+          reject(new Error(`psql not found at "${psqlBin}". Please install PostgreSQL or set PG_BIN_DIR.`));
+        } else {
+          reject(err);
+        }
+      });
+    });
+
+    res.json({ success: true, message: 'PostgreSQL database restored successfully.' });
+  } catch (error) {
+    console.error('pg restore error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: 'Failed to restore PostgreSQL backup',
+        message: error.message || 'PostgreSQL restore failed.'
+      });
+    }
+  } finally {
+    try {
+      if (uploadedFilePath && fs.existsSync(uploadedFilePath)) fs.unlinkSync(uploadedFilePath);
+      if (extractDir && fs.existsSync(extractDir)) fs.rmSync(extractDir, { recursive: true, force: true });
+    } catch (cleanupError) {
+      console.error('Error cleaning up pg restore temp files:', cleanupError);
+    }
+  }
+};
 
 exports.updateStatusAll = async (req, res) => {
   try {
