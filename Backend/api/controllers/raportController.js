@@ -1,4 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient, Prisma } = require("@prisma/client");
 const {
   Document,
   Packer,
@@ -31,6 +31,100 @@ const createPageBreakSection = () => ({
   properties: {},
   children: [new Paragraph({ children: [new TextRun({ break: 2 })] })],
 });
+
+const RAPORT_TYPE_SELECT = Prisma.sql`
+  rt."id",
+  rt."name",
+  rt."code",
+  rt."code_ru",
+  rt."code_uz",
+  rt."organization",
+  rt."requested_organization",
+  COALESCE(rt."data"->>'rank', '') AS "rank",
+  rt."signed_fio",
+  rt."signed_position",
+  rt."link",
+  rt."notes",
+  rt."executorId",
+  rt."data",
+  rt."createdAt",
+  rt."updatedAt"
+`;
+
+const RAPORT_TYPE_SELECT_WITH_EXECUTOR = Prisma.sql`
+  ${RAPORT_TYPE_SELECT},
+  CASE
+    WHEN e."id" IS NULL THEN NULL
+    ELSE json_build_object(
+      'id', e."id",
+      'first_name', e."first_name",
+      'last_name', e."last_name",
+      'father_name', e."father_name"
+    )
+  END AS executor
+`;
+
+const queryRaportTypesRaw = async ({
+  where = Prisma.sql`TRUE`,
+  includeExecutor = false,
+  limit,
+  offset,
+  orderByCreatedAtDesc = false,
+}) => {
+  const selectSql = includeExecutor
+    ? RAPORT_TYPE_SELECT_WITH_EXECUTOR
+    : RAPORT_TYPE_SELECT;
+  const joinSql = includeExecutor
+    ? Prisma.sql`LEFT JOIN "Admin" e ON e."id" = rt."executorId"`
+    : Prisma.empty;
+  const orderSql = orderByCreatedAtDesc
+    ? Prisma.sql`ORDER BY rt."createdAt" DESC`
+    : Prisma.empty;
+  const limitSql = typeof limit === "number" ? Prisma.sql`LIMIT ${limit}` : Prisma.empty;
+  const offsetSql = typeof offset === "number" ? Prisma.sql`OFFSET ${offset}` : Prisma.empty;
+
+  return prisma.$queryRaw(Prisma.sql`
+    SELECT ${selectSql}
+    FROM "RaportTypes" rt
+    ${joinSql}
+    WHERE ${where}
+    ${orderSql}
+    ${limitSql}
+    ${offsetSql}
+  `);
+};
+
+const countRaportTypesRaw = async (where = Prisma.sql`TRUE`) => {
+  const result = await prisma.$queryRaw(Prisma.sql`
+    SELECT COUNT(*)::int AS count
+    FROM "RaportTypes" rt
+    WHERE ${where}
+  `);
+
+  return result?.[0]?.count || 0;
+};
+
+const getRaportTypeByIdRaw = async (id) => {
+  const rows = await queryRaportTypesRaw({
+    where: Prisma.sql`rt."id" = ${id}`,
+    limit: 1,
+  });
+
+  return rows?.[0] || null;
+};
+
+const getRaportTypesByLinksRaw = async (links = []) => {
+  if (!links.length) {
+    return [];
+  }
+
+  return queryRaportTypesRaw({
+    where: Prisma.sql`(${Prisma.join(
+      links.map((link) => Prisma.sql`rt."link" ILIKE ${`%${link}%`}`),
+      Prisma.sql` OR `
+    )})`,
+  });
+};
 
 const buildCombinedDocument = (documents, { addPageBreakBetween = false } = {}) => {
   const validDocuments = documents.filter(
@@ -93,37 +187,25 @@ const selectRaportTypesByCodeOrFallback = async ({
   let raportTypes = [];
 
   if (normalizedCode) {
-    raportTypes = await prisma.raportTypes.findMany({
-      where: {
-        code: {
-          contains: normalizedCode,
-          mode: "insensitive",
-        },
-      },
+    raportTypes = await queryRaportTypesRaw({
+      where: Prisma.sql`rt."code" ILIKE ${`%${normalizedCode}%`}`,
     });
   }
 
   if (!raportTypes.length && normalizedName) {
-    raportTypes = await prisma.raportTypes.findMany({
-      where: {
-        OR: [
-          { link: { contains: normalizedName, mode: "insensitive" } },
-          { name: { contains: normalizedName, mode: "insensitive" } },
-          { code: { contains: normalizedName, mode: "insensitive" } },
-        ],
-      },
+    raportTypes = await queryRaportTypesRaw({
+      where: Prisma.sql`(
+        rt."link" ILIKE ${`%${normalizedName}%`}
+        OR rt."name" ILIKE ${`%${normalizedName}%`}
+        OR rt."code" ILIKE ${`%${normalizedName}%`}
+      )`,
     });
   }
 
   if (!raportTypes.length) {
     for (const link of fallbackLinks) {
-      raportTypes = await prisma.raportTypes.findMany({
-        where: {
-          link: {
-            contains: link,
-            mode: "insensitive",
-          },
-        },
+      raportTypes = await queryRaportTypesRaw({
+        where: Prisma.sql`rt."link" ILIKE ${`%${link}%`}`,
       });
       if (raportTypes.length) {
         break;
@@ -132,7 +214,7 @@ const selectRaportTypesByCodeOrFallback = async ({
   }
 
   if (!raportTypes.length) {
-    raportTypes = await prisma.raportTypes.findMany();
+    raportTypes = await queryRaportTypesRaw({});
   }
 
   return raportTypes;
@@ -264,9 +346,6 @@ const buildMalumotnomaQueryDoc = async ({
     select: { first_name: true, last_name: true },
   });
 
-  const conclusionCheck = await readConclusions();
-  const conclusion = conclusionCheck.find((item) => item.name === "Conclusion");
-
   const currentMonthRu = new Date().toLocaleString("ru-RU", {
     month: "long",
   });
@@ -277,23 +356,26 @@ const buildMalumotnomaQueryDoc = async ({
   const generator = name === "type9"
     ? generateQueryDocxSgbDedicated
     : generateQueryDocxGsbpDedicated;
+  const queryRecipientPosition = raportType?.signed_position || "звание";
+  const queryRecipientFullName = [raportType?.rank, raportType?.signed_fio]
+    .filter(Boolean)
+    .join(" ") || "Ф.И.О.";
+  const queryEditableText =
+    raportType?.data?.editableWord ||
+    "бу ерда узгартириш имкони булган маълумотлар киритилади";
 
   return generator("ф-4 заключение.docx", {
     leftHeader: `${getAdmin?.first_name?.slice(0, 1)?.toLowerCase() || ""}${getAdmin?.last_name?.slice(0, 1)?.toLowerCase() || ""}-1`,
     rightHeader: "Секретно \n Экз.№ 1",
-    rightHeader2: conclusion?.title ?? "У Т В Е Р Ж Д А Ю",
-    approverTitle: conclusion?.to_organization ?? "РУКОВОДИТЕЛЬ",
-    position: conclusion?.to_position ?? "Должность",
+    approverTitle: raportType?.requested_organization || "РУКОВОДИТЕЛЬ",
+    position: queryRecipientPosition,
     sign: "подпись",
-    fio: conclusion?.to_who ?? "Ф.И.О.",
+    fio: queryRecipientFullName,
     operatorName: "А.Ахмадов",
     chiefName: "А.Ахмадов",
     monthLabel: "«25» июля",
     year,
-    heading: raportType?.name || conclusion?.title_center || "Заключение",
-    intro1: conclusion?.first_input ?? "Текст вводится самостоятельно:",
     person: persons,
-    intro2: conclusion?.second_input ?? "Текст вводится самостоятельно.",
     agreedLabel,
     underline: false,
     operator: {
@@ -310,20 +392,14 @@ const buildMalumotnomaQueryDoc = async ({
     },
     recordNumbers: data?.regNumber || data?.recordNumber || "",
     recordNumber: data?.regNumber || data?.recordNumber || "",
-    queryExecutorName: getExecutorName || "Р¤.Р.Рћ.",
-    queryInitiatorName: formatQueryPersonDisplayName(data?.Initiator) || "Р¤.Р.Рћ.",
+    queryExecutorName: getExecutorName || "Ф.И.О.",
+    queryInitiatorName: formatQueryPersonDisplayName(data?.Initiator) || "Ф.И.О.",
     querySubjectBirthDate: formatQueryBirthDate(data?.birthDate, data?.birthYear),
-    queryRecipientRank: raportType?.signed_position || "звание",
-    queryRecipientName: conclusion?.to_who || raportType?.signed_fio || "Ф.И.О.",
+    queryRecipientRank: queryRecipientPosition,
+    queryRecipientName: queryRecipientFullName,
     querySourceText: persons?.[0]?.noteLabel || "",
-    queryEditableIntroText:
-      raportType?.data?.editableWord ||
-      conclusion?.first_input ||
-      "бу ерда узгартириш имкони булган маълумотлар киритилади",
-    queryEditableRequirementsText:
-      raportType?.data?.editableWord ||
-      conclusion?.second_input ||
-      "Бу ерда узгартириш имкони булган маълумотлар киритилади",
+    queryEditableIntroText: queryEditableText,
+    queryEditableRequirementsText: queryEditableText,
   });
 };
 
@@ -1881,15 +1957,7 @@ exports.generateSP = async (req, res) => {
     //   data?.recordNumber ? data?.recordNumber : ""
     // );
 
-    const raportTypes = await prisma.raportTypes.findMany({
-      where: {
-        OR: [
-          { link: { contains: "type1" } },
-          { link: { contains: "type2" } },
-          { link: { contains: "type3" } },
-        ],
-      },
-    });
+    const raportTypes = await getRaportTypesByLinksRaw(["type1", "type2", "type3"]);
     if (!raportTypes?.length) {
       return res
         .status(404)
@@ -2292,15 +2360,7 @@ exports.generateOPRaport = async (req, res) => {
     console.log(data);
 
 
-    const raportTypes = await prisma.raportTypes.findMany({
-      where: {
-        OR: [
-          { link: { contains: "type1" } },
-          { link: { contains: "type2" } },
-          { link: { contains: "type3" } },
-        ],
-      },
-    });
+    const raportTypes = await getRaportTypesByLinksRaw(["type1", "type2", "type3"]);
 
     const documents = [];
     const psychoRaportTypes =
@@ -2549,15 +2609,7 @@ exports.generateMalumotnomaList = async (req, res) => {
         ? data?.Initiator?.father_name.slice(0, 1) + "."
         : "");
 
-    const raportTypes = await prisma.raportTypes.findMany({
-      where: {
-        OR: [
-          { link: { contains: "type1" } },
-          { link: { contains: "type2" } },
-          { link: { contains: "type3" } },
-        ],
-      },
-    });
+    const raportTypes = await getRaportTypesByLinksRaw(["type1", "type2", "type3"]);
     if (!raportTypes?.length) {
       return res
         .status(404)
@@ -3657,15 +3709,7 @@ exports.generateRelativeList = async (req, res) => {
       };
     });
 
-    const raportTypes = await prisma.raportTypes.findMany({
-      where: {
-        OR: [
-          { link: { contains: "type1" } },
-          { link: { contains: "type2" } },
-          { link: { contains: "type3" } },
-        ],
-      },
-    });
+    const raportTypes = await getRaportTypesByLinksRaw(["type1", "type2", "type3"]);
 
     const documents = [];
     for (let i = 0; i < raportTypes?.length; i++) {
@@ -4752,7 +4796,7 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
           new TableCell({
             borders: noBorders,
             width: { size: 18, type: WidthType.PERCENTAGE },
-            children: [p([t(leftHeader)], { spacing: { after: 0 } })],
+            children: [p([t(leftHeader, { size: 20 })], { spacing: { after: 0 } })],
           }),
           new TableCell({
             borders: noBorders,
@@ -4773,7 +4817,7 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
             borders: noBorders,
             width: { size: 30, type: WidthType.PERCENTAGE },
             children: [
-              p([t("Секретно")], {
+              p([t("Секретно"),{size:20}], {
                 alignment: AlignmentType.RIGHT,
                 spacing: { after: 0 },
               }),
@@ -4784,66 +4828,23 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
     ],
   });
 
-  const recipientTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: noBorders,
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            borders: noBorders,
-            width: { size: 52, type: WidthType.PERCENTAGE },
-            children: [p([t("")], { spacing: { after: 0 } })],
-          }),
-          new TableCell({
-            borders: noBorders,
-            width: { size: 48, type: WidthType.PERCENTAGE },
-            children: [
-              p([t(recipientLine1, { bold: true })], { spacing: { after: 0 } }),
-              p([t(recipientLine2, { bold: true })], { spacing: { after: 0 } }),
-              new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                borders: noBorders,
-                rows: [
-                  new TableRow({
-                    children: [
-                      new TableCell({
-                        borders: noBorders,
-                        width: { size: 40, type: WidthType.PERCENTAGE },
-                        children: [
-                          p([
-                            t(queryRecipientRank || "звание", {
-                              bold: true,
-                              underline: {
-                                type: UnderlineType.SINGLE,
-                                color: "000000",
-                              },
-                            }),
-                          ], {
-                            spacing: { after: 0 },
-                          }),
-                        ],
-                      }),
-                      new TableCell({
-                        borders: noBorders,
-                        width: { size: 60, type: WidthType.PERCENTAGE },
-                        children: [
-                          p([t(queryRecipientName || fio || "Ф.И.О.", { bold: true })], {
-                            alignment: AlignmentType.RIGHT,
-                            spacing: { after: 0 },
-                          }),
-                        ],
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
+  const recipientBlockLayout = {
+    alignment: AlignmentType.LEFT,
+    spacing: { after: 0 },
+    indent: { left: 5613 },
+  };
+
+  const recipientBlock = [
+    p([t(recipientLine1, { bold: true })], {
+      ...recipientBlockLayout,
+    }),
+    p([t(recipientLine2, { bold: true })], {
+      ...recipientBlockLayout,
+    }),
+    p([t(queryRecipientName || fio || "Ф.И.О.", { bold: true })], {
+      ...recipientBlockLayout,
+    }),
+  ];
 
   const signatureTable = new Table({
     width: { size: 55, type: WidthType.PERCENTAGE },
@@ -4921,7 +4922,7 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
     headerTable,
     p([t("Экз.№1")], { alignment: AlignmentType.RIGHT, spacing: { after: 120 } }),
     p([t("")], { spacing: { after: 220 } }),
-    recipientTable,
+    ...recipientBlock,
     p([t("")], { spacing: { after: 240 } }),
     p(
       [
@@ -4943,10 +4944,12 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
     p([t(`По данным (${sourceText}).`)], {
       alignment: AlignmentType.JUSTIFIED,
       spacing: { after: 120 },
+      indent: { firstLine: 567 },
     }),
     p([t(`(${requirementsEditableText}).`)], {
       alignment: AlignmentType.JUSTIFIED,
       spacing: { after: 360 },
+      indent: { firstLine: 567 },
     }),
     signatureTable,
     p([t(signatureNote)], {
@@ -5010,9 +5013,8 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
       ...opts,
     });
 
-  const highlighted = (text, color, opts = {}) =>
+  const highlighted = (text, _color, opts = {}) =>
     textRun(text, {
-      ...(color ? { highlight: color } : {}),
       ...opts,
     });
 
@@ -5046,6 +5048,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+  const signatureNote = recordNumber ? `(${recordNumber})` : "(№)";
   const footerRecordText = recordNumber ? `№${recordNumber}-анкета` : "№-анкета";
   const footerExecutorName = queryExecutorName || data?.operator?.data1 || "Ф.И.О.";
   const footerInitiatorName = queryInitiatorName || "Ф.И.О.";
@@ -5096,70 +5099,23 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
     ],
   });
 
-  const recipientTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: noBorders,
-    rows: [
-      new TableRow({
-        children: [
-          new TableCell({
-            borders: noBorders,
-            width: { size: 52, type: WidthType.PERCENTAGE },
-            children: [blankParagraph()],
-          }),
-          new TableCell({
-            borders: noBorders,
-            width: { size: 48, type: WidthType.PERCENTAGE },
-            children: [
-              p([highlighted(recipientLine1, "yellow", { bold: true })], {
-                spacing: { after: 0 },
-              }),
-              p([highlighted(recipientLine2, "yellow", { bold: true })], {
-                spacing: { after: 0 },
-              }),
-              new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                borders: noBorders,
-                rows: [
-                  new TableRow({
-                    children: [
-                      new TableCell({
-                        borders: noBorders,
-                        width: { size: 40, type: WidthType.PERCENTAGE },
-                        children: [
-                          p([
-                            highlighted(queryRecipientRank || "звание", "yellow", {
-                              bold: true,
-                              underline: {
-                                type: UnderlineType.SINGLE,
-                                color: "000000",
-                              },
-                            }),
-                          ], {
-                            spacing: { after: 0 },
-                          }),
-                        ],
-                      }),
-                      new TableCell({
-                        borders: noBorders,
-                        width: { size: 60, type: WidthType.PERCENTAGE },
-                        children: [
-                          p([highlighted(queryRecipientName || fio || "Ф.И.О.", "yellow", { bold: true })], {
-                            alignment: AlignmentType.RIGHT,
-                            spacing: { after: 0 },
-                          }),
-                        ],
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-    ],
-  });
+  const recipientBlockLayout = {
+    alignment: AlignmentType.LEFT,
+    spacing: { after: 0 },
+    indent: { left: 5613 },
+  };
+
+  const recipientBlock = [
+    p([highlighted(recipientLine1, "yellow", { bold: true })], {
+      ...recipientBlockLayout,
+    }),
+    p([highlighted(recipientLine2, "yellow", { bold: true })], {
+      ...recipientBlockLayout,
+    }),
+    p([highlighted(queryRecipientName || fio || "Ф.И.О.", "yellow", { bold: true })], {
+      ...recipientBlockLayout,
+    }),
+  ];
 
   const signatureTable = new Table({
     width: { size: 55, type: WidthType.PERCENTAGE },
@@ -5286,33 +5242,6 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
     ],
   });
 
-  const legendParagraphs = [
-    p([textRun("Explanation of the colors shown in the above application:")], {
-      spacing: { after: 0 },
-    }),
-    p(
-      [
-        highlighted("GREEN", "green"),
-        textRun("  unchangeable entries"),
-      ],
-      { spacing: { after: 0 } }
-    ),
-    p(
-      [
-        highlighted("YELLOW", "yellow"),
-        textRun("  data retrieved from the database"),
-      ],
-      { spacing: { after: 0 } }
-    ),
-    p(
-      [
-        highlighted("RED", "red"),
-        textRun("  (Data that can be changed in the Requirements section of the program)"),
-      ],
-      { spacing: { after: 0 } }
-    ),
-  ];
-
   const children = [
     headerTable,
     p([highlighted("Экз.№1", "green")], {
@@ -5320,7 +5249,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
       spacing: { after: 120 },
     }),
     blankParagraph(),
-    recipientTable,
+    ...recipientBlock,
     p([textRun("")], { spacing: { after: 240 } }),
     p(
       [
@@ -5360,9 +5289,12 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
       indent: { firstLine: 567 },
     }),
     signatureTable,
-    footerTable,
+    p([textRun(signatureNote)], {
+      alignment: AlignmentType.RIGHT,
+      spacing: { before: 240, after: 0 },
+    }),
+    // footerTable,
     ...Array.from({ length: 20 }, () => blankParagraph()),
-    ...legendParagraphs,
   ];
 
   return {
@@ -20489,9 +20421,7 @@ function generateMalumotnoma(
 exports.getRaportTypeById = async (req, res) => {
   try {
     const { id } = req.params;
-    const raportType = await prisma.raportTypes.findUnique({
-      where: { id },
-    });
+    const raportType = await getRaportTypeByIdRaw(id);
 
     if (!raportType) {
       return res
@@ -20578,6 +20508,7 @@ exports.updateRaportType = async (req, res) => {
       code_uz,
       organization,
       requested_organization,
+      rank,
       signed_fio,
       signed_position,
       link,
@@ -20585,9 +20516,7 @@ exports.updateRaportType = async (req, res) => {
       data: payloadData = {},
     } = req.body;
 
-    const raportType = await prisma.raportTypes.findUnique({
-      where: { id },
-    });
+    const raportType = await getRaportTypeByIdRaw(id);
 
     if (!raportType) {
       return res
@@ -20595,8 +20524,9 @@ exports.updateRaportType = async (req, res) => {
         .json({ code: 404, message: "Raport type not found" });
     }
 
-    const updatedRaportType = await prisma.raportTypes.update({
+    const updatedRaportTypeRef = await prisma.raportTypes.update({
       where: { id },
+      select: { id: true },
       data: {
         name,
         code,
@@ -20610,6 +20540,10 @@ exports.updateRaportType = async (req, res) => {
         signed_position,
         data: {
           ...(raportType?.data && typeof raportType.data === "object" ? raportType.data : {}),
+          rank:
+            rank !== undefined
+              ? rank || ""
+              : raportType?.data?.rank || "",
           editableWord:
             payloadData?.editableWord !== undefined
               ? payloadData?.editableWord || ""
@@ -20617,6 +20551,8 @@ exports.updateRaportType = async (req, res) => {
         },
       },
     });
+
+    const updatedRaportType = await getRaportTypeByIdRaw(updatedRaportTypeRef.id);
 
     return res.status(200).json({
       code: 200,
@@ -20692,36 +20628,21 @@ exports.getRaportTypeList = async (req, res) => {
     }
 
     const filters = searchQuery
-      ? {
-        OR: [
-          { name: { contains: searchQuery, mode: "insensitive" } },
-          { code: { contains: searchQuery, mode: "insensitive" } },
-        ],
-      }
-      : {};
+      ? Prisma.sql`(
+        rt."name" ILIKE ${`%${searchQuery}%`}
+        OR rt."code" ILIKE ${`%${searchQuery}%`}
+      )`
+      : Prisma.sql`TRUE`;
 
-    const raportTypes = await prisma.raportTypes.findMany({
-      skip: (pageNumber - 1) * pageSize,
-      include: {
-        executor: {
-          select: {
-            id: true,
-            first_name: true,
-            last_name: true,
-            father_name: true,
-          },
-        },
-      },
-      take: pageSize,
+    const raportTypes = await queryRaportTypesRaw({
       where: filters,
-      orderBy: {
-        createdAt: "desc",
-      },
+      includeExecutor: true,
+      limit: pageSize,
+      offset: (pageNumber - 1) * pageSize,
+      orderByCreatedAtDesc: true,
     });
 
-    const totalRaportTypes = await prisma.raportTypes.count({
-      where: filters,
-    });
+    const totalRaportTypes = await countRaportTypesRaw(filters);
 
     const totalPages = Math.ceil(totalRaportTypes / pageSize);
 
@@ -20790,18 +20711,22 @@ exports.createRaportType = async (req, res) => {
       code_uz,
       organization,
       requested_organization,
+      rank,
+      signed_fio,
+      signed_position,
       link,
       notes,
       data: payloadData = {},
     } = req.body;
 
-    const raportType = await prisma.raportTypes.findFirst({
-      where: {
-        code: code,
-        code_ru: code_ru,
-        code_uz: code_uz,
-      },
-    });
+    const raportType = (await queryRaportTypesRaw({
+      where: Prisma.sql`
+        rt."code" = ${code}
+        AND rt."code_ru" = ${code_ru}
+        AND rt."code_uz" = ${code_uz}
+      `,
+      limit: 1,
+    }))?.[0];
 
     if (raportType) {
       return res
@@ -20816,10 +20741,13 @@ exports.createRaportType = async (req, res) => {
       code_uz,
       organization,
       requested_organization,
+      signed_fio,
+      signed_position,
       executorId: req.userId,
       link,
       notes,
       data: {
+        rank: rank || "",
         editableWord: payloadData?.editableWord || "",
       },
     };
@@ -20831,9 +20759,12 @@ exports.createRaportType = async (req, res) => {
         .json({ code: 400, message: validate.error.message });
     }
 
-    const newRaportType = await prisma.raportTypes.create({
+    const newRaportTypeRef = await prisma.raportTypes.create({
+      select: { id: true },
       data: data,
     });
+
+    const newRaportType = await getRaportTypeByIdRaw(newRaportTypeRef.id);
 
     return res.status(201).json({
       code: 201,

@@ -82,7 +82,7 @@ const GeneralField = props => {
 							</Form.Item>
 						</Col>
 						<Col xs={24} sm={24} md={12}>
-							<Form.Item name="signed_fio" label={t("full_name")}>
+							<Form.Item name="rank" label={t("rank")}>
 								<Input
 									className="w-100"
 									tabIndex={7}
@@ -97,7 +97,7 @@ const GeneralField = props => {
 							</Form.Item>
 						</Col>
 						<Col xs={24} sm={24} md={12}>
-							<Form.Item name="signed_position" label={t("position")}>
+							<Form.Item name="signed_fio" label={t("full_name")}>
 								<Input
 									className="w-100"
 									tabIndex={8}
@@ -112,7 +112,7 @@ const GeneralField = props => {
 							</Form.Item>
 						</Col>
 						<Col xs={24} sm={24} md={12}>
-							<Form.Item name="notes" label={t("notes")}>
+							<Form.Item name="signed_position" label={t("position")}>
 								<Input
 									className="w-100"
 									tabIndex={9}
@@ -126,12 +126,27 @@ const GeneralField = props => {
 								/>
 							</Form.Item>
 						</Col>
+						<Col xs={24} sm={24} md={12}>
+							<Form.Item name="notes" label={t("notes")}>
+								<Input
+									className="w-100"
+									tabIndex={10}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											e.preventDefault();
+											const nextInput = document.querySelector("[tabindex=\"10\"]");
+											if (nextInput) nextInput.focus();
+										}
+									}}
+								/>
+							</Form.Item>
+						</Col>
 						<Col xs={24} sm={24} md={24}>
 							<Form.Item name="editable_word" label={t("editable_word")}>
 								<Input.TextArea
 									className="w-100"
 									rows={4}
-									tabIndex={10}
+									tabIndex={11}
 								/>
 							</Form.Item>
 						</Col>

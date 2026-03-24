@@ -457,6 +457,7 @@
 	"dashboard_otk1_loading_error": "Failed to load OTK-1 data",
 	"uploading_file": "Uploading file",
 	"processing_file": "Processing file",
+	"rank": "Rank",
 	"finalizing_upload": "Finalizing upload",
 	"upload_cancelled": "Upload cancelled",
 	"cancel_upload": "Cancel Upload",

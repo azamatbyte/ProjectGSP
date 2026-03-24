@@ -56,6 +56,7 @@ const RaportForm = (props) => {
         description: response?.data?.data?.description,
         organization: response?.data?.data?.organization,
         requested_organization: response?.data?.data?.requested_organization,
+        rank: response?.data?.data?.rank,
         signed_fio: response?.data?.data?.signed_fio,
         signed_position: response?.data?.data?.signed_position,
         notes: response?.data?.data?.notes,
