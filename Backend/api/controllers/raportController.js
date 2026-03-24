@@ -360,6 +360,9 @@ const buildMalumotnomaQueryDoc = async ({
   const queryRecipientFullName = [raportType?.rank, raportType?.signed_fio]
     .filter(Boolean)
     .join(" ") || "Ф.И.О.";
+  const queryEditableTextNotes =
+    raportType?.notes ||
+    "бу ерда узгартириш имкони булган маълумотлар киритилади";
   const queryEditableText =
     raportType?.data?.editableWord ||
     "бу ерда узгартириш имкони булган маълумотлар киритилади";
@@ -398,7 +401,7 @@ const buildMalumotnomaQueryDoc = async ({
     queryRecipientRank: queryRecipientPosition,
     queryRecipientName: queryRecipientFullName,
     querySourceText: persons?.[0]?.noteLabel || "",
-    queryEditableIntroText: queryEditableText,
+    queryEditableIntroText: queryEditableTextNotes,
     queryEditableRequirementsText: queryEditableText,
   });
 };
@@ -4772,7 +4775,7 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
     ? subjectExtras.join(", ")
     : "узини маълумотлари";
   const subjectLineBase = primaryPerson?.fullName || "__________________________";
-  const subjectLine = `${subjectLineBase}, ${birthDate} г.р., уроженец ${birthPlace} (${subjectDetails}).`;
+  const subjectLine = `${subjectLineBase}, ${birthDate} г.р., уроженец ${birthPlace} (${subjectDetails})`;
   const sourceText =
     querySourceText || primaryPerson?.noteLabel || "компрматериалдаги маълумотлар";
   const introEditableText =
@@ -4785,7 +4788,7 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-  const signatureNote = recordNumber ? `(анкета № ${recordNumber})` : "(анкета №)";
+  const signatureNote = recordNumber ? `(№ ${recordNumber})` : "(№)";
 
   const headerTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -4817,7 +4820,7 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
             borders: noBorders,
             width: { size: 30, type: WidthType.PERCENTAGE },
             children: [
-              p([t("Секретно"),{size:20}], {
+              p([t("Секретно", { size: 20 })], {
                 alignment: AlignmentType.RIGHT,
                 spacing: { after: 0 },
               }),
@@ -4920,7 +4923,7 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
 
   const children = [
     headerTable,
-    p([t("Экз.№1")], { alignment: AlignmentType.RIGHT, spacing: { after: 120 } }),
+    p([t("Экз.№1")], { size: 20, alignment: AlignmentType.RIGHT, spacing: { after: 120 } }),
     p([t("")], { spacing: { after: 220 } }),
     ...recipientBlock,
     p([t("")], { spacing: { after: 240 } }),
@@ -4936,7 +4939,7 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
         indent: { firstLine: 567 },
       }
     ),
-    p([t(subjectLine, { bold: true })], {
+    p([t(subjectLine)], {
       alignment: AlignmentType.JUSTIFIED,
       indent: { left: 2832 },
       spacing: { after: 160 },
@@ -5013,6 +5016,8 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
       ...opts,
     });
 
+  const t = textRun;
+
   const highlighted = (text, _color, opts = {}) =>
     textRun(text, {
       ...opts,
@@ -5063,11 +5068,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
           new TableCell({
             borders: noBorders,
             width: { size: 18, type: WidthType.PERCENTAGE },
-            children: [
-              p([highlighted(leftHeader, "yellow")], {
-                spacing: { after: 0 },
-              }),
-            ],
+            children: [p([t(leftHeader, { size: 20 })], { spacing: { after: 0 } })],
           }),
           new TableCell({
             borders: noBorders,
@@ -5075,7 +5076,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
             children: [
               p(
                 [
-                  highlighted("Подлежит возврату", "green", {
+                  t("Подлежит возврату", {
                     bold: true,
                     underline: { type: UnderlineType.SINGLE, color: "000000" },
                   }),
@@ -5088,7 +5089,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
             borders: noBorders,
             width: { size: 30, type: WidthType.PERCENTAGE },
             children: [
-              p([highlighted("Секретно", "green")], {
+              p([t("Секретно", { size: 20 })], {
                 alignment: AlignmentType.RIGHT,
                 spacing: { after: 0 },
               }),
@@ -5174,6 +5175,18 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
           }),
         ],
       }),
+      new TableRow({
+        children: [
+          new TableCell({
+            borders: noBorders,
+            children: [
+              p([t(head?.time || "«____» __________ 20__ года")], {
+                spacing: { after: 0 },
+              }),
+            ],
+          }),
+        ],
+      }),
     ],
   });
 
@@ -5244,7 +5257,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
 
   const children = [
     headerTable,
-    p([highlighted("Экз.№1", "green")], {
+    p([highlighted("Экз.№1", { size: 20 })], {
       alignment: AlignmentType.RIGHT,
       spacing: { after: 120 },
     }),
@@ -5262,7 +5275,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
         highlighted(" г.р., уроженец ", "yellow"),
         highlighted(birthPlace, "yellow"),
         highlighted(", который с ____ года работает в должности ", "green"),
-        highlighted(`(${workplace})`, "yellow"),
+        highlighted(`${workplace}`, "yellow"),
         highlighted(", получена следующая информация.", "green"),
       ],
       {
