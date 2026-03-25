@@ -375,6 +375,8 @@ exports.formOverdueTrend = async (req, res) => {
       const endDate = new Date(bucket.endDate);
       endDate.setUTCHours(23, 59, 59, 999);
 
+      // AND "completeStatus" = 'WAITING'
+          // AND LOWER("accessStatus") = LOWER('ПРОВЕРКА')
       const groups = await prisma.$queryRaw`
         SELECT
           BTRIM(COALESCE("form_reg", '')) AS form_key,
@@ -383,8 +385,7 @@ exports.formOverdueTrend = async (req, res) => {
         WHERE "regDate" IS NOT NULL
           AND "regDate" >= ${startDate}
           AND "regDate" <= ${endDate}
-          AND "completeStatus" = 'WAITING'
-          AND LOWER("accessStatus") = LOWER('ПРОВЕРКА')
+          AND "expiredDate" IS NOT NULL
           AND ("expiredDate" < ${todayStartUTC})
           AND BTRIM(COALESCE("form_reg", '')) IN (${Prisma.join(validForms)})
         GROUP BY form_key
@@ -751,7 +752,7 @@ exports.latestTransactions = async (req, res) => {
             executorId: { in: adminIds },
             ...(regDateWhere ? { regDate: regDateWhere } : {}),
             ...(formRegWhere ? { form_reg: formRegWhere } : {}),
-            expired: {
+            expiredDate: {
               not: null,
               lt: todayStartUTC,
             },
