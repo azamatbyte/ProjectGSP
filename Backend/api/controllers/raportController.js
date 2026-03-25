@@ -20,6 +20,12 @@ const { v4: uuidv4 } = require("uuid");
 const { RaportTypeSchema } = require("../helpers/validator");
 const { readConclusions } = require("./conclusionController");
 const { MODEL_TYPE, SERVER_URL, MODEL_STATUS, ACCESS_STATUS } = require("../helpers/constants");
+const {
+  buildQuerySignedListBlocks: buildQuerySignedListBlocksHelper,
+  formatQuerySignerDisplayName: formatSignerDisplayName,
+  getQueryApprovalLabelMode,
+  splitQuerySigners,
+} = require("../helpers/querySignerLayout");
 const safeString = require("../helpers/safeString");
 const { checkRegistrationNumber } = require("./registerController");
 const role = require("../middleware/role");
@@ -220,9 +226,6 @@ const selectRaportTypesByCodeOrFallback = async ({
   return raportTypes;
 };
 
-const formatSignerDisplayName = (item) =>
-  `${item?.lastName ? item.lastName : ""} ${item?.firstName ? item.firstName.slice(0, 1) + "." : ""}${item?.fatherName ? item.fatherName.slice(0, 1) + "." : ""}`.trim();
-
 const formatQueryPersonDisplayName = (item) => {
   const lastName = item?.last_name || item?.lastName || "";
   const firstName = item?.first_name || item?.firstName || "";
@@ -231,7 +234,76 @@ const formatQueryPersonDisplayName = (item) => {
   return `${lastName}${firstName ? ` ${firstName.slice(0, 1)}.` : ""}${fatherName ? `${fatherName.slice(0, 1)}.` : ""}`.trim();
 };
 
-const buildQuerySignerLines = (signList, currentMonthRu, year) =>
+const buildQuerySignerHeadData = (signer, currentMonthRu, year) => {
+  const headLines = [signer?.position, signer?.workplace]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+
+  return {
+    data: headLines.join(", "),
+    rank: String(signer?.rank || "").trim(),
+    data1: formatSignerDisplayName(signer),
+    time: `«____» ${currentMonthRu} ${year} года`,
+  };
+};
+
+const buildQueryRecipientData = (signer, raportType) => {
+  const signerName = formatSignerDisplayName(signer);
+  const fallbackName = [raportType?.rank, raportType?.signed_fio]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const signerNameWithRank = [signer?.rank, signerName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return {
+    approverTitle:
+      String(signer?.workplace || "").trim()
+      || raportType?.requested_organization
+      || "РУКОВОДИТЕЛЬ",
+    position:
+      String(signer?.position || "").trim()
+      || raportType?.signed_position
+      || "звание",
+    fullName: signerNameWithRank || fallbackName || "Ф.И.О.",
+  };
+};
+
+const buildQuerySignedListBlocks = (
+  signList = [],
+  dateText = "«____» __________ 20__ года",
+  { approvalLabelMode = "first" } = {}
+) =>
+  (Array.isArray(signList) ? signList : [])
+    .filter(Boolean)
+    .map((item, idx, arr) => {
+      const shouldAddApprovalLabel =
+        approvalLabelMode === "none"
+          ? false
+          : approvalLabelMode === "afterFirst"
+            ? idx >= 1
+          : approvalLabelMode === "all"
+          ? true
+          : approvalLabelMode === "first"
+            ? idx === 0
+            : idx === arr.length - 1;
+      const lines = [
+        shouldAddApprovalLabel ? "«СОГЛАСОВАНО»" : "",
+        String(item?.position || "").trim(),
+        String(item?.workplace || "").trim(),
+        [String(item?.rank || "").trim(), formatSignerDisplayName(item)]
+          .filter(Boolean)
+          .join("     ")
+          .trim(),
+        dateText,
+      ].filter(Boolean);
+
+      return lines.join("\n");
+    });
+
+const buildQuerySignerLinesLegacy = (signList, currentMonthRu, year) =>
   signList.map((item, idx) => {
     const nameLine = formatSignerDisplayName(item);
     const positionLine = item?.position ? item.position : "";
@@ -243,6 +315,30 @@ const buildQuerySignerLines = (signList, currentMonthRu, year) =>
     }
 
     return `${positionLine}\n${workPlaceLine}\n${rankLine}     ${nameLine}\n«____» ${currentMonthRu} ${year} года\n`;
+  });
+
+const buildQuerySignerLines = (
+  signList,
+  currentMonthRu,
+  year,
+  { approvalLabelMode = "last" } = {}
+) =>
+  signList.map((item, idx) => {
+    const nameLine = formatSignerDisplayName(item);
+    const positionLine = item?.position ? item.position : "";
+    const workPlaceLine = item?.workplace ? item.workplace : "";
+    const rankLine = item?.rank ? item.rank : "";
+    const shouldAddApprovalLabel =
+      approvalLabelMode === "afterFirst"
+        ? idx >= 1
+        : approvalLabelMode === "all"
+        ? true
+        : approvalLabelMode === "first"
+          ? idx === 0
+          : idx === signList.length - 1;
+    const approvalLabel = shouldAddApprovalLabel ? "«СОГЛАСОВАНО»\n" : "";
+
+    return `${approvalLabel}${positionLine}\n${workPlaceLine}\n${rankLine}     ${nameLine}\n«____» ${currentMonthRu} ${year} года`;
   });
 
 const buildQueryPersonPayload = async (data) => {
@@ -329,6 +425,8 @@ const formatQueryBirthDate = (birthDate, birthYear) => {
 const buildMalumotnomaQueryDoc = async ({
   data,
   reqUserId,
+  headerSigner,
+  agreedSigners,
   signList,
   raportType,
   name,
@@ -350,8 +448,18 @@ const buildMalumotnomaQueryDoc = async ({
     month: "long",
   });
   const year = new Date().getFullYear();
-  const signListFormatted = signList.map(formatSignerDisplayName);
-  const agreedLabel = buildQuerySignerLines(signList, currentMonthRu, year).slice(1);
+  const approvalLabelMode = getQueryApprovalLabelMode(signList);
+
+  const signedListDateText = `«____» ${currentMonthRu} ${year} года`;
+  const agreedLabel = buildQuerySignedListBlocksHelper(agreedSigners, signedListDateText, {
+    approvalLabelMode,
+  });
+  const headSignerData = buildQuerySignerHeadData(
+    headerSigner,
+    currentMonthRu,
+    year
+  );
+  const recipientData = buildQueryRecipientData(headerSigner, raportType);
   const persons = await buildQueryPersonPayload(data);
   const generator = name === "type9"
     ? generateQueryDocxSgbDedicated
@@ -367,7 +475,7 @@ const buildMalumotnomaQueryDoc = async ({
     raportType?.data?.editableWord ||
     "бу ерда узгартириш имкони булган маълумотлар киритилади";
 
-  return generator("ф-4 заключение.docx", {
+  return generator("запрос.docx", {
     leftHeader: `${getAdmin?.first_name?.slice(0, 1)?.toLowerCase() || ""}${getAdmin?.last_name?.slice(0, 1)?.toLowerCase() || ""}-1`,
     rightHeader: "Секретно \n Экз.№ 1",
     approverTitle: raportType?.requested_organization || "РУКОВОДИТЕЛЬ",
@@ -387,19 +495,17 @@ const buildMalumotnomaQueryDoc = async ({
       data1: `${getExecutorName}`,
       time: `«____» ${currentMonthRu} ${year} года`,
     },
-    head: {
-      data: `${(signList[0]?.position ?? "Начальник подразделения")}, ${signList[0]?.workplace ?? "Должность"}`,
-      rank: `${signList[0]?.rank ?? "Должность"}`,
-      data1: `${signListFormatted[0] || ""}`,
-      time: `«____» ${currentMonthRu} ${year} года`,
-    },
+    head: headSignerData,
+    approverTitle: recipientData.approverTitle,
+    position: recipientData.position,
+    fio: recipientData.fullName,
     recordNumbers: data?.regNumber || data?.recordNumber || "",
     recordNumber: data?.regNumber || data?.recordNumber || "",
     queryExecutorName: getExecutorName || "Ф.И.О.",
     queryInitiatorName: formatQueryPersonDisplayName(data?.Initiator) || "Ф.И.О.",
     querySubjectBirthDate: formatQueryBirthDate(data?.birthDate, data?.birthYear),
-    queryRecipientRank: queryRecipientPosition,
-    queryRecipientName: queryRecipientFullName,
+    queryRecipientRank: recipientData.position,
+    queryRecipientName: recipientData.fullName,
     querySourceText: persons?.[0]?.noteLabel || "",
     queryEditableIntroText: queryEditableTextNotes,
     queryEditableRequirementsText: queryEditableText,
@@ -475,6 +581,7 @@ const generateDedicatedQueryRaportSGB = async (req, res, fixedName) => {
     if (!signList.length) {
       return res.status(404).json({ code: 404, message: "signList not found" });
     }
+    const { headerSigner, agreedSigners } = splitQuerySigners(signList);
 
     const data = await loadQueryRaportSourceData(id);
 
@@ -496,6 +603,8 @@ const generateDedicatedQueryRaportSGB = async (req, res, fixedName) => {
     const queryDoc = await buildMalumotnomaQueryDoc({
       data,
       reqUserId: req.userId,
+      headerSigner,
+      agreedSigners,
       signList,
       raportType: raportTypes[0],
       name: fixedName,
@@ -565,6 +674,7 @@ const generateDedicatedQueryRaportGSBP = async (req, res, fixedName) => {
     if (!signList.length) {
       return res.status(404).json({ code: 404, message: "signList not found" });
     }
+    const { headerSigner, agreedSigners } = splitQuerySigners(signList);
 
     const data = await loadQueryRaportSourceData(id);
 
@@ -586,6 +696,8 @@ const generateDedicatedQueryRaportGSBP = async (req, res, fixedName) => {
     const queryDoc = await buildMalumotnomaQueryDoc({
       data,
       reqUserId: req.userId,
+      headerSigner,
+      agreedSigners,
       signList,
       raportType: raportTypes[0],
       name: fixedName,
@@ -4719,7 +4831,7 @@ function generateQueryDocxGsbp(outputPath = "ф-4 заключение.docx", da
   return generateConclusionDocxF4(outputPath, { ...data });
 }
 
-function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»СЋС‡РµРЅРёРµ.docx", data = {}) {
+function generateQueryDocxSgbDedicated(outputPath = "запрос.docx", data = {}) {
   const {
     leftHeader = "бр-1",
     approverTitle = "",
@@ -4732,6 +4844,8 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
     queryRecipientRank = "звание",
     queryRecipientName = "Ф.И.О.",
     querySourceText = "",
+    agreedLabel = [],
+    signedListDateText = "«____» __________ 20__ года",
     queryEditableIntroText = "бу ерда узгартириш имкони булган маълумотлар киритилади",
     queryEditableRequirementsText = "Бу ерда узгартириш имкони булган маълумотлар киритилади",
   } = data;
@@ -4823,6 +4937,10 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
               p([t("Секретно", { size: 20 })], {
                 alignment: AlignmentType.RIGHT,
                 spacing: { after: 0 },
+              }),
+              p([t("Экз.№2", { size: 20 })], {
+                alignment: AlignmentType.RIGHT,
+                spacing: { after: 120 },
               }),
             ],
           }),
@@ -4923,7 +5041,7 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
 
   const children = [
     headerTable,
-    p([t("Экз.№1")], { size: 20, alignment: AlignmentType.RIGHT, spacing: { after: 120 } }),
+
     p([t("")], { spacing: { after: 220 } }),
     ...recipientBlock,
     p([t("")], { spacing: { after: 240 } }),
@@ -4954,7 +5072,25 @@ function generateQueryDocxSgbDedicated(outputPath = "С„-4 Р·Р°РєР»С�
       spacing: { after: 360 },
       indent: { firstLine: 567 },
     }),
-    signatureTable,
+    ...(() => {
+      const agreedBlock = (Array.isArray(agreedLabel) ? agreedLabel : [agreedLabel])
+        .filter((block) => block !== undefined && block !== null && String(block).trim())
+        .flatMap((block) =>
+          String(block)
+            .replace(/\r/g, "")
+            .split("\n")
+            .filter((line) => line !== "")
+            .map((line) =>
+              p([t(line, { bold: !line.includes("года") })], {
+                spacing: { line: 280, after: 0 },
+              })
+            )
+        );
+
+      return agreedBlock.length
+        ? [p([t("")], { spacing: { before: 120, after: 120 } }), ...agreedBlock]
+        : [];
+    })(),
     p([t(signatureNote)], {
       alignment: AlignmentType.RIGHT,
       spacing: { before: 240, after: 0 },
@@ -4988,6 +5124,8 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
     queryRecipientRank = "звание",
     queryRecipientName = "Ф.И.О.",
     querySourceText = "",
+    agreedLabel = [],
+    signedListDateText = "«____» __________ 20__ года",
     queryEditableRequirementsText = "Бу ерда узгартириш имкони булган маълумотлар киритиб куйилади",
     queryExecutorName = "Ф.И.О.",
     queryInitiatorName = "Ф.И.О.",
@@ -5092,6 +5230,10 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
               p([t("Секретно", { size: 20 })], {
                 alignment: AlignmentType.RIGHT,
                 spacing: { after: 0 },
+              }),
+              p([t("Экз.№2", { size: 20 })], {
+                alignment: AlignmentType.RIGHT,
+                spacing: { after: 120 },
               }),
             ],
           }),
@@ -5255,12 +5397,25 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
     ],
   });
 
+  const agreedBlockSource = Array.isArray(agreedLabel)
+    ? agreedLabel
+    : [agreedLabel];
+  const agreedBlock = agreedBlockSource
+    .filter((block) => block !== undefined && block !== null && String(block).trim())
+    .flatMap((block) =>
+      String(block)
+        .replace(/\r/g, "")
+        .split("\n")
+        .filter((line) => line !== "")
+        .map((line) =>
+          p([highlighted(line, "yellow", { bold: !line.includes("года") })], {
+            spacing: { line: 280, after: 0 },
+          })
+        )
+    );
+
   const children = [
     headerTable,
-    p([highlighted("Экз.№1", { size: 20 })], {
-      alignment: AlignmentType.RIGHT,
-      spacing: { after: 120 },
-    }),
     blankParagraph(),
     ...recipientBlock,
     p([textRun("")], { spacing: { after: 240 } }),
@@ -5301,7 +5456,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
       spacing: { line: 324, after: 360 },
       indent: { firstLine: 567 },
     }),
-    signatureTable,
+    ...(agreedBlock.length ? [blankParagraph(), ...agreedBlock] : []),
     p([textRun(signatureNote)], {
       alignment: AlignmentType.RIGHT,
       spacing: { before: 240, after: 0 },

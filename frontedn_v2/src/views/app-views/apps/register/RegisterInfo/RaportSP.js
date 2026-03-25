@@ -107,6 +107,7 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
   const [signedListOptions, setSignedListOptions] = useState([]);
   const [signedListFetching, setSignedListFetching] = useState(false);
   const [selectedValues, setSelectedValues] = useState([]);
+  const [selectedSignerOptions, setSelectedSignerOptions] = useState([]);
 
   const [isModalVisibleMalumotnoma, setIsModalVisibleMalumotnoma] =
     useState(false);
@@ -801,8 +802,32 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
   };
 
   const handleSignedListChange = (values, options) => {
+    const normalizedOptions = (Array.isArray(options) ? options : [options]).filter(Boolean);
+    const nextSelectedSignerOptions = values.map((value) => {
+      const fromCurrentOptions = normalizedOptions.find((item) => item?.value === value);
+      const fromPreviousOptions = selectedSignerOptions.find((item) => item?.value === value);
+      const fromLoadedOptions = signedListOptions.find((item) => item?.value === value);
+      const matchedOption = fromCurrentOptions || fromPreviousOptions || fromLoadedOptions;
+
+      return matchedOption
+        ? { value: matchedOption.value, label: matchedOption.label }
+        : { value, label: value };
+    });
+
     setSelectedValues(values);
+    setSelectedSignerOptions(nextSelectedSignerOptions);
   };
+
+  const queryHeaderSigner = selectedSignerOptions[0] || null;
+  const querySignedListSigners =
+    selectedSignerOptions.length > 1
+      ? selectedSignerOptions.slice(1)
+      : queryHeaderSigner
+        ? [queryHeaderSigner]
+        : [];
+  const shouldShowQuerySignerHint =
+    selectedValues.length > 0 &&
+    (raport === "type8" || raport === "type9" || malumotnomaRaport === "type10" || malumotnomaRaport === "type11");
   const upkDisplayData = {
     passport: keepExistingOrDefault(type5Data?.passport, avr?.passport),
     residence: type5Data?.residence || "",
@@ -890,18 +915,20 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
             raport === "type7" ||
             raport === "type8" ||
             raport === "type9") && (
-            <Select
-              mode="multiple"
-              showSearch
-              style={{ width: "100%", marginBottom: 10 }}
-              optionFilterProp="children"
-              onChange={handleSignedListChange}
-              onSearch={debouncedFetchSignedList}
-              loading={signedListFetching}
-              filterOption={false}
-              options={signedListOptions}
-              value={selectedValues}
-            />
+            <>
+              <Select
+                mode="multiple"
+                showSearch
+                style={{ width: "100%", marginBottom: 10 }}
+                optionFilterProp="children"
+                onChange={handleSignedListChange}
+                onSearch={debouncedFetchSignedList}
+                loading={signedListFetching}
+                filterOption={false}
+                options={signedListOptions}
+                value={selectedValues}
+              />
+            </>
           )}
         </Modal>
         <Modal
