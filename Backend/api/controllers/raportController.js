@@ -477,7 +477,7 @@ const buildMalumotnomaQueryDoc = async ({
 
   return generator("запрос.docx", {
     leftHeader: `${getAdmin?.first_name?.slice(0, 1)?.toLowerCase() || ""}${getAdmin?.last_name?.slice(0, 1)?.toLowerCase() || ""}-1`,
-    rightHeader: "Секретно \n Экз.№ 1",
+    rightHeader: "Секретно \n Экз.№_",
     approverTitle: raportType?.requested_organization || "РУКОВОДИТЕЛЬ",
     position: queryRecipientPosition,
     sign: "подпись",
@@ -1026,7 +1026,7 @@ exports.generateReport = async (req, res) => {
 
     const doc = checkModel.length == 1 ? generateConclusionDocx("ф-4 заключение.docx", {
       leftHeader: `${getAdmin?.first_name.slice(0, 1).toLowerCase()}${getAdmin?.last_name?.slice(0, 1).toLowerCase()}-1`,
-      rightHeader: "Секретно \n Экз.№ 1",
+      rightHeader: "Секретно \n Экз.№_",
       rightHeader2: conclusion?.title ?? "У Т В Е Р Ж Д А Ю",
       approverTitle: conclusion?.to_organization ?? "РУКОВОДИТЕЛЬ",
       position: conclusion?.to_position ?? "Должность",
@@ -1057,7 +1057,7 @@ exports.generateReport = async (req, res) => {
       recordNumbers,
     }) : generateConclusionDocxF4("ф-4 заключение.docx", {
       leftHeader: `${getAdmin?.first_name.slice(0, 1).toLowerCase()}${getAdmin?.last_name?.slice(0, 1).toLowerCase()}-1`,
-      rightHeader: "Секретно \n Экз.№ 1",
+      rightHeader: "Секретно \n Экз.№_",
       rightHeader2: conclusion?.title ?? "У Т В Е Р Ж Д А Ю",
       approverTitle: conclusion?.to_organization ?? "Руководитель",
       position: conclusion?.to_position ?? "Должность",
@@ -3953,7 +3953,7 @@ function formatDate(date) {
 function generateConclusionDocx(outputPath = "ф-4 заключение.docx", data = {}) {
   const {
     leftHeader = "бш-1",
-    rightHeader = "Секретно \n Экз.№ 1",
+    rightHeader = "Секретно \n Экз.№_",
     rightHeader2 = "У Т В Е Р Ж Д А Ю",
     approverTitle = "Руководитель",
     position = "Должность",
@@ -4416,7 +4416,7 @@ function generateConclusionDocx(outputPath = "ф-4 заключение.docx", d
 function generateConclusionDocxF4(outputPath = "ф-4 заключение.docx", data = {}) {
   const {
     leftHeader = "бш-1",
-    rightHeader = "Секретно \n Экз.№ 1",
+    rightHeader = "Секретно \n Экз.№_",
     rightHeader2 = "У Т В Е Р Ж Д А Ю",
     approverTitle = "Руководитель",
     position = "Должность",
@@ -4875,8 +4875,8 @@ function generateQueryDocxSgbDedicated(outputPath = "запрос.docx", data = 
 
   const primaryPerson = person?.[0] || {};
   const recipientLine1 = approverTitle
-    ? `Начальнику ${approverTitle}`
-    : "Начальнику ______________";
+    ? `${approverTitle}`
+    : "______________";
   const recipientLine2 = position || "__________________________";
   const birthDate = querySubjectBirthDate || primaryPerson?.dob || "_____";
   const birthPlace = primaryPerson?.birthplace || "…";
@@ -4902,7 +4902,7 @@ function generateQueryDocxSgbDedicated(outputPath = "запрос.docx", data = 
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-  const signatureNote = recordNumber ? `(№ ${recordNumber})` : "(№)";
+  const signatureNote = recordNumber ? `${recordNumber}` : "";
 
   const headerTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -4938,7 +4938,7 @@ function generateQueryDocxSgbDedicated(outputPath = "запрос.docx", data = 
                 alignment: AlignmentType.RIGHT,
                 spacing: { after: 0 },
               }),
-              p([t("Экз.№2", { size: 20 })], {
+              p([t("Экз.№_", { size: 20 })], {
                 alignment: AlignmentType.RIGHT,
                 spacing: { after: 120 },
               }),
@@ -5184,14 +5184,14 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
     String(queryEditableRequirementsText || "").trim() ||
     "Бу ерда узгартириш имкони булган маълумотлар киритиб куйилади";
   const recipientLine1 = approverTitle
-    ? `Начальнику ${approverTitle}`
-    : "Начальнику ______________";
+    ? `${approverTitle}`
+    : "______________";
   const recipientLine2 = position || "__________________________";
   const headLines = String(head?.data || "Начальник подразделения")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-  const signatureNote = recordNumber ? `(${recordNumber})` : "(№)";
+  const signatureNote = recordNumber ? `${recordNumber}` : "";
   const footerRecordText = recordNumber ? `№${recordNumber}-анкета` : "№-анкета";
   const footerExecutorName = queryExecutorName || data?.operator?.data1 || "Ф.И.О.";
   const footerInitiatorName = queryInitiatorName || "Ф.И.О.";
@@ -5231,7 +5231,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
                 alignment: AlignmentType.RIGHT,
                 spacing: { after: 0 },
               }),
-              p([t("Экз.№2", { size: 20 })], {
+              p([t("Экз.№_", { size: 20 })], {
                 alignment: AlignmentType.RIGHT,
                 spacing: { after: 120 },
               }),
@@ -5771,7 +5771,7 @@ function generateMVD_SGB_USParray(
           new Paragraph({
             children: [
               new TextRun({
-                text: "Экз. №1",
+                text: "Экз. №_",
                 size: 20,
                 bold: true,
               }),
@@ -12225,7 +12225,7 @@ function generateMalumotnomaListFunc(
                             italic: true,
                           }),
                           new TextRun({
-                            text: " Экз. №1",
+                            text: " Экз. №_",
                             size: 24, // Adjust font size
                             italic: true,
                             break: 1,
@@ -18925,7 +18925,7 @@ function generateMalumotnoma(
                             italic: true,
                           }),
                           new TextRun({
-                            text: " Экз. №1",
+                            text: " Экз.№_",
                             size: 24, // Adjust font size
                             italic: true,
                             break: 1,

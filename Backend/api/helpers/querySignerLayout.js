@@ -43,10 +43,9 @@ const buildQuerySignedListBlocks = (
             ? idx === 0
             : idx === arr.length - 1;
       const lines = [
-        shouldAddApprovalLabel ? "СОГЛАСОВАНО" : "",
         String(item?.position || "").trim(),
         String(item?.workplace || "").trim(),
-        [String(item?.rank || "").trim(), formatQuerySignerDisplayName(item)]
+        [String(item?.rank + "                        " || ""), formatQuerySignerDisplayName(item)]
           .filter(Boolean)
           .join("     ")
           .trim(),
