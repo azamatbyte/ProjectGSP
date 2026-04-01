@@ -13,6 +13,7 @@ const {
   getRegistrationLogs,
   getRegistrationLogById,
   globalSearch,
+  globalSearchExport,
   globalSearchCount,
   getRegistrationsByIds,
   deleteRegistration,
@@ -32,6 +33,7 @@ router.get("/findByNamesTrgm", verifyToken, permissionCheck("admin"), findByName
 router.post("/logs", verifyToken, permissionCheck("admin"), getRegistrationLogs);
 router.get("/logGetById/:logId", verifyToken, permissionCheck("admin"), getRegistrationLogById);
 router.post("/globalSearch", verifyToken, permissionCheck("admin"), globalSearch);
+router.post("/globalSearchExport", verifyToken, permissionCheck("superAdmin"), globalSearchExport);
 router.post("/globalSearchCount", verifyToken, permissionCheck("admin"), globalSearchCount);
 router.post("/getByIds", verifyToken, permissionCheck("admin"), getRegistrationsByIds);
 router.delete("/delete/:id", verifyToken, permissionCheck("admin"), deleteRegistration);

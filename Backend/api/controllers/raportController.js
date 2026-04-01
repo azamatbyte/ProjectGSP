@@ -4881,15 +4881,15 @@ function generateQueryDocxSgbDedicated(outputPath = "запрос.docx", data = 
   const birthDate = querySubjectBirthDate || primaryPerson?.dob || "_____";
   const birthPlace = primaryPerson?.birthplace || "…";
   const subjectExtras = [
+    primaryPerson?.residence,
     primaryPerson?.roleLabel,
     primaryPerson?.workplace,
-    primaryPerson?.residence,
   ].filter(Boolean);
   const subjectDetails = subjectExtras.length
     ? subjectExtras.join(", ")
     : "узини маълумотлари";
   const subjectLineBase = primaryPerson?.fullName || "__________________________";
-  const subjectLine = `${subjectLineBase}, ${birthDate} г.р., уроженец ${birthPlace} (${subjectDetails})`;
+  const subjectLine = `${subjectLineBase}, ${birthDate} г.р., уроженец ${birthPlace}, ${subjectDetails}`;
   const sourceText =
     querySourceText || primaryPerson?.noteLabel || "компрматериалдаги маълумотлар";
   const introEditableText =

@@ -320,6 +320,86 @@ exports.countedRecords = async (req, res) => {
  *       500:
  *         description: "Internal server error"
  */
+async function fetchFormOverdueTrendData(params = {}) {
+  const { x_axis, x_axsisi, month, year } = params || {};
+  const axisRaw = x_axis ?? x_axsisi;
+  const axis = typeof axisRaw === "string" ? axisRaw.toUpperCase().trim() : "";
+
+  if (!["MONTH", "YEAR"].includes(axis)) {
+    throw createBadRequestError("x_axis must be one of: MONTH, YEAR");
+  }
+
+  const monthCount = parsePositiveInt(month, 12);
+  const yearCount = parsePositiveInt(year, 5);
+  if (monthCount === null || yearCount === null) {
+    throw createBadRequestError("month and year must be positive integers");
+  }
+
+  const existingForms = await prisma.form.findMany({
+    where: {
+      status: true,
+    },
+    select: {
+      name: true,
+    },
+  });
+
+  const validForms = [...new Set(
+    existingForms
+      .map((item) => (typeof item?.name === "string" ? item.name.trim() : ""))
+      .filter(Boolean)
+  )];
+
+  if (validForms.length === 0) {
+    throw createBadRequestError("No valid active form_reg values were provided");
+  }
+
+  const buckets = axis === "MONTH" ? getMonthlyBuckets(monthCount) : getYearlyBuckets(yearCount);
+  const todayStartUTC = new Date();
+  todayStartUTC.setUTCHours(0, 0, 0, 0);
+  const data = [];
+
+  for (const bucket of buckets) {
+    const startDate = new Date(bucket.startDate);
+    startDate.setUTCHours(0, 0, 0, 0);
+
+    const endDate = new Date(bucket.endDate);
+    endDate.setUTCHours(23, 59, 59, 999);
+
+    const groups = await prisma.$queryRaw`
+      SELECT
+        BTRIM(COALESCE("form_reg", '')) AS form_key,
+        COUNT(*)::bigint AS value
+      FROM "Registration"
+      WHERE "regDate" IS NOT NULL
+        AND "regDate" >= ${startDate}
+        AND "regDate" <= ${endDate}
+        AND "expiredDate" IS NOT NULL
+        AND ("expiredDate" < ${todayStartUTC})
+        AND BTRIM(COALESCE("form_reg", '')) IN (${Prisma.join(validForms)})
+      GROUP BY form_key
+    `;
+
+    const valueMap = new Map(
+      groups.map((item) => [item?.form_key || "", Number(item?.value) || 0])
+    );
+
+    for (const formName of validForms) {
+      data.push({
+        year: bucket.year,
+        month: bucket.month,
+        form_reg: formName,
+        value: valueMap.get(formName) || 0,
+      });
+    }
+  }
+
+  return {
+    axis,
+    data,
+  };
+}
+
 exports.formOverdueTrend = async (req, res) => {
   try {
     const { x_axis, x_axsisi, month, year } = req.body || {};
@@ -412,6 +492,33 @@ exports.formOverdueTrend = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching form overdue trend:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+exports.formOverdueTrend = async (req, res) => {
+  try {
+    const { data } = await fetchFormOverdueTrendData(req.body || {});
+
+    return res.status(200).json({
+      code: 200,
+      message: "Form overdue trend fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("Error fetching form overdue trend:", error);
+
+    if (error?.statusCode === 400) {
+      return res.status(400).json({
+        code: 400,
+        message: error.message,
+      });
+    }
+
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
@@ -7055,6 +7162,32 @@ async function getFormOverdueTrendRows(filters = {}) {
   };
 }
 
+async function buildFormOverdueTrendExportRows(filters = {}) {
+  const { axis, data } = await fetchFormOverdueTrendData(filters);
+  const monthMap = {
+    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
+    5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
+    9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec",
+  };
+
+  const rows = data.map((item) => ({
+    period: axis === "MONTH"
+      ? `${monthMap[item?.month] || item?.month}.${item?.year}`
+      : String(item?.year || ""),
+    form_name: item?.form_reg || "",
+    overdue_count: Number(item?.value) || 0,
+  }));
+
+  return {
+    columns: [
+      { key: "period", title: "РџРµСЂРёРѕРґ", width: 18 },
+      { key: "form_name", title: "Р¤РѕСЂРјР°", width: 35 },
+      { key: "overdue_count", title: "РџСЂРѕСЃСЂРѕС‡РµРЅРѕ", width: 14 },
+    ],
+    rows,
+  };
+}
+
 async function getTopOtk1Rows(filters = {}, model = "registration") {
   const { year } = filters || {};
   const yearCount = parsePositiveInt(year, 5);
@@ -7117,7 +7250,7 @@ async function buildDashboardChartExportData(chartKey, filters) {
   }
 
   if (chartKey === "form_overdue_trend") {
-    return getFormOverdueTrendRows(filters);
+    return buildFormOverdueTrendExportRows(filters);
   }
 
   if (chartKey === "top_otk1_registration") {

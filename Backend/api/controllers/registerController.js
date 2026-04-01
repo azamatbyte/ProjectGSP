@@ -8,6 +8,7 @@ const e = require("express");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const ExcelJS = require("exceljs");
 const createCsvWriter = require("csv-writer").createObjectCsvWriter;
 const archiver = require("archiver");
 const multer = require("multer");
@@ -17,7 +18,7 @@ const crypto = require("crypto");
 const { spawn } = require('child_process');
 const { extractFull } = require('node-7z');
 const { MODEL_TYPE } = require("../helpers/constants");
-const { buildSearchQuery, buildCountQuery } = require("../helpers/globalSearchQueryBuilder");
+const { buildSearchQuery, buildSearchExportQuery, buildCountQuery } = require("../helpers/globalSearchQueryBuilder");
 const {
   getBackupModelConfigs,
   getBackupModelConfigByCsvPrefix,
@@ -106,6 +107,109 @@ function findPgBinPath(executable) {
 
   // 4. Fallback to bare command (must be on system PATH)
   return executable;
+}
+
+const GLOBAL_SEARCH_EXPORT_TIMEZONE = "Asia/Tashkent";
+
+function normalizeGlobalSearchSort(sortFields, sortField, sortOrder) {
+  if (Array.isArray(sortFields) && sortFields.length > 0) {
+    return sortFields
+      .filter((entry) => entry && typeof entry.field === "string" && entry.field)
+      .map((entry) => ({
+        field: entry.field,
+        order:
+          entry.order && ["ASC", "DESC"].includes(entry.order.toUpperCase())
+            ? entry.order.toUpperCase()
+            : "ASC",
+      }));
+  }
+
+  if (!sortField) {
+    return [];
+  }
+
+  return [
+    {
+      field: sortField,
+      order:
+        sortOrder && ["ASC", "DESC"].includes(sortOrder.toUpperCase())
+          ? sortOrder.toUpperCase()
+          : "ASC",
+    },
+  ];
+}
+
+function buildFullName(lastName, firstName, fatherName) {
+  return [lastName, firstName, fatherName]
+    .map((value) => (value == null ? "" : String(value).trim()))
+    .filter(Boolean)
+    .join(" ");
+}
+
+function sanitizeFilenamePart(value) {
+  return String(value || "")
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getTashkentTimestamp(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: GLOBAL_SEARCH_EXPORT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+
+  return formatter.format(date).replace(" ", "_").replace(/:/g, "-");
+}
+
+function formatExportDate(value, { withTime = false } = {}) {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    timeZone: GLOBAL_SEARCH_EXPORT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    ...(withTime
+      ? {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }
+      : {}),
+  }).format(new Date(value));
+}
+
+function getCompletionStatusLabel(item) {
+  return item?.complete_status === "WAITING" ? "ОЖИДАНИЕ" : "ЗАВЕРШЕНО";
+}
+
+function autoFitWorksheetColumns(worksheet, minimumWidth = 14) {
+  worksheet.columns.forEach((column) => {
+    let maxLength = minimumWidth;
+
+    column.eachCell({ includeEmpty: true }, (cell) => {
+      const value = cell.value;
+      const text =
+        value == null
+          ? ""
+          : typeof value === "object" && value.text
+            ? value.text
+            : String(value);
+      maxLength = Math.max(maxLength, text.length + 2);
+    });
+
+    column.width = Math.min(maxLength, 40);
+  });
 }
 
 // Parse DATABASE_URL into connection components
@@ -3042,6 +3146,296 @@ exports.globalSearch = async (req, res) => {
     });
   } catch (error) {
     console.error("Error during global search:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  } finally {
+
+  }
+};
+
+exports.globalSearchExport = async (req, res) => {
+  try {
+    const {
+      firstName,
+      firstNameStatus,
+      lastName,
+      lastNameStatus,
+      fatherName,
+      fatherNameStatus,
+      birthPlace,
+      birthPlaceStatus,
+      workPlace,
+      workPlaceStatus,
+      regNumber,
+      regNumberStatus,
+      form_reg,
+      form_regStatus,
+      birth_date_start,
+      birth_date_end,
+      birth_dateStatus,
+      register_date_start,
+      register_date_end,
+      register_date_startStatus,
+      register_end_date_start,
+      register_end_date_end,
+      register_end_dateStatus,
+      accessStatus,
+      accessStatusStatus,
+      conclusionRegNum,
+      conclusionRegNumStatus,
+      completeStatus,
+      completeStatusStatus,
+      residence,
+      residenceStatus,
+      model,
+      modelStatus,
+      pinfl,
+      pinflStatus,
+      passport,
+      passportStatus,
+      or_tab,
+      or_tabStatus,
+      executorId,
+      executorIdStatus,
+      position,
+      positionStatus,
+      recordNumber,
+      recordNumberStatus,
+      notes,
+      notesStatus,
+      sortField,
+      sortOrder,
+      sortFields,
+    } = req.body || {};
+
+    const validSortFields = normalizeGlobalSearchSort(
+      sortFields,
+      sortField,
+      sortOrder
+    );
+
+    const searchParams = {
+      firstName,
+      firstNameStatus,
+      lastName,
+      lastNameStatus,
+      fatherName,
+      fatherNameStatus,
+      birthPlace,
+      birthPlaceStatus,
+      workPlace,
+      workPlaceStatus,
+      pinfl,
+      pinflStatus,
+      passport,
+      passportStatus,
+      regNumber,
+      regNumberStatus,
+      form_reg,
+      form_regStatus,
+      notes,
+      notesStatus,
+      register_date_start,
+      register_date_end,
+      register_date_startStatus,
+      register_end_date_start,
+      register_end_date_end,
+      register_end_dateStatus,
+      birth_date_start,
+      birth_date_end,
+      birth_dateStatus,
+      conclusionRegNum,
+      conclusionRegNumStatus,
+      residence,
+      residenceStatus,
+      accessStatus,
+      accessStatusStatus,
+      completeStatus,
+      completeStatusStatus,
+      model,
+      modelStatus,
+      or_tab,
+      or_tabStatus,
+      executorId,
+      executorIdStatus,
+      position,
+      positionStatus,
+      recordNumber,
+      recordNumberStatus,
+    };
+
+    const executor = await prisma.admin.findUnique({
+      where: { id: req.userId },
+      select: {
+        username: true,
+        first_name: true,
+        last_name: true,
+        father_name: true,
+      },
+    });
+
+    if (!executor) {
+      return res.status(401).json({
+        code: 401,
+        message: "Executor not found",
+      });
+    }
+
+    const query = buildSearchExportQuery(searchParams, validSortFields);
+    const rows = await prisma.$queryRawUnsafe(query);
+
+    if (!rows.length) {
+      return res.status(404).json({
+        code: 404,
+        message: "No data found for export",
+      });
+    }
+
+    const executorFullName = buildFullName(
+      executor.last_name,
+      executor.first_name,
+      executor.father_name
+    ) || executor.username;
+    const exportTimestamp = getTashkentTimestamp();
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = executorFullName;
+    workbook.created = new Date();
+
+    const worksheet = workbook.addWorksheet("Поиск", {
+      views: [{ state: "frozen", ySplit: 4 }],
+    });
+
+    worksheet.mergeCells("A1:V1");
+    worksheet.getCell("A1").value = "Выгрузка глобального поиска";
+    worksheet.getCell("A2").value = "Исполнитель:";
+    worksheet.getCell("B2").value = executorFullName;
+    worksheet.getCell("A3").value = "Дата выгрузки:";
+    worksheet.getCell("B3").value = exportTimestamp.replace("_", " ");
+
+    const headerRowNumber = 4;
+    const headers = [
+      "№",
+      "Рег номер",
+      "Ф",
+      "Даты СП",
+      "Степень родства",
+      "Ф.И.О.",
+      "Дата рождения",
+      "Дата регистрации",
+      "Дата завершения СП",
+      "Состояние СП",
+      "Статус СП",
+      "Срок действия допуска",
+      "ПИНФЛ",
+      "Паспорт",
+      "Номер заключения",
+      "Место рождения",
+      "Место работы",
+      "Компрматериалы",
+      "Место прописки/жительства",
+      "Инициатор",
+      "Исполнитель",
+      "Обновлено",
+    ];
+
+    worksheet.getRow(headerRowNumber).values = headers;
+
+    rows.forEach((item, index) => {
+      const initiatorFullName = buildFullName(
+        item.initiator_last_name,
+        item.initiator_first_name,
+        item.initiator_father_name
+      );
+      const executorRowFullName = buildFullName(
+        item.executor_last_name,
+        item.executor_first_name,
+        item.executor_father_name
+      );
+      const workplaceWithPosition = [item.workplace, item.positionv1]
+        .map((value) => (value == null ? "" : String(value).trim()))
+        .filter(Boolean)
+        .join(" ");
+      const birthDateText = item.birth_date
+        ? formatExportDate(item.birth_date)
+        : item.birth_year || "";
+
+      worksheet.addRow([
+        index + 1,
+        item.reg_number || "",
+        item.form_reg || "",
+        item.form_reg_log || "",
+        item.relationdegree || "",
+        item.full_name || "",
+        birthDateText,
+        formatExportDate(item.reg_date),
+        formatExportDate(item.reg_end_date),
+        getCompletionStatusLabel(item),
+        item.access_status || "",
+        formatExportDate(item.expired),
+        item.pinfl || "",
+        item.passport || "",
+        item.conclusion_reg_num || "",
+        item.birth_place || "",
+        workplaceWithPosition,
+        item.notes || "",
+        item.residence || "",
+        initiatorFullName,
+        executorRowFullName,
+        formatExportDate(item.updatedat, { withTime: true }),
+      ]);
+    });
+
+    worksheet.getRow(1).font = { bold: true, size: 14 };
+    worksheet.getRow(2).font = { bold: true };
+    worksheet.getRow(3).font = { bold: true };
+    worksheet.getRow(headerRowNumber).font = { bold: true };
+    worksheet.getRow(headerRowNumber).alignment = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true,
+    };
+
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell) => {
+        cell.alignment = {
+          vertical: "middle",
+          wrapText: true,
+          ...(rowNumber === headerRowNumber
+            ? { horizontal: "center" }
+            : {}),
+        };
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+    });
+
+    autoFitWorksheetColumns(worksheet, 12);
+
+    const safeExecutorName =
+      sanitizeFilenamePart(executorFullName).replace(/\s+/g, "_") || "superAdmin";
+    const filename = `global_search_export_${exportTimestamp}_${safeExecutorName}.xlsx`;
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename}"`
+    );
+
+    return res.status(200).send(Buffer.from(buffer));
+  } catch (error) {
+    console.error("Error exporting global search:", error);
     return res.status(500).json({
       code: 500,
       message: "Internal server error",

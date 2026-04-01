@@ -1127,7 +1127,7 @@ async function migrateRegistrations(table) {
             let expiredDate = expiredDateForm(record["Дата регистрации"], record["Окончание проверки"]);
             let expired = expiredDateFunc(record["Дата регистрации"], record["Окончание проверки"], formId?.length);
             let accessStatus = getAccessStatus(record["Допуск"], record);
-            if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; }
+            if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; expiredDate = expiredDate; }
             if (completeStatus === "COMPLETED") { expiredDate = null; }
             if (!(accessStatus == "ДОПУСК" || accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
 
@@ -1178,7 +1178,7 @@ async function migrateRegistrations4(table) {
             let expiredDate = expiredDateForm(record["Дата регистрации"], record["Дата окончания"]);
             let expired = expiredDateFunc(record["Дата регистрации"], record["Дата окончания"], formId?.length);
             let accessStatus = getAccessStatus4(record["Допуск"], record);
-            if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; }
+            if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; expiredDate = expiredDate; }
             if (completeStatus === "COMPLETED") { expiredDate = null; }
             if (!(accessStatus == "ДОПУСК" || accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
 

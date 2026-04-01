@@ -50,6 +50,12 @@ RegistrationService.getListByGlobalSearch = function (pageNumber=1, pageSize=10,
 	return Request.postRequest(`register/globalSearch?pageNumber=${pageNumber}&pageSize=${pageSize}`, body);
 };
 
+RegistrationService.exportGlobalSearch = function (search=null, sortFields=[]) {
+	const body = { ...(search || {}) };
+	if (sortFields.length > 0) body.sortFields = sortFields;
+	return Request.postRequestBlob("register/globalSearchExport", body);
+};
+
 RegistrationService.getListByGlobalSearchCount = function (search=null) {
 	return Request.postRequest("register/globalSearchCount", search);
 };

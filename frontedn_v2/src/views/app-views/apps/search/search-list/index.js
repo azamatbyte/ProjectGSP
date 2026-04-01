@@ -20,6 +20,7 @@ import DateRangeFilter from "components/shared-components/DateRangeFilter";
 import {
   EyeOutlined,
   SearchOutlined,
+  DownloadOutlined,
   PlusCircleOutlined,
   EditOutlined,
   UserAddOutlined,
@@ -29,6 +30,7 @@ import {
   ClearOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
+import { useSelector } from "react-redux";
 import EllipsisDropdown from "components/shared-components/EllipsisDropdown";
 import Flex from "components/shared-components/Flex";
 import { useNavigate } from "react-router-dom";
@@ -44,7 +46,33 @@ import { MODEL_TYPES, SESSION_TYPES } from "utils/sessions";
 import RelativeService from "services/RelativeService";
 import AccessStatusService from "services/AccessStatusService";
 
+const getFilenameFromDisposition = (disposition) => {
+  if (!disposition) {
+    return "";
+  }
+
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+
+  const plainMatch = disposition.match(/filename="?([^"]+)"?/i);
+  return plainMatch?.[1] || "";
+};
+
+const downloadBlob = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};
+
 const GlobalSearch = (props) => {
+  const { role } = useSelector((state) => state.auth);
   const [searchParams] = useSearchParams();
   const searchParamsData = searchParams.get("search");
   const navigate = useNavigate();
@@ -75,6 +103,7 @@ const GlobalSearch = (props) => {
   const [initiatorFetching, setInitiatorFetching] = useState(false);
   const [executorFetching, setExecutorFetching] = useState(false);
   const [accessStatusFetching, setAccessStatusFetching] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   // FIX 1: Use ref to track if we're programmatically updating URL to prevent loops
   const isUpdatingURL = useRef(false);
@@ -1104,6 +1133,31 @@ const GlobalSearch = (props) => {
     setPageNumber(1);
   }, []);
 
+  const handleExport = useCallback(async () => {
+    if (total <= 0) {
+      message.error(t("data_not_found"));
+      return;
+    }
+
+    try {
+      setExportLoading(true);
+      const response = await RegistrationService.exportGlobalSearch(
+        search,
+        sortedColumns
+      );
+      const filename =
+        getFilenameFromDisposition(response?.headers?.["content-disposition"]) ||
+        `global_search_export_${new Date().toISOString().replace(/[:.]/g, "-")}.xlsx`;
+
+      downloadBlob(response.data, filename);
+      message.success(t("report_downloaded_successfully"));
+    } catch (error) {
+      message.error(t("report_download_failed"));
+    } finally {
+      setExportLoading(false);
+    }
+  }, [search, sortedColumns, t, total]);
+
 
   return (
     <Card>
@@ -2082,11 +2136,22 @@ const GlobalSearch = (props) => {
             >
               <ClearOutlined /> {t("clear")}
             </Button>
+            {role === "superAdmin" ? (
+              <Button
+                style={{ marginLeft: 8 }}
+                tabIndex={22}
+                onClick={handleExport}
+                loading={exportLoading}
+                disabled={total <= 0}
+              >
+                <DownloadOutlined /> {t("download")}
+              </Button>
+            ) : null}
             <Button
               style={{ marginLeft: 8 }}
               // type="primary"
               // style={{ marginLeft: 8, fontSize: 12, padding: 0, height: "auto" }}
-              tabIndex={22}
+              tabIndex={23}
               onClick={() => setExpand(!expand)}
             >
               {expand ? <UpOutlined /> : <DownOutlined />} {t("more_search")}

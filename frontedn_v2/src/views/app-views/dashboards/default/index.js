@@ -40,6 +40,23 @@ const TREND_CHART_ID = "dashboard-overdue-trend-chart";
 const OTK1_REGISTRATION_CHART_ID = "dashboard-otk1-registration-chart";
 const OTK1_REGISTRATION4_CHART_ID = "dashboard-otk1-registration4-chart";
 const LATEST_FORM_TYPES = ["registration", "registration4"];
+const DASHBOARD_CHART_CONTROLS_STYLE = {
+  marginTop: 26,
+  display: "flex",
+  gap: 8,
+  justifyContent: "flex-end",
+  alignItems: "center",
+  flexWrap: "wrap",
+  width: "100%",
+};
+const DASHBOARD_CHART_EXPORT_BUTTON_STYLE = {
+  height: 30,
+  minWidth: 30,
+  paddingInline: 8,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
 
 const toSafeFileToken = (value, fallback = "dashboard_chart") => {
   const normalized = typeof value === "string" ? value : "";
@@ -914,7 +931,7 @@ export const DefaultDashboard = () => {
             type="line"
             customOptions={heroChartOptions}
             extra={
-              <div style={{ marginTop: 26, display: "flex", gap: 8 }}>
+              <div style={DASHBOARD_CHART_CONTROLS_STYLE}>
                 <Select
                   value={axis}
                   options={axisOptions}
@@ -928,6 +945,7 @@ export const DefaultDashboard = () => {
                   <Button
                     size="small"
                     icon={<FileExcelOutlined />}
+                    style={DASHBOARD_CHART_EXPORT_BUTTON_STYLE}
                     onClick={handleHeroChartExport}
                     loading={Boolean(exportingCharts.counted_records)}
                     disabled={heroLoading || Boolean(exportingCharts.counted_records)}
@@ -981,7 +999,7 @@ export const DefaultDashboard = () => {
             direction={direction}
             customOptions={trendChartOptions}
             extra={
-              <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "flex-start", width: "100%" }}>
+              <div style={DASHBOARD_CHART_CONTROLS_STYLE}>
                 <Select
                   value={trendAxis}
                   options={axisOptions}
@@ -1009,6 +1027,7 @@ export const DefaultDashboard = () => {
                   <Button
                     size="small"
                     icon={<FileExcelOutlined />}
+                    style={DASHBOARD_CHART_EXPORT_BUTTON_STYLE}
                     onClick={handleTrendChartExport}
                     loading={Boolean(exportingCharts.form_overdue_trend)}
                     disabled={trendLoading || Boolean(exportingCharts.form_overdue_trend)}

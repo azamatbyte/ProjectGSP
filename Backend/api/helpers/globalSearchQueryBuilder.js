@@ -342,10 +342,7 @@ function buildOrderByClause(sortFields, sortOrder) {
  * @param {string|null} [sortOrder] - Legacy sortOrder, used only when sortFields is a string
  * @returns {string} - Complete SQL query
  */
-function buildSearchQuery(params, pageNumber, pageSize, sortFields, sortOrder) {
-    const offset = (pageNumber - 1) * pageSize;
-    const orderByClause = buildOrderByClause(sortFields, sortOrder);
-
+function buildBaseSearchQuery(params, orderByClause, paginationClause = "") {
     // Build Registration WHERE conditions
     const regConditions = buildWhereConditions(params, "r");
     const regWhereClause = regConditions.length > 0 ? `WHERE ${regConditions.join(" AND ")}` : "";
@@ -354,7 +351,7 @@ function buildSearchQuery(params, pageNumber, pageSize, sortFields, sortOrder) {
     const relConditions = buildWhereConditions(params, "rel", "regg");
     const relWhereClause = relConditions.length > 0 ? `WHERE ${relConditions.join(" AND ")}` : "";
 
-    const query = `
+    return `
     SELECT * FROM (
       -- Query from Registration table
       SELECT
@@ -391,8 +388,10 @@ function buildSearchQuery(params, pageNumber, pageSize, sortFields, sortOrder) {
         r."or_tab",
         ini."first_name" AS initiator_first_name,
         ini."last_name" AS initiator_last_name,
+        ini."father_name" AS initiator_father_name,
         adm."first_name" AS executor_first_name,
         adm."last_name" AS executor_last_name,
+        adm."father_name" AS executor_father_name,
         r."updatedAt" AS updatedAt,
         r."createdAt" AS createdAt
       FROM "Registration" r
@@ -437,8 +436,10 @@ function buildSearchQuery(params, pageNumber, pageSize, sortFields, sortOrder) {
         rel."or_tab",
         ini."first_name" AS initiator_first_name,
         ini."last_name" AS initiator_last_name,
+        ini."father_name" AS initiator_father_name,
         adm."first_name" AS executor_first_name,
         adm."last_name" AS executor_last_name,
+        adm."father_name" AS executor_father_name,
         rel."updatedAt" AS updatedAt,
         rel."createdAt" AS createdAt
       FROM "Relatives" rel
@@ -448,10 +449,25 @@ function buildSearchQuery(params, pageNumber, pageSize, sortFields, sortOrder) {
       ${relWhereClause}
     ) combined_results
     ${orderByClause}
-    LIMIT ${pageSize} OFFSET ${offset};
+    ${paginationClause};
   `;
+}
 
-    return query;
+function buildSearchQuery(params, pageNumber, pageSize, sortFields, sortOrder) {
+    const offset = (pageNumber - 1) * pageSize;
+    const orderByClause = buildOrderByClause(sortFields, sortOrder);
+
+    return buildBaseSearchQuery(
+        params,
+        orderByClause,
+        `LIMIT ${pageSize} OFFSET ${offset}`
+    );
+}
+
+function buildSearchExportQuery(params, sortFields, sortOrder) {
+    const orderByClause = buildOrderByClause(sortFields, sortOrder);
+
+    return buildBaseSearchQuery(params, orderByClause);
 }
 
 /**
@@ -488,6 +504,7 @@ function buildCountQuery(params) {
 
 module.exports = {
     buildSearchQuery,
+    buildSearchExportQuery,
     buildCountQuery,
     buildWhereConditions,
     buildTextFilter,
