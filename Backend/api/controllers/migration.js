@@ -144,18 +144,25 @@ function expiredDateFunc(regDate, regEndDate, formLength) {
     return null;
 }
 
-function expiredDateForm(regDate, regEndDate) {
+function expiredDateForm(regDate, regEndDate, formLength) {
     if (regDate && regEndDate) {
         const date = new Date(regDate);
-        date.setMonth(date.getMonth() + 2);
+        date.setMonth(date.getMonth() + formLength);
         return date;
     }
     return null;
 }
 
 function getAccessStatus(accessStatus, record) {
+    // if (record['Регистрационный номер и гриф секр'] == '756-15') {
+    //     console.log(record['Окончание проверки'], record['Дата регистрации']);
+    //     console.log(record['Окончание проверки'] != null && record['Окончание проверки'] < record['Дата регистрации']);
+        
+    // }
+    if (record['Окончание проверки'] != null && record['Окончание проверки'] < record['Дата регистрации']) return 'ПОВТОРНАЯ СП';
+    if (record['Окончание проверки'] < record['Дата регистрации']||record['Окончание проверки'] == null) return 'ПРОВЕРКА';
     if (record['Заключение, рег №, форма']?.includes(record['Регистрационный номер и гриф секр'])) {
-        if (record['Окончание проверки'] == null || record['Окончание проверки'] < record['Дата регистрации']) return 'ПРОВЕРКА';
+        if (record['Окончание проверки'] == null) return 'ПРОВЕРКА';
     } else if (record['Допуск'] == null) {
         return 'ДОПУСК';
     }
@@ -163,8 +170,10 @@ function getAccessStatus(accessStatus, record) {
 }
 
 function getAccessStatus4(accessStatus, record) {
+    if (record['Дата окончания'] != null && record['Дата окончания'] < record['Дата регистрации']) return 'ПОВТОРНАЯ СП';
+    if (record['Дата окончания'] < record['Дата регистрации']||record['Дата окончания'] == null) return 'ПРОВЕРКА';
     if (record['Заключение']?.includes(record['Рег №'])) {
-        if (record['Дата окончания'] === null || record['Дата окончания'] < record['Дата регистрации']) return 'ПРОВЕРКА';
+        if (record['Дата окончания'] === null) return 'ПРОВЕРКА';
     } else if (record['Допуск'] === null) {
         return 'ДОПУСК';
     }
@@ -173,7 +182,8 @@ function getAccessStatus4(accessStatus, record) {
 
 function completeStatusReg(regDate, regEndDate, record) {
     if (regDate == '2020-01-01') return 'COMPLETED';
-    if (record['Заключение, рег №, форма']?.includes(record['Регистрационный номер и гриф секр'])) return 'COMPLETED';
+    if (regEndDate != null && regEndDate <= regDate) return 'WAITING';
+    if ((regEndDate === null) && record['Заключение, рег №, форма']?.includes(record['Регистрационный номер и гриф секр'])) return 'COMPLETED1';
     if (regEndDate == null) return 'WAITING';
     if (regEndDate != null && regEndDate >= regDate) return 'COMPLETED';
     return 'COMPLETED';
@@ -181,7 +191,8 @@ function completeStatusReg(regDate, regEndDate, record) {
 
 function completeStatusReg4(regDate, regEndDate, record) {
     if (regDate == '2020-01-01') return 'COMPLETED';
-    if (record['Заключение']?.includes(record['Рег №'])) return 'COMPLETED';
+    if (regEndDate != null && regEndDate <= regDate) return 'WAITING';
+    if ((regEndDate === null) &&record['Заключение']?.includes(record['Рег №'])) return 'COMPLETED1';
     if (regEndDate == null) return 'WAITING';
     if (regEndDate != null && regEndDate >= regDate) return 'COMPLETED';
     return 'COMPLETED';
@@ -196,6 +207,9 @@ function formLog(form_reg, record) {
 // ============================================================
 
 function mapRecordToRegistrationData(record, initiatorId, executorId, formId, notes, completeStatus, expiredDate, expired, accessStatus, fl) {
+    if (record['Регистрационный номер и гриф секр'] == '756-15') {
+        console.log(accessStatus);
+    }
     return {
         regNumber: record['Регистрационный номер и гриф секр'],
         regDate: record['Дата регистрации'] ? new Date(record['Дата регистрации'] + 'Z') : null,
@@ -348,8 +362,8 @@ async function findOrCreateForm(formName, unknownForm) {
 }
 
 async function findOrCreateForm4() {
-    const check = await prisma.form.findFirst({ where: { name: '4' } });
-    return check || await prisma.form.create({ data: { name: '4', description: '4', length: 2, month: 1, type: 'registration4' } });
+    const check = await prisma.form.findFirst({ where: { name: 'У' } });
+    return check || await prisma.form.create({ data: { name: 'У', description: 'У', length: 2, month: 1, type: 'registration4' } });
 }
 
 async function findOrCreateWorkplace(workplaceName, unknownWorkplace) {
@@ -850,13 +864,13 @@ async function createDefaultAdminsAndServices() {
             },
         });
         await prisma.form.create({
-            data: { name: "Р", description: "Р", length: 2, month: 1, status: true, type: "registration" },
+            data: { name: "Р", description: "Р", length: 2, month: 2, status: true, type: "registration" },
         });
         await prisma.form.create({
             data: { name: "О", description: "О", length: 4, month: 1, status: true, type: "registration" },
         });
         await prisma.form.create({
-            data: { name: "У", description: "У", length: 1, month: 1, status: true, type: "registration4" },
+            data: { name: "У", description: "У", length: 2, month: 1, status: true, type: "registration4" },
         });
         await prisma.form.create({
             data: { name: "1", description: "1", length: 2, month: 1, type: "registration" },
@@ -1124,12 +1138,13 @@ async function migrateRegistrations(table) {
                 externalNotes: normalizeOptionalText(record["Примечания 1 (доп)"]),
             };
             let completeStatus = completeStatusReg(record["Дата регистрации"], record["Окончание проверки"], record);
-            let expiredDate = expiredDateForm(record["Дата регистрации"], record["Окончание проверки"]);
+            let expiredDate = expiredDateForm(record["Дата регистрации"], record["Окончание проверки"], formId?.month);
             let expired = expiredDateFunc(record["Дата регистрации"], record["Окончание проверки"], formId?.length);
             let accessStatus = getAccessStatus(record["Допуск"], record);
-            if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; expiredDate = expiredDate; }
+            if (completeStatus === "WAITING") { expired = null; expiredDate = expiredDate; }
             if (completeStatus === "COMPLETED") { expiredDate = null; }
-            if (!(accessStatus == "ДОПУСК" || accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
+            if (completeStatus === "COMPLETED1") { expiredDate = null;expired = null; completeStatus = "WAITING"; accessStatus = "ЗАКЛЮЧЕНИЕ"; }
+            if ((accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus == "ПОВТОРНАЯ СП" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
 
             const registration = await prisma.registration.create({
                 data: mapRecordToRegistrationData(record, initiator?.id || null, executor?.id || null, formId?.name || null, notes, completeStatus, expiredDate, expired, accessStatus, formLog(formId?.name, record)),
@@ -1175,12 +1190,13 @@ async function migrateRegistrations4(table) {
                 externalNotes: normalizeOptionalText(record["Отк 1"]),
             };
             let completeStatus = completeStatusReg4(record["Дата регистрации"], record["Дата окончания"], record);
-            let expiredDate = expiredDateForm(record["Дата регистрации"], record["Дата окончания"]);
+            let expiredDate = expiredDateForm(record["Дата регистрации"], record["Дата окончания"], formId?.month);
             let expired = expiredDateFunc(record["Дата регистрации"], record["Дата окончания"], formId?.length);
             let accessStatus = getAccessStatus4(record["Допуск"], record);
-            if (completeStatus === "WAITING") { accessStatus = "ПРОВЕРКА"; expired = null; expiredDate = expiredDate; }
+            if (completeStatus === "WAITING") { expired = null; expiredDate = expiredDate; }
+            if (completeStatus === "COMPLETED1") { accessStatus = "ЗАКЛЮЧЕНИЕ"; expired = null; expiredDate = null; completeStatus = "WAITING"; }
             if (completeStatus === "COMPLETED") { expiredDate = null; }
-            if (!(accessStatus == "ДОПУСК" || accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
+            if ((accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus == "ПОВТОРНАЯ СП" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
 
             await prisma.registration.create({
                 data: mapRecordToRegistration4Data(record, initiator?.id || null, executor?.id || null, formId?.name || null, notes, completeStatus, expiredDate, expired, accessStatus, formLog(formId?.name, record)),
