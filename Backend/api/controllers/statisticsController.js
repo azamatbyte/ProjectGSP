@@ -568,15 +568,38 @@ exports.formOverdueTrend = async (req, res) => {
  */
 exports.finishedRegistrationPercentage = async (req, res) => {
   try {
-    const total_count = await prisma.registration.count();
+    const year = req.body?.year ? Number(req.body.year) : null;
 
-    const finishedRows = await prisma.$queryRaw`
-      SELECT COUNT(*)::bigint AS finished_count
-      FROM "Registration"
-      WHERE "regDate" IS NOT NULL
-        AND "regEndDate" IS NOT NULL
-        AND "regEndDate" > "regDate"
-    `;
+    let total_count;
+    let finishedRows;
+
+    if (year) {
+      const totalRows = await prisma.$queryRaw`
+        SELECT COUNT(*)::bigint AS total_count
+        FROM "Registration"
+        WHERE EXTRACT(YEAR FROM "regDate") = ${year}
+      `;
+      total_count = Number(totalRows?.[0]?.total_count ?? 0);
+
+      finishedRows = await prisma.$queryRaw`
+        SELECT COUNT(*)::bigint AS finished_count
+        FROM "Registration"
+        WHERE "regDate" IS NOT NULL
+          AND "regEndDate" IS NOT NULL
+          AND "regEndDate" > "regDate"
+          AND EXTRACT(YEAR FROM "regDate") = ${year}
+      `;
+    } else {
+      total_count = await prisma.registration.count();
+
+      finishedRows = await prisma.$queryRaw`
+        SELECT COUNT(*)::bigint AS finished_count
+        FROM "Registration"
+        WHERE "regDate" IS NOT NULL
+          AND "regEndDate" IS NOT NULL
+          AND "regEndDate" > "regDate"
+      `;
+    }
 
     const rawFinished = finishedRows?.[0]?.finished_count ?? 0;
     const finished_count = Number(rawFinished);
@@ -7180,9 +7203,9 @@ async function buildFormOverdueTrendExportRows(filters = {}) {
 
   return {
     columns: [
-      { key: "period", title: "РџРµСЂРёРѕРґ", width: 18 },
-      { key: "form_name", title: "Р¤РѕСЂРјР°", width: 35 },
-      { key: "overdue_count", title: "РџСЂРѕСЃСЂРѕС‡РµРЅРѕ", width: 14 },
+      { key: "period", title: "Период", width: 18 },
+      { key: "form_name", title: "Форма", width: 35 },
+      { key: "overdue_count", title: "Просрочено", width: 14 },
     ],
     rows,
   };

@@ -34,8 +34,7 @@ import ProviderComponent from "providerComponent";
 import { Modal } from "antd";
 import { useTranslation } from "react-i18next";
 import RaportService from "services/RaportService";
-import { MODEL_TYPES, SESSION_TYPES } from "utils/sessions";
-import RelativeService from "services/RelativeService";
+import { MODEL_TYPES } from "utils/sessions";
 
 const RegisterList = () => {
   const [searchParams] = useSearchParams();
@@ -185,52 +184,8 @@ const RegisterList = () => {
     setModalDeleteVisible(false);
   };
 
-  const createSessionFunction = async (id, type, model) => {
-    try {
-      const response = await RelativeService.addRelativesBySession({
-        id: id,
-        type: type,
-        model: model,
-      });
-      if (response.status !== 200) throw new Error("Failed to create session");
-      message.success(t("session_created"));
-    } catch (error) {
-      message.error(t("failed_to_create_session"));
-    }
-  };
-
   const dropdownMenu = (row, hasDeletePermission) => {
     const baseItems = [
-      {
-        key: "add-main",
-        label: (
-          <Flex alignItems="center">
-            <PlusCircleOutlined />
-            <span className="ml-2">{t("add_main")}</span>
-          </Flex>
-        ),
-        onClick: () => createSessionFunction(row?.id, SESSION_TYPES.SESSION, MODEL_TYPES.RELATIVE),
-      },
-      {
-        key: "add-reserve",
-        label: (
-          <Flex alignItems="center">
-            <PlusCircleOutlined />
-            <span className="ml-2">{t("add_reserve")}</span>
-          </Flex>
-        ),
-        onClick: () => createSessionFunction(row?.id, SESSION_TYPES.RESERVE, MODEL_TYPES.RELATIVE),
-      },
-      {
-        key: "add-conclusion",
-        label: (
-          <Flex alignItems="center">
-            <PlusCircleOutlined />
-            <span className="ml-2">{t("add_conclusion")}</span>
-          </Flex>
-        ),
-        onClick: () => createSessionFunction(row?.id, SESSION_TYPES.RAPORT, MODEL_TYPES.RELATIVE),
-      },
       {
         key: "view-details",
         label: (

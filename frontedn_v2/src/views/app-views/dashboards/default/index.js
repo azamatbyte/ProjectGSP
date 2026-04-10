@@ -133,6 +133,7 @@ export const DefaultDashboard = () => {
   const [latestPageSize, setLatestPageSize] = useState(LATEST_TABLE_DEFAULT_PAGE_SIZE);
   const [latestTotal, setLatestTotal] = useState(0);
   const [latestYear, setLatestYear] = useState(() => new Date().getFullYear());
+  const [finishedYear, setFinishedYear] = useState(() => new Date().getFullYear());
   const [latestForms, setLatestForms] = useState([]);
   const [latestFormOptions, setLatestFormOptions] = useState([]);
   const [latestFormsLoading, setLatestFormsLoading] = useState(false);
@@ -155,6 +156,18 @@ export const DefaultDashboard = () => {
   const trendRangeValue = trendAxis === "MONTH" ? trendMonthRange : trendYearRange;
 
   const latestYearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+
+    return Array.from({ length: LATEST_FILTER_YEAR_RANGE }, (_, index) => {
+      const yearValue = currentYear - index;
+      return {
+        value: yearValue,
+        label: String(yearValue),
+      };
+    });
+  }, []);
+
+  const finishedYearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
 
     return Array.from({ length: LATEST_FILTER_YEAR_RANGE }, (_, index) => {
@@ -734,7 +747,7 @@ export const DefaultDashboard = () => {
 
     const loadFinishedPercentage = async () => {
       try {
-        const response = await StatisticsService.finishedRegistrationPercentage({});
+        const response = await StatisticsService.finishedRegistrationPercentage({ year: finishedYear });
         if (cancelled) return;
 
         const data = response?.data?.data || {};
@@ -760,7 +773,7 @@ export const DefaultDashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [t]);
+  }, [finishedYear, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -957,7 +970,18 @@ export const DefaultDashboard = () => {
         </Col>
         <Col xs={24} sm={24} md={24} lg={6}>
           <GoalWidget
-            title={t("dashboard_finished_target_title")}
+            title={
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>{t("dashboard_finished_target_title")}</span>
+                <Select
+                  value={finishedYear}
+                  options={finishedYearOptions}
+                  size="small"
+                  style={{ minWidth: 80 }}
+                  onChange={(value) => setFinishedYear(value)}
+                />
+              </div>
+            }
             value={finishedPercentage}
             size={140}
             subtitle={t("dashboard_finished_target_subtitle", { percentage: finishedPercentage })}

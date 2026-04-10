@@ -136,7 +136,7 @@ function expiredDateFunc(regDate, regEndDate, formLength) {
     const registrationDate = new Date(regDate);
     const regEndDateDate = new Date(regEndDate);
     if (registrationDate < thresholdDate) return null;
-    if (regEndDateDate > registrationDate) {
+    if ((regEndDateDate <= registrationDate) || (regEndDateDate !== null)) {
         const date = new Date(regEndDate);
         date.setFullYear(date.getFullYear() + (formLength || 0));
         return date;
@@ -146,6 +146,16 @@ function expiredDateFunc(regDate, regEndDate, formLength) {
 
 function expiredDateForm(regDate, regEndDate, formLength) {
     if (regDate && regEndDate) {
+        const date = new Date(regDate);
+        date.setMonth(date.getMonth() + formLength);
+        return date;
+    }
+    if (regDate && !regEndDate) {
+        const date = new Date(regDate);
+        date.setMonth(date.getMonth() + formLength);
+        return date;
+    }
+    if (regDate >= regEndDate) {
         const date = new Date(regDate);
         date.setMonth(date.getMonth() + formLength);
         return date;
@@ -182,18 +192,16 @@ function getAccessStatus4(accessStatus, record) {
 
 function completeStatusReg(regDate, regEndDate, record) {
     if (regDate == '2020-01-01') return 'COMPLETED';
-    if (regEndDate != null && regEndDate <= regDate) return 'WAITING';
+    if (regEndDate === null || regEndDate <= regDate) return 'WAITING';
     if ((regEndDate === null) && record['Заключение, рег №, форма']?.includes(record['Регистрационный номер и гриф секр'])) return 'COMPLETED1';
-    if (regEndDate == null) return 'WAITING';
     if (regEndDate != null && regEndDate >= regDate) return 'COMPLETED';
     return 'COMPLETED';
 }
 
 function completeStatusReg4(regDate, regEndDate, record) {
     if (regDate == '2020-01-01') return 'COMPLETED';
-    if (regEndDate != null && regEndDate <= regDate) return 'WAITING';
+    if (regEndDate === null || regEndDate <= regDate) return 'WAITING';
     if ((regEndDate === null) &&record['Заключение']?.includes(record['Рег №'])) return 'COMPLETED1';
-    if (regEndDate == null) return 'WAITING';
     if (regEndDate != null && regEndDate >= regDate) return 'COMPLETED';
     return 'COMPLETED';
 }
@@ -1141,10 +1149,10 @@ async function migrateRegistrations(table) {
             let expiredDate = expiredDateForm(record["Дата регистрации"], record["Окончание проверки"], formId?.month);
             let expired = expiredDateFunc(record["Дата регистрации"], record["Окончание проверки"], formId?.length);
             let accessStatus = getAccessStatus(record["Допуск"], record);
-            if (completeStatus === "WAITING") { expired = null; expiredDate = expiredDate; }
+            if (completeStatus === "WAITING") { expired = null; }
             if (completeStatus === "COMPLETED") { expiredDate = null; }
             if (completeStatus === "COMPLETED1") { expiredDate = null;expired = null; completeStatus = "WAITING"; accessStatus = "ЗАКЛЮЧЕНИЕ"; }
-            if ((accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus == "ПОВТОРНАЯ СП" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
+            if (!(accessStatus == "ДОПУСК" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
 
             const registration = await prisma.registration.create({
                 data: mapRecordToRegistrationData(record, initiator?.id || null, executor?.id || null, formId?.name || null, notes, completeStatus, expiredDate, expired, accessStatus, formLog(formId?.name, record)),
@@ -1193,10 +1201,10 @@ async function migrateRegistrations4(table) {
             let expiredDate = expiredDateForm(record["Дата регистрации"], record["Дата окончания"], formId?.month);
             let expired = expiredDateFunc(record["Дата регистрации"], record["Дата окончания"], formId?.length);
             let accessStatus = getAccessStatus4(record["Допуск"], record);
-            if (completeStatus === "WAITING") { expired = null; expiredDate = expiredDate; }
+            if (completeStatus === "WAITING") { expired = null; }
             if (completeStatus === "COMPLETED1") { accessStatus = "ЗАКЛЮЧЕНИЕ"; expired = null; expiredDate = null; completeStatus = "WAITING"; }
             if (completeStatus === "COMPLETED") { expiredDate = null; }
-            if ((accessStatus == "IN_PROGRESS" || accessStatus == "ПРОВЕРКА" || accessStatus == "ПОВТОРНАЯ СП" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
+            if (!(accessStatus == "ДОПУСК" || accessStatus?.toLowerCase().includes('снят'))) { expired = null; }
 
             await prisma.registration.create({
                 data: mapRecordToRegistration4Data(record, initiator?.id || null, executor?.id || null, formId?.name || null, notes, completeStatus, expiredDate, expired, accessStatus, formLog(formId?.name, record)),
