@@ -127,7 +127,7 @@ const getRaportTypesByLinksRaw = async (links = []) => {
   return queryRaportTypesRaw({
     where: Prisma.sql`(${Prisma.join(
       links.map((link) => Prisma.sql`rt."link" ILIKE ${`%${link}%`}`),
-      Prisma.sql` OR `
+      ` OR `
     )})`,
   });
 };

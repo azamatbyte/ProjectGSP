@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Progress } from "antd";
 import Card from "components/shared-components/Card";
 
-export const GoalWidget = ({ title, value, size, subtitle, strokeWidth, extra, cardStyle, cardBodyStyle }) => {
+export const GoalWidget = ({ title, cardTitle, value, size, subtitle, strokeWidth, extra, cardStyle, cardBodyStyle }) => {
 	const mergedCardStyle = {
 		display: "flex",
 		flexDirection: "column",
@@ -20,7 +20,7 @@ export const GoalWidget = ({ title, value, size, subtitle, strokeWidth, extra, c
 	const detailsMaxWidth = `${size + 60}px`;
 
 	return (
-		<Card style={mergedCardStyle} bodyStyle={mergedBodyStyle}>
+		<Card style={mergedCardStyle} bodyStyle={mergedBodyStyle} title={cardTitle}>
 			<div className="text-center" style={{ width: "100%" }}>
 				{title && <h4 className="mb-3 font-weight-bold">{title}</h4>}
 				<Progress type="dashboard" percent={value} size={size} strokeWidth={strokeWidth}/>

@@ -134,6 +134,7 @@ export const DefaultDashboard = () => {
   const [latestTotal, setLatestTotal] = useState(0);
   const [latestYear, setLatestYear] = useState(() => new Date().getFullYear());
   const [finishedYear, setFinishedYear] = useState(() => new Date().getFullYear());
+  const [finishedModel, setFinishedModel] = useState("registration");
   const [latestForms, setLatestForms] = useState([]);
   const [latestFormOptions, setLatestFormOptions] = useState([]);
   const [latestFormsLoading, setLatestFormsLoading] = useState(false);
@@ -178,6 +179,11 @@ export const DefaultDashboard = () => {
       };
     });
   }, []);
+
+  const finishedModelOptions = useMemo(() => [
+    { value: "registration", label: t("registration") },
+    { value: "registration4", label: t("registration4") },
+  ], [t]);
 
   const latestSortOrderMap = useMemo(() => {
     const map = {};
@@ -747,7 +753,7 @@ export const DefaultDashboard = () => {
 
     const loadFinishedPercentage = async () => {
       try {
-        const response = await StatisticsService.finishedRegistrationPercentage({ year: finishedYear });
+        const response = await StatisticsService.finishedRegistrationPercentage({ year: finishedYear, model: finishedModel });
         if (cancelled) return;
 
         const data = response?.data?.data || {};
@@ -773,7 +779,7 @@ export const DefaultDashboard = () => {
     return () => {
       cancelled = true;
     };
-  }, [finishedYear, t]);
+  }, [finishedYear, finishedModel, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -970,28 +976,36 @@ export const DefaultDashboard = () => {
         </Col>
         <Col xs={24} sm={24} md={24} lg={6}>
           <GoalWidget
-            title={
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span>{t("dashboard_finished_target_title")}</span>
-                <Select
-                  value={finishedYear}
-                  options={finishedYearOptions}
-                  size="small"
-                  style={{ minWidth: 80 }}
-                  onChange={(value) => setFinishedYear(value)}
-                />
+            cardTitle={
+              <div>
+                <div style={{ textAlign: "center", marginBottom: 4 }}>{t("dashboard_finished_target_title")}</div>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
+                  <Select
+                    value={finishedModel}
+                    options={finishedModelOptions}
+                    size="small"
+                    style={{ minWidth: 100 }}
+                    onChange={(value) => setFinishedModel(value)}
+                  />
+                  <Select
+                    value={finishedYear}
+                    options={finishedYearOptions}
+                    size="small"
+                    style={{ minWidth: 70 }}
+                    onChange={(value) => setFinishedYear(value)}
+                  />
+                </div>
               </div>
             }
             value={finishedPercentage}
             size={140}
-            subtitle={t("dashboard_finished_target_subtitle", { percentage: finishedPercentage })}
             extra={(
               <div>
                 <div>{t("dashboard_finished_target_counts", { finished: finishedCount, total: totalCount })}</div>
               </div>
             )}
             cardStyle={{ minHeight: SIDE_CARD_MIN_HEIGHT }}
-            cardBodyStyle={{ padding: "12px" }}
+            cardBodyStyle={{ padding: "12px", paddingTop: "4px" }}
           />
         </Col>
       </Row>

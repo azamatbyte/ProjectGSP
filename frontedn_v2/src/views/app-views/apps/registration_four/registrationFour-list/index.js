@@ -13,6 +13,7 @@ import {
   Tag,
   Tooltip,
   Progress,
+  AutoComplete,
 } from "antd";
 import {
   UploadOutlined,
@@ -1699,18 +1700,12 @@ const Index = (props) => {
             label={t("workplace")}
             rules={[{ required: true, message: t("please_enter_workplace") }]}
           >
-            {/* <Select
+            <AutoComplete
               className="w-100"
               placeholder={t("workplace")}
-              showSearch
-              style={{ width: 200, cursor: "pointer" }}
-              optionFilterProp="children"
-              onChange={(value) => {
-                form.setFieldsValue({ workplace: value });
-              }}
+              options={workplaceOptions}
               onSearch={(searchText) => {
                 if (searchText.length === 0) {
-                  // Agar qidiruv matni bo'sh bo'lsa, barcha natijalarni qayta yuklash
                   fetchWorkplaces("").then((data) => {
                     setWorkplaceOptions(
                       data.map((item) => ({
@@ -1719,24 +1714,11 @@ const Index = (props) => {
                       }))
                     );
                   });
-                } else {
+                } else if (searchText.length >= 3) {
                   debouncedFetchWorkplaces(searchText);
                 }
               }}
-              loading={workplaceFetching}
               filterOption={false}
-              tabIndex={4}
-              options={workplaceOptions}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  const nextInput = document.querySelector("[tabindex=\"5\"]");
-                  if (nextInput) nextInput.focus();
-                }
-              }}
-            /> */}
-            <Input
-              placeholder={t("workplace")}
               tabIndex={4}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -2368,15 +2350,10 @@ const Index = (props) => {
                   { required: true, message: t("please_enter_workplace") },
                 ]}
               >
-                {/* <Select
+                <AutoComplete
                   className="w-100"
                   placeholder={t("workplace")}
-                  showSearch
-                  style={{ width: 200, cursor: "pointer" }}
-                  optionFilterProp="children"
-                  onChange={(value) => {
-                    form.setFieldsValue({ workplace: value });
-                  }}
+                  options={workplaceOptions}
                   onSearch={(searchText) => {
                     if (searchText.length === 0) {
                       fetchWorkplaces("").then((data) => {
@@ -2387,31 +2364,18 @@ const Index = (props) => {
                           }))
                         );
                       });
-                    } else {
+                    } else if (searchText.length >= 3) {
                       debouncedFetchWorkplaces(searchText);
                     }
                   }}
-                  loading={workplaceFetching}
                   filterOption={false}
-                  tabIndex={11}
-                  options={workplaceOptions}
+                  tabIndex={10}
                   onSelect={() => {
                     setTimeout(() => {
-                      const nextInput = document.querySelector("[tabindex=\"12\"]");
+                      const nextInput = document.querySelector("[tabindex=\"11\"]");
                       if (nextInput) nextInput.focus();
                     }, 100);
                   }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      const nextInput = document.querySelector("[tabindex=\"12\"]");
-                      if (nextInput) nextInput.focus();
-                    }
-                  }}
-                /> */}
-                <Input
-                  placeholder={t("workplace")}
-                  tabIndex={10}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();

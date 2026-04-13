@@ -569,37 +569,51 @@ exports.formOverdueTrend = async (req, res) => {
 exports.finishedRegistrationPercentage = async (req, res) => {
   try {
     const year = req.body?.year ? Number(req.body.year) : null;
+    const allowedModels = ["registration", "registration4"];
+    const model = typeof req.body?.model === "string" && allowedModels.includes(req.body.model.trim())
+      ? req.body.model.trim()
+      : null;
 
-    let total_count;
-    let finishedRows;
-
+    // Build total count query
+    const totalConds = [];
+    const totalParams = [];
     if (year) {
-      const totalRows = await prisma.$queryRaw`
-        SELECT COUNT(*)::bigint AS total_count
-        FROM "Registration"
-        WHERE EXTRACT(YEAR FROM "regDate") = ${year}
-      `;
-      total_count = Number(totalRows?.[0]?.total_count ?? 0);
-
-      finishedRows = await prisma.$queryRaw`
-        SELECT COUNT(*)::bigint AS finished_count
-        FROM "Registration"
-        WHERE "regDate" IS NOT NULL
-          AND "regEndDate" IS NOT NULL
-          AND "regEndDate" > "regDate"
-          AND EXTRACT(YEAR FROM "regDate") = ${year}
-      `;
-    } else {
-      total_count = await prisma.registration.count();
-
-      finishedRows = await prisma.$queryRaw`
-        SELECT COUNT(*)::bigint AS finished_count
-        FROM "Registration"
-        WHERE "regDate" IS NOT NULL
-          AND "regEndDate" IS NOT NULL
-          AND "regEndDate" > "regDate"
-      `;
+      totalParams.push(year);
+      totalConds.push(`EXTRACT(YEAR FROM "regDate") = $${totalParams.length}`);
     }
+    if (model) {
+      totalParams.push(model);
+      totalConds.push(`"model" = $${totalParams.length}`);
+    }
+    const totalWhere = totalConds.length > 0 ? `WHERE ${totalConds.join(" AND ")}` : "";
+
+    // Build finished count query
+    const finishedConds = [
+      `"regDate" IS NOT NULL`,
+      `"regEndDate" IS NOT NULL`,
+      `"regEndDate" > "regDate"`,
+    ];
+    const finishedParams = [];
+    if (year) {
+      finishedParams.push(year);
+      finishedConds.push(`EXTRACT(YEAR FROM "regDate") = $${finishedParams.length}`);
+    }
+    if (model) {
+      finishedParams.push(model);
+      finishedConds.push(`"model" = $${finishedParams.length}`);
+    }
+    const finishedWhere = `WHERE ${finishedConds.join(" AND ")}`;
+
+    const totalRows = await prisma.$queryRawUnsafe(
+      `SELECT COUNT(*)::bigint AS total_count FROM "Registration" ${totalWhere}`,
+      ...totalParams
+    );
+    const total_count = Number(totalRows?.[0]?.total_count ?? 0);
+
+    const finishedRows = await prisma.$queryRawUnsafe(
+      `SELECT COUNT(*)::bigint AS finished_count FROM "Registration" ${finishedWhere}`,
+      ...finishedParams
+    );
 
     const rawFinished = finishedRows?.[0]?.finished_count ?? 0;
     const finished_count = Number(rawFinished);
