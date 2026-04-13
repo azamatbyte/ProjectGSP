@@ -13,7 +13,6 @@ import {
   Tag,
   Tooltip,
   Progress,
-  AutoComplete,
 } from "antd";
 import {
   UploadOutlined,
@@ -1700,7 +1699,8 @@ const Index = (props) => {
             label={t("workplace")}
             rules={[{ required: true, message: t("please_enter_workplace") }]}
           >
-            <AutoComplete
+            <Select
+              showSearch
               className="w-100"
               placeholder={t("workplace")}
               options={workplaceOptions}
@@ -2350,7 +2350,8 @@ const Index = (props) => {
                   { required: true, message: t("please_enter_workplace") },
                 ]}
               >
-                <AutoComplete
+                <Select
+                  showSearch
                   className="w-100"
                   placeholder={t("workplace")}
                   options={workplaceOptions}
@@ -2390,11 +2391,11 @@ const Index = (props) => {
           <Row gutter={[16, 16]}>
             <Col xs={24} sm={24} md={12}>
               <Form.Item
-                label={t("record_list_manual")}
-                name="recordNumber"
+                name="position"
+                label={t("position")}
               >
                 <Input
-                  placeholder={t("record_list_manual")}
+                  placeholder={t("position")}
                   tabIndex={11}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -2408,6 +2409,26 @@ const Index = (props) => {
             </Col>
             <Col xs={24} sm={24} md={12}>
               <Form.Item
+                label={t("record_list_manual")}
+                name="recordNumber"
+              >
+                <Input
+                  placeholder={t("record_list_manual")}
+                  tabIndex={12}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const nextInput = document.querySelector("[tabindex=\"13\"]");
+                      if (nextInput) nextInput.focus();
+                    }
+                  }}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} sm={24} md={12}>
+              <Form.Item
                 label={t("pinfl")}
                 name="pinfl"
               // rules={[
@@ -2416,11 +2437,11 @@ const Index = (props) => {
               >
                 <Input
                   placeholder={t("pinfl")}
-                  tabIndex={12}
+                  tabIndex={13}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      const nextInput = document.querySelector("[tabindex=\"13\"]");
+                      const nextInput = document.querySelector("[tabindex=\"14\"]");
                       if (nextInput) nextInput.focus();
                     }
                   }}

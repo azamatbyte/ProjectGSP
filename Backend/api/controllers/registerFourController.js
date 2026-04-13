@@ -2184,6 +2184,16 @@ exports.exportSverkaMain = async (req, res) => {
       const rowIndex = i + 6;
       const row = sheet.getRow(rowIndex);
 
+      // Build "Место работы" value: workplace + position (if both exist)
+      let workplaceValue = "";
+      if (data.workplace && data.position) {
+        workplaceValue = data.workplace + ", " + data.position;
+      } else if (data.workplace) {
+        workplaceValue = data.workplace;
+      } else if (data.position) {
+        workplaceValue = data.position;
+      }
+
       // Set initial row values
       row.values = [
         i + 1,
@@ -2191,7 +2201,7 @@ exports.exportSverkaMain = async (req, res) => {
         data.firstName || "",
         data.fatherName || "",
         data.birthDate ? data.birthDate.getFullYear() : data.birthYear || "",
-        data.birthPlace || "",
+        workplaceValue,
         "", // Р/О - will be set below
         "", // У - will be set below
       ];
@@ -2578,13 +2588,23 @@ exports.exportSverka = async (req, res) => {
       const row = sheet.getRow(rowIndex);
 
       // Set initial row values
+      // Build "Место работы" value: workplace + position (if both exist)
+      let workplaceValue = "";
+      if (data.workplace && data.position) {
+        workplaceValue = data.workplace + ", " + data.position;
+      } else if (data.workplace) {
+        workplaceValue = data.workplace;
+      } else if (data.position) {
+        workplaceValue = data.position;
+      }
+
       row.values = [
         data.order || i + 1,
         data.lastName || "",
         data.firstName || "",
         data.fatherName || "",
         data.birthDate ? data.birthDate.getFullYear() : data.birthYear || "",
-        data.birthPlace || "",
+        workplaceValue,
         "", // Р/О - will be set below
         "", // У - will be set below
       ];
