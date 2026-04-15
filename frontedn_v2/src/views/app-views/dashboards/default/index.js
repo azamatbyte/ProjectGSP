@@ -35,6 +35,18 @@ const SIMILARITY_THRESHOLD_MIN = 50;
 const SIMILARITY_THRESHOLD_MAX = 100;
 const DEFAULT_HERO_MONTH_RANGE = 18;
 const DEFAULT_HERO_YEAR_RANGE = 6;
+const UZ_SHORT_MONTHS = [
+  "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+  "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+];
+
+const getShortMonth = (monthIndex, locale, lang) => {
+  if (lang === "uz") {
+    return UZ_SHORT_MONTHS[monthIndex] || `M${monthIndex + 1}`;
+  }
+  return new Date(2000, monthIndex, 1).toLocaleString(locale, { month: "short" });
+};
+
 const HERO_CHART_ID = "dashboard-records-chart";
 const TREND_CHART_ID = "dashboard-overdue-trend-chart";
 const OTK1_REGISTRATION_CHART_ID = "dashboard-otk1-registration-chart";
@@ -220,8 +232,8 @@ export const DefaultDashboard = () => {
     const locale = localeMap[i18n.language] || "ru-RU";
     return heroRows.map((item) => {
       if (axis === "MONTH") {
-        const monthName = new Date(item?.year || 2000, (item?.month || 1) - 1)
-          .toLocaleString(locale, { month: "short" });
+        const monthIndex = (item?.month || 1) - 1;
+        const monthName = getShortMonth(monthIndex, locale, i18n.language);
         return `${monthName} ${item?.year || ""}`;
       }
       return String(item?.year || "");
@@ -390,8 +402,8 @@ export const DefaultDashboard = () => {
 
     const categories = buckets.map((bucket) => {
       if (trendAxis === "MONTH") {
-        const monthName = new Date(bucket.year, (bucket.month || 1) - 1, 1)
-          .toLocaleString(locale, { month: "short" });
+        const monthIndex = (bucket.month || 1) - 1;
+        const monthName = getShortMonth(monthIndex, locale, i18n.language);
         return `${monthName} ${bucket.year}`;
       }
       return String(bucket.year);

@@ -6,6 +6,28 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import { THEME_CONFIG } from "configs/AppConfig";
 
+const uzPagination = {
+    items_per_page: "/ сахифа",
+    jump_to: "Ўтиш",
+    jump_to_confirm: "тасдиқлаш",
+    page: "Сахифа",
+    prev_page: "Олдинги сахифа",
+    next_page: "Кейинги сахифа",
+    prev_5: "Олдинги 5 сахифа",
+    next_5: "Кейинги 5 сахифа",
+    prev_3: "Олдинги 3 сахифа",
+    next_3: "Кейинги 3 сахифа",
+    page_size: "Сахифа ҳажми",
+};
+
+const antdUzUZ = {
+    ...antdEnUS,
+    Pagination: {
+        ...antdEnUS.Pagination,
+        ...uzPagination,
+    },
+};
+
 export const resources = {
     ru: {
         translation: ru,
@@ -13,7 +35,7 @@ export const resources = {
     },
     uz: {
         translation: uz,
-        antd: antdEnUS
+        antd: antdUzUZ
     }
 };
 
