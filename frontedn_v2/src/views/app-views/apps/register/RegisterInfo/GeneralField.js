@@ -623,23 +623,7 @@ const GeneralField = (props) => {
               </Flex>
               <Flex className="mb-1">
                 <div className="mr-md-3 mb-3">
-                  {modelProps === MODEL_TYPES.REGISTRATION && (
-                    <>
-                      {
-                        <Button
-                          type="primary"
-                          className="mr-2"
-                          onClick={() =>
-                            navigate(`/app/apps/relative/add-relative/${id}`)
-                          }
-                        >
-                          <CheckCircleOutlined />
-                          {t("add_new_relative")}
-                        </Button>
-                      }
-
-                    </>
-                  )}
+                  
                   <Button
                     type="primary"
                     className="mr-2"
@@ -668,6 +652,23 @@ const GeneralField = (props) => {
                     {t("add_reserve")}
                   </Button>
                   {modelProps === MODEL_TYPES.REGISTRATION && (
+                    <>
+                      {
+                        <Button
+                          type="primary"
+                          className="mr-2"
+                          onClick={() =>
+                            navigate(`/app/apps/relative/add-relative/${id}`)
+                          }
+                        >
+                          <CheckCircleOutlined />
+                          {t("add_new_relative")}
+                        </Button>
+                      }
+
+                    </>
+                  )}
+                  {modelProps === MODEL_TYPES.REGISTRATION && (
                     <Select
                       placeholder={t("select_option")}
                       style={{ width: "170px" }}
@@ -688,7 +689,7 @@ const GeneralField = (props) => {
                         {t("relativeWithoutAnalysis")}
                       </Select.Option>
                     </Select>
-                  )}
+                  )}                  
                 </div>
               </Flex>
             </Flex>

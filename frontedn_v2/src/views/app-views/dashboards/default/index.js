@@ -41,7 +41,7 @@ const OTK1_REGISTRATION_CHART_ID = "dashboard-otk1-registration-chart";
 const OTK1_REGISTRATION4_CHART_ID = "dashboard-otk1-registration4-chart";
 const LATEST_FORM_TYPES = ["registration", "registration4"];
 const DASHBOARD_CHART_CONTROLS_STYLE = {
-  marginTop: 26,
+  marginTop: 10,
   display: "flex",
   gap: 8,
   justifyContent: "flex-end",

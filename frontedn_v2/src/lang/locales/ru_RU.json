@@ -1,6 +1,6 @@
 {
     "home": "Домой",
-    "sidenav.dashboard": "Главная",
+    "sidenav.dashboard": "Управление",
     "sidenav.dashboard.admin": "Пользователи",
     "sidenav.dashboard.signed": "Руководители",
     "sidenav.dashboard.initiator": "Инициаторы",
