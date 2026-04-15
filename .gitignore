@@ -9,6 +9,10 @@
 .vscode/
 *.sublime*
 
+# Environment files
+.env
+.env.*
+
 # Claude Code
 .claude/
 
