@@ -22,7 +22,7 @@ export default function Footer() {
        			flex-direction: column;
 			}
 		`}>
-			<span>Copyright  &copy;  2026 <span className="font-weight-semibold">{"Cyber Park LLC"}</span> All rights reserved.</span>
+			<span></span>
 		</footer>
 	);
 }
