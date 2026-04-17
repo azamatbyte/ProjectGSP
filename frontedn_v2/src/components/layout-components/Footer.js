@@ -23,6 +23,7 @@ export default function Footer() {
 			}
 		`}>
 			<span>O'zbekiston Respublikasi PDXX RRB</span>
+			<span>Copyright  &copy;  2026 <span className="font-weight-semibold">{"Cyber Park LLC"}</span> All rights reserved.</span>
 		</footer>
 	);
 }
