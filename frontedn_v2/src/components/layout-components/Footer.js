@@ -22,7 +22,7 @@ export default function Footer() {
        			flex-direction: column;
 			}
 		`}>
-			<span></span>
+			<span>O'zbekiston Respublikasi PDXX RRB</span>
 		</footer>
 	);
 }
