@@ -924,6 +924,7 @@ exports.getRegistrationList = async (req, res) => {
     const data = body.data || {};
     let {
       regNumber,
+      exactRegNumber,
       fullName,
       firstName,
       lastName,
@@ -966,15 +967,24 @@ exports.getRegistrationList = async (req, res) => {
     const andConditions = [];
 
     if (regNumber) {
-      andConditions.push({
-        regNumber: {
-          contains: String(regNumber)
-            .replace(/%/g, "")
-            .replace(/\*/g, "%")
-            .trim(),
-          mode: "insensitive",
-        },
-      });
+      if (exactRegNumber) {
+        andConditions.push({
+          regNumber: {
+            equals: String(regNumber).trim(),
+            mode: "insensitive",
+          },
+        });
+      } else {
+        andConditions.push({
+          regNumber: {
+            contains: String(regNumber)
+              .replace(/%/g, "")
+              .replace(/\*/g, "%")
+              .trim(),
+            mode: "insensitive",
+          },
+        });
+      }
     }
 
     if (fullName) {

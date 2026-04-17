@@ -52,7 +52,7 @@ const RelativeTable = ({
           data.pageNumber,
           data.pageSize,
           "registration4",
-          { regNumber },
+          { regNumber, exactRegNumber: true },
           { sort }
         );
       } else {
