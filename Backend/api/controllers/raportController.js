@@ -17176,7 +17176,7 @@ function generateAVR(
                       new Paragraph({
                         children: [
                           new TextRun({
-                            text: `6. Гражданство`,
+                            text: `6. Место жительства`,
                             bold: false,
                             size: 24, // Large font size for title
                           }),
@@ -21032,14 +21032,14 @@ exports.updateRaport = async (req, res) => {
               // Update registration notes
               await tx.registration.update({
                 where: { id: reg.id },
-                data: { notes: compr_info },
+                data: { conclusion_compr: compr_info },
               });
 
               // Create a RegistrationLog entry for the change
               await tx.registrationLog.create({
                 data: {
                   registrationId: reg.id,
-                  fieldName: "notes",
+                  fieldName: "conclusion_compr",
                   oldValue: oldNotes,
                   newValue: compr_info,
                   executorId: executorId,
