@@ -717,11 +717,17 @@ const RaportSP = ({ id, model, regNumber, avr }) => {
         return;
       }
 
-      const response = await exportQueryReport(name);
+      const response = await RaportService.exportSpecialMalumotnomaList({
+        type: "RAPORT",
+        ids: [id],
+        name: name,
+        code: name,
+        signListIds: selectedValues,
+      });
       const queryFilename = getQueryFilename(name);
       const filename = raportStatusMap[name] || "МАЛУМОТНОМА";
       const link = document.createElement("a");
-      link.href = response?.data?.link + "?newFileName=" + queryFilename + "_" + regNumber;
+      link.href = response?.data?.link + "?newFileName=" + "МАЛУМОТНОМА" + "_" + regNumber;
       link.setAttribute("download", queryFilename);
       document.body.appendChild(link);
       link.click();

@@ -284,11 +284,11 @@ const buildQuerySignedListBlocks = (
           ? false
           : approvalLabelMode === "afterFirst"
             ? idx >= 1
-          : approvalLabelMode === "all"
-          ? true
-          : approvalLabelMode === "first"
-            ? idx === 0
-            : idx === arr.length - 1;
+            : approvalLabelMode === "all"
+              ? true
+              : approvalLabelMode === "first"
+                ? idx === 0
+                : idx === arr.length - 1;
       const lines = [
         shouldAddApprovalLabel ? "«СОГЛАСОВАНО»" : "",
         String(item?.position || "").trim(),
@@ -332,10 +332,10 @@ const buildQuerySignerLines = (
       approvalLabelMode === "afterFirst"
         ? idx >= 1
         : approvalLabelMode === "all"
-        ? true
-        : approvalLabelMode === "first"
-          ? idx === 0
-          : idx === signList.length - 1;
+          ? true
+          : approvalLabelMode === "first"
+            ? idx === 0
+            : idx === signList.length - 1;
     const approvalLabel = shouldAddApprovalLabel ? "«СОГЛАСОВАНО»\n" : "";
 
     return `${approvalLabel}${positionLine}\n${workPlaceLine}\n${rankLine}     ${nameLine}\n«____» ${currentMonthRu} ${year} года`;
@@ -2164,8 +2164,8 @@ exports.generateSP = async (req, res) => {
           documents.push(
             generatePsychoRaport(
               raportTypes[i]?.organization,
-              data?.firstName,
               data?.lastName,
+              data?.firstName,
               data?.fatherName,
               formattedBirthDate,
               data?.birthPlace,
@@ -2614,6 +2614,7 @@ exports.generateMalumotnomaList = async (req, res) => {
     //   return res.status(400).json({ code: 400, message: "Name must be a string" });
     // }
     const data = [];
+    const registrationIds = [];
 
     // const typeList = name.split(",");
     if (ids.length !== 0) {
@@ -2628,6 +2629,7 @@ exports.generateMalumotnomaList = async (req, res) => {
         },
       });
       data.push(...registrations, ...relatives);
+      registrationIds.push(...ids);
     } else {
       const sessions = await prisma.session.findMany({
         where: { adminId: req.userId, type: type },
@@ -2648,10 +2650,10 @@ exports.generateMalumotnomaList = async (req, res) => {
 
           if (registration) {
             data.push(registration);
+            registrationIds.push(registration.id);
           }
         })
       );
-      data.push(...sessions);
     }
 
     // Fetch data from database based on IDs
@@ -2782,23 +2784,14 @@ exports.generateMalumotnomaList = async (req, res) => {
 
     await prisma.raportLink.create({
       data: {
+        regNumber: data[0]?.regNumber ?? "",
+        registrations: registrationIds.length > 0 ? { connect: registrationIds.map((id) => ({ id })) } : undefined,
         raportId: raport.id,
         code: name,
       },
     });
 
     fs.writeFileSync(filePath, buffer);
-    // Return the file as a response
-    // return res.download(filePath, "report.docx", (err) => {
-    //   if (err) {
-    //     console.error("Error sending file:", err);
-    //     return res.status(500).json({
-    //       code: 500,
-    //       message: "Error sending file",
-    //       error: err.message,
-    //     });
-    //   }
-    // });
     return res.status(200).json({
       code: 200,
       message: "Document generated and saved successfully",
@@ -10748,8 +10741,8 @@ function generateUPK(
 //Done
 function generatePsychoRaport(
   organization = "ГЛАВНОМУ ВРАЧУ ГОРОДСКОГО ПСИХОНЕВРОЛОГИЧЕСКОГО\nДИСПАНСЕРА №2 (ул. Лисунова, 25)",
-  firstName = "АБДУКАХХОРОВ",
-  lastName = "ЗАЙНИДДИН",
+  lastName = "АБДУКАХХОРОВ",
+  firstName = "ЗАЙНИДДИН",
   fatherName = "РАХМОНОВИЧ",
   birthDate = "1990",
   birthPlace = "Самаркандская область",

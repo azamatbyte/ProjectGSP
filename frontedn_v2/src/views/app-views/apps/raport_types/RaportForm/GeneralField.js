@@ -97,36 +97,6 @@ const GeneralField = props => {
 							</Form.Item>
 						</Col>
 						<Col xs={24} sm={24} md={12}>
-							<Form.Item name="signed_fio" label={t("full_name")}>
-								<Input
-									className="w-100"
-									tabIndex={8}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											e.preventDefault();
-											const nextInput = document.querySelector("[tabindex=\"8\"]");
-											if (nextInput) nextInput.focus();
-										}
-									}}
-								/>
-							</Form.Item>
-						</Col>
-						<Col xs={24} sm={24} md={12}>
-							<Form.Item name="signed_position" label={t("position")}>
-								<Input
-									className="w-100"
-									tabIndex={9}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											e.preventDefault();
-											const nextInput = document.querySelector("[tabindex=\"9\"]");
-											if (nextInput) nextInput.focus();
-										}
-									}}
-								/>
-							</Form.Item>
-						</Col>
-						<Col xs={24} sm={24} md={12}>
 							<Form.Item name="notes" label={t("notes")}>
 								<Input
 									className="w-100"

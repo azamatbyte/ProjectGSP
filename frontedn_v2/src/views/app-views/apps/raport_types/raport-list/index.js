@@ -155,14 +155,8 @@ const RaportList = () => {
       // sorter: (a, b) => utils.antdTableSorter(a, b, "name"),
     },
     {
-      title: t("full_name"),
-      dataIndex: "signed_fio",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "signed_fio"),
-    },
-    {
-      title: t("position"),
-      dataIndex: "signed_position",
-      // sorter: (a, b) => utils.antdTableSorter(a, b, "signed_position"),
+      title: t("organization"),
+      dataIndex: "organization",
     },
     // {
     //   title: t("code"),

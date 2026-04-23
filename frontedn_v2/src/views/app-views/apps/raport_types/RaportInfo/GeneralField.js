@@ -93,25 +93,6 @@ const GeneralField = (props) => {
 								/>
 							</Form.Item>
 						</Col>
-						<Col xs={24} sm={24} md={12}>
-							<Form.Item name="signed_fio" label={t("full_name")}>
-								<Input
-									className="w-100"
-									tabIndex={8}
-                  readOnly
-								/>
-							</Form.Item>
-						</Col>
-						<Col xs={24} sm={24} md={12}>
-							<Form.Item name="signed_position" label={t("position")}>
-								<Input
-                  className="w-100"
-                  tabIndex={9}
-                  readOnly
-                />
-              </Form.Item>
-            </Col>
-
               <Col xs={24} sm={24} md={12}>
                 <Form.Item name="notes" label={t("notes")}>
                   <Input className="w-100" tabIndex={10} readOnly />
