@@ -195,7 +195,7 @@ async function createDefaultAdminsAndServices() {
                 link: "type3",
                 signed_fio: "И.И.Иванов",
                 signed_position: "Генеральный директор",
-                notes: "В связи с возникшей необходимостью просим проверить по имеющимся учетам следующих лиц;должн подразделения",
+                notes: "",
                 executorId: admin.id,
             },
             {

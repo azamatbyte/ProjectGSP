@@ -2,6 +2,13 @@ const { PrismaClient, Prisma } = require("@prisma/client");
 const { RelativeSchema } = require("../helpers/validator");
 const { v4: uuidv4, validate: isUuid } = require("uuid");
 const { MODEL_TYPE } = require("../helpers/constants");
+const formatDateDDMMYYYY = (date) => {
+  const d = new Date(date);
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}.${month}.${year}`;
+};
 
 
 // Initialize Prisma Client
@@ -1109,6 +1116,23 @@ exports.getRelativesListByRegistrationId = async (req, res) => {
     // Cyrillic-aware sorting for specific name fields
     const nameSortableFields = new Set(["firstName", "lastName", "fatherName"]);
     const hasNameSort = sortEntries.some(e => nameSortableFields.has(e.field));
+    const hasBirthDateSort = sortEntries.some(e => e.field === "birthDate");
+
+    const getEffectiveBirthDateSortValue = (record) => {
+      if (record?.birthDate) {
+        const parsedBirthDate = new Date(record.birthDate);
+        if (!Number.isNaN(parsedBirthDate.getTime())) {
+          return parsedBirthDate.getTime();
+        }
+      }
+      if (record?.birthYear !== null && record?.birthYear !== undefined) {
+        const birthYearInt = parseInt(record.birthYear, 10);
+        if (!Number.isNaN(birthYearInt)) {
+          return Date.UTC(birthYearInt, 11, 31, 23, 59, 59, 999);
+        }
+      }
+      return null;
+    };
 
     const selectFields = {
       id: true,
@@ -1128,10 +1152,14 @@ exports.getRelativesListByRegistrationId = async (req, res) => {
       additionalNotes: true,
     };
 
-    if (sortEntries.length > 0 && hasNameSort) {
+    if (sortEntries.length > 0 && (hasNameSort || hasBirthDateSort)) {
       // In-memory Cyrillic-aware multi-key sort
       const toSelect = { id: true };
       for (const e of sortEntries) toSelect[e.field] = true;
+      if (hasBirthDateSort) {
+        toSelect.birthDate = true;
+        toSelect.birthYear = true;
+      }
       const allForSort = await prisma.relatives.findMany({
         where: filters,
         select: toSelect,
@@ -1145,17 +1173,33 @@ exports.getRelativesListByRegistrationId = async (req, res) => {
 
       allForSort.sort((a, b) => {
         for (const entry of sortEntries) {
-          const av = (a[entry.field] || "").toString();
-          const bv = (b[entry.field] || "").toString();
-          let cmp;
-          if (nameSortableFields.has(entry.field)) {
-            cmp = collator.compare(av, bv);
+          let cmp = 0;
+          if (entry.field === "birthDate") {
+            const av = getEffectiveBirthDateSortValue(a);
+            const bv = getEffectiveBirthDateSortValue(b);
+            if (av === null && bv === null) {
+              cmp = 0;
+            } else if (av === null) {
+              cmp = 1;
+            } else if (bv === null) {
+              cmp = -1;
+            } else {
+              cmp = av < bv ? -1 : av > bv ? 1 : 0;
+              if (entry.direction === "desc") cmp = -cmp;
+            }
           } else {
-            cmp = av < bv ? -1 : av > bv ? 1 : 0;
+            const av = (a[entry.field] || "").toString();
+            const bv = (b[entry.field] || "").toString();
+            if (nameSortableFields.has(entry.field)) {
+              cmp = collator.compare(av, bv);
+            } else {
+              cmp = av < bv ? -1 : av > bv ? 1 : 0;
+            }
+            if (cmp !== 0 && entry.direction === "desc") cmp = -cmp;
           }
-          if (cmp !== 0) return entry.direction === "desc" ? -cmp : cmp;
+          if (cmp !== 0) return cmp;
         }
-        return 0;
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
       });
 
       totalRelatives = allForSort.length;
@@ -1406,9 +1450,9 @@ exports.updateRelative = async (req, res) => {
           tableName: "Relatives",
           fieldName: "birthDate",
           oldValue: currentRelative.birthDate
-            ? currentRelative.birthDate.toISOString()
+            ? formatDateDDMMYYYY(currentRelative.birthDate)
             : "",
-          newValue: parsedDate.toISOString(),
+          newValue: formatDateDDMMYYYY(parsedDate),
           executorId: req.userId,
         });
       } else {

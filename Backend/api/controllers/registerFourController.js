@@ -789,10 +789,6 @@ exports.uploadExcel = async (req, res) => {
   ORDER BY similarity_percentage DESC
   LIMIT 50
 `;
-          if (data?.order === 31) {
-            console.log("results", results);
-            console.log("data", data);
-          }
           results.map(async (item) => {
             if (item?.model === "registration") {
               data.registrationSimilarity.push(item);
@@ -999,6 +995,11 @@ exports.uploadExcel = async (req, res) => {
           registration4.accessStatus?.toLowerCase().includes("аннулирован")
         );
         if (registration_20th && registration4_20th) {
+          data.status = "not_checked";
+        }
+
+        //21th check
+        if (registration_123_11th && registration_4_fourth) {
           data.status = "not_checked";
         }
 

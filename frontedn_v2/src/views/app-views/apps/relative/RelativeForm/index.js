@@ -56,6 +56,7 @@ const AdminForm = (props) => {
         or_tab: initiatorName,
         birthYear: data?.birthYear ? data?.birthYear : null,
         birthDate: data?.birthDate ? dayjs(data?.birthDate) : null,
+        formType: data?.birthDate ? "month_year" : (data?.birthYear ? "year" : "month_year"),
         birthPlace: data?.birthPlace ? data?.birthPlace : "",
         residence: data?.residence ? data?.residence : "",
         workplace: data?.workplace ? data?.workplace : "",

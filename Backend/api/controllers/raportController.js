@@ -1452,16 +1452,15 @@ exports.listRaportsExecutor = async (req, res) => {
       });
     }
 
-    console.log("discuss", discuss !== "all");
-    console.log("discuss", discuss !== "all");
-
-
+    const executor = await prisma.admin.findUnique({
+      where: { id: req.userId },
+    });
     const filters = {
       AND: [
         { display: true },
-        executorFilter
-          ? { raport: { executorId: { contains: executorFilter } } }
-          : {},
+        executor && executor.role === "superAdmin"
+          ? {}
+          : { raport: { executorId: { equals: req.userId } } },
         fullName
           ? { registrations: { some: { fullName: { contains: fullName } } } }
           : {},
@@ -1495,15 +1494,7 @@ exports.listRaportsExecutor = async (req, res) => {
         : {}),
     };
 
-    // const executor = await prisma.admin.findUnique({
-    //   where: { id: req.userId },
-    // });
-
-    // if (executor && executor?.role === "superAdmin") {
-    //   // filters.AND.push({ executorId: { equals: executorId } });
-    // } else if (executor?.id == req.userId) {
-    //   filters.AND.push({ raport: { executorId: { contains: req.userId } } });
-    // }
+    
     // Bazadan paginatsiya qilingan hisobotlarni olish
     let raports = await prisma.raportLink.findMany({
       where: filters,
@@ -3255,7 +3246,7 @@ exports.generateUPK = async (req, res) => {
         : "");
     // Create a new document
     const formattedBirthDate = data?.birthDate
-      ? safeString(new Date(data?.birthDate).getFullYear())
+      ? new Date(data.birthDate).toLocaleDateString("ru-RU")
       : "";
 
     const documents = [];
@@ -5944,7 +5935,7 @@ function generateMVD_SGB_USParray(
                           new TextRun({
                             text: `Место жительства`,
                             bold: false,
-                            size: 28, // Large font size for title
+                            size: 24, // Large font size for title
                           }),
                         ],
                         alignment: AlignmentType.CENTER, // Align to the left
@@ -9487,7 +9478,7 @@ function generateUPK(
                           }),
                           new TextRun({
                             text: "(Место жительства)",
-                            size: 28, // Adjust font size
+                            size: 24, // Adjust font size
                             break: 1,
                           }),
                         ],
@@ -12181,84 +12172,84 @@ function generateMalumotnomaListFunc(
           },
         },
         children: [
-          //DSP ma'lumotlari
-          new Table({
-            rows: [
-              new TableRow({
-                children: [
-                  // First Cell: Title "Т А Л А Б Н О М А"
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        children: [
-                          new TextRun({
-                            text: `${organization}`,
-                            // bold: true,
-                            italic: true,
-                            size: 24, // Large font size for title
-                          }),
-                        ],
-                        alignment: AlignmentType.CENTER, // Align to the left
-                      }),
-                    ],
-                    verticalAlign: VerticalAlign.CENTER,
-                    width: {
-                      size: 92, // 70% width for the title
-                      type: WidthType.PERCENTAGE,
-                    },
-                  }),
-                  // Second Cell: Table "(ТРЕБОВАНИЕ)"
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        children: [
-                          new TextRun({
-                            text: "ДСП",
-                            size: 24, // Adjust font size
-                            italic: true,
-                          }),
-                          new TextRun({
-                            text: " Экз. №_",
-                            size: 24, // Adjust font size
-                            italic: true,
-                            break: 1,
-                          }),
-                        ],
-                        alignment: AlignmentType.RIGHT,
-                      }),
-                    ],
-                    verticalAlign: VerticalAlign.CENTER,
-                    width: {
-                      size: 8, // 70% width for the title
-                      type: WidthType.PERCENTAGE,
-                    },
-                  }),
-                ],
-              }),
-            ],
-            width: {
-              size: 100 * 50, // Ensure the table spans the full width of the page
-              type: WidthType.PERCENTAGE,
-            },
-            alignment: AlignmentType.CENTER, // Center-align the entire table
-            borders: {
-              top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-              insideHorizontal: {
-                style: BorderStyle.NONE,
-                size: 0,
-                color: "FFFFFF",
-              },
-              insideVertical: {
-                style: BorderStyle.NONE,
-                size: 0,
-                color: "FFFFFF",
-              },
-            },
-            spacing: { line: 0, after: 0 },
-          }),
+          // //DSP ma'lumotlari
+          // new Table({
+          //   rows: [
+          //     new TableRow({
+          //       children: [
+          //         // First Cell: Title "Т А Л А Б Н О М А"
+          //         new TableCell({
+          //           children: [
+          //             new Paragraph({
+          //               children: [
+          //                 new TextRun({
+          //                   text: `${organization}`,
+          //                   // bold: true,
+          //                   italic: true,
+          //                   size: 24, // Large font size for title
+          //                 }),
+          //               ],
+          //               alignment: AlignmentType.CENTER, // Align to the left
+          //             }),
+          //           ],
+          //           verticalAlign: VerticalAlign.CENTER,
+          //           width: {
+          //             size: 92, // 70% width for the title
+          //             type: WidthType.PERCENTAGE,
+          //           },
+          //         }),
+          //         // Second Cell: Table "(ТРЕБОВАНИЕ)"
+          //         new TableCell({
+          //           children: [
+          //             new Paragraph({
+          //               children: [
+          //                 new TextRun({
+          //                   text: "ДСП",
+          //                   size: 24, // Adjust font size
+          //                   italic: true,
+          //                 }),
+          //                 new TextRun({
+          //                   text: " Экз. №_",
+          //                   size: 24, // Adjust font size
+          //                   italic: true,
+          //                   break: 1,
+          //                 }),
+          //               ],
+          //               alignment: AlignmentType.RIGHT,
+          //             }),
+          //           ],
+          //           verticalAlign: VerticalAlign.CENTER,
+          //           width: {
+          //             size: 8, // 70% width for the title
+          //             type: WidthType.PERCENTAGE,
+          //           },
+          //         }),
+          //       ],
+          //     }),
+          //   ],
+          //   width: {
+          //     size: 100 * 50, // Ensure the table spans the full width of the page
+          //     type: WidthType.PERCENTAGE,
+          //   },
+          //   alignment: AlignmentType.CENTER, // Center-align the entire table
+          //   borders: {
+          //     top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+          //     bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+          //     left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+          //     right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
+          //     insideHorizontal: {
+          //       style: BorderStyle.NONE,
+          //       size: 0,
+          //       color: "FFFFFF",
+          //     },
+          //     insideVertical: {
+          //       style: BorderStyle.NONE,
+          //       size: 0,
+          //       color: "FFFFFF",
+          //     },
+          //   },
+          //   spacing: { line: 0, after: 0 },
+          // }),
           //bu joyda talabnoma nomi bilan o'ng tomondagi korobka joylashgan
           new Table({
             rows: [
@@ -12455,32 +12446,32 @@ function generateMalumotnomaListFunc(
                       type: WidthType.PERCENTAGE,
                     },
                   }),
-                  // First Cell: Title "LIVEPLACE"
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        children: [
-                          new TextRun({
-                            text: `Место прописки`,
-                            bold: false,
-                            size: 24, // Large font size for title
-                          }),
-                        ],
-                        alignment: AlignmentType.CENTER, // Align to the left
-                      }),
-                    ],
-                    verticalAlign: VerticalAlign.CENTER,
-                    margins: {
-                      top: 100, // 100 twips = 0.1 inch
-                      bottom: 100,
-                      left: 100,
-                      right: 100,
-                    },
-                    width: {
-                      size: 25 * 50, // 70% width for the title
-                      type: WidthType.PERCENTAGE,
-                    },
-                  }),
+                  // // First Cell: Title "LIVEPLACE"
+                  // new TableCell({
+                  //   children: [
+                  //     new Paragraph({
+                  //       children: [
+                  //         new TextRun({
+                  //           text: `Место прописки`,
+                  //           bold: false,
+                  //           size: 24, // Large font size for title
+                  //         }),
+                  //       ],
+                  //       alignment: AlignmentType.CENTER, // Align to the left
+                  //     }),
+                  //   ],
+                  //   verticalAlign: VerticalAlign.CENTER,
+                  //   margins: {
+                  //     top: 100, // 100 twips = 0.1 inch
+                  //     bottom: 100,
+                  //     left: 100,
+                  //     right: 100,
+                  //   },
+                  //   width: {
+                  //     size: 25 * 50, // 70% width for the title
+                  //     type: WidthType.PERCENTAGE,
+                  //   },
+                  // }),
                 ],
               }),
               ...data.map(
@@ -12570,32 +12561,32 @@ function generateMalumotnomaListFunc(
                           type: WidthType.PERCENTAGE,
                         },
                       }),
-                      // First Cell: Title "LIVEPLACE"
-                      new TableCell({
-                        children: [
-                          new Paragraph({
-                            children: [
-                              new TextRun({
-                                text: `${item.residence || "-"}`,
-                                bold: false,
-                                size: 24, // Large font size for title
-                              }),
-                            ],
-                            alignment: AlignmentType.CENTER, // Align to the left
-                          }),
-                        ],
-                        verticalAlign: VerticalAlign.CENTER,
-                        margins: {
-                          top: 100, // 100 twips = 0.1 inch
-                          bottom: 100,
-                          left: 100,
-                          right: 100,
-                        },
-                        width: {
-                          size: 25 * 50, // 70% width for the title
-                          type: WidthType.PERCENTAGE,
-                        },
-                      }),
+                      // // First Cell: Title "LIVEPLACE"
+                      // new TableCell({
+                      //   children: [
+                      //     new Paragraph({
+                      //       children: [
+                      //         new TextRun({
+                      //           text: `${item.residence || "-"}`,
+                      //           bold: false,
+                      //           size: 24, // Large font size for title
+                      //         }),
+                      //       ],
+                      //       alignment: AlignmentType.CENTER, // Align to the left
+                      //     }),
+                      //   ],
+                      //   verticalAlign: VerticalAlign.CENTER,
+                      //   margins: {
+                      //     top: 100, // 100 twips = 0.1 inch
+                      //     bottom: 100,
+                      //     left: 100,
+                      //     right: 100,
+                      //   },
+                      //   width: {
+                      //     size: 25 * 50, // 70% width for the title
+                      //     type: WidthType.PERCENTAGE,
+                      //   },
+                      // }),
                     ],
                   })
               ),
@@ -16549,11 +16540,11 @@ function generateAVR(
                 size: 12, // Chiziqning o'lchami
                 bold: true,
               }),
-              new TextRun({
-                text: "В связи с оформлением...:", // Chiziqni ifodalash uchun
-                size: 12, // Chiziqning o'lchami
-                bold: true,
-              }),
+              // new TextRun({
+              //   text: "В связи с оформлением...:", // Chiziqni ifodalash uchun
+              //   size: 12, // Chiziqning o'lchami
+              //   bold: true,
+              // }),
             ],
             border: {
               bottom: {

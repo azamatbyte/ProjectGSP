@@ -164,14 +164,10 @@ const Index = (props) => {
     searchParams.get("pageNumber") || 1
   );
   const [pageSize, setPageSize] = useState(searchParams.get("pageSize") || 10);
-  const [search, setSearch] = useState({
-    id: user?.id,
-    ...(JSON.parse(searchParamsData)
-      ? JSON.parse(searchParamsData)
-      : {
-        pageNumber: 1,
-        pageSize: 10,
-      }),
+  const [search, setSearch] = useState(() => {
+    const parsed = JSON.parse(searchParamsData);
+    const base = parsed || { pageNumber: 1, pageSize: 10 };
+    return { ...base, id: user?.id };
   });
   const [sortedColumns, setSortedColumns] = useState(() => {
     try {
@@ -197,6 +193,10 @@ const Index = (props) => {
   const [loadingExcel, setLoadingExcel] = useState(false);
   const [deployLoading, setDeployLoading] = useState(false);
   const [deployModalVisible, setDeployModalVisible] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [statusModalRecord, setStatusModalRecord] = useState(null);
+  const [statusModalValue, setStatusModalValue] = useState(null);
+  const [statusModalLoading, setStatusModalLoading] = useState(false);
   const [birthPlaceSearchRef, setBirthPlaceSearchRef] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [uploadProgress, setUploadProgress] = useState(createInitialUploadProgressState);
@@ -482,17 +482,25 @@ const Index = (props) => {
       // Wait for all async operations to complete
       const updatedData = await Promise.all(
         res?.data?.temporaryData?.map(async (item) => {
-          if (item?.registration) {
-            const registration = await RegistrationService.getProverka(
-              item?.registration
-            );
-            item.registration_data = registration?.data?.data;
+          try {
+            if (item?.registration) {
+              const registration = await RegistrationService.getProverka(
+                item?.registration
+              );
+              item.registration_data = registration?.data?.data;
+            }
+          } catch (e) {
+            item.registration_data = null;
           }
-          if (item?.registration_four) {
-            const registrationFour = await RegistrationService.getProverka(
-              item?.registration_four
-            );
-            item.registration_four_data = registrationFour?.data?.data;
+          try {
+            if (item?.registration_four) {
+              const registrationFour = await RegistrationService.getProverka(
+                item?.registration_four
+              );
+              item.registration_four_data = registrationFour?.data?.data;
+            }
+          } catch (e) {
+            item.registration_four_data = null;
           }
           return item;
         }) || []
@@ -604,16 +612,6 @@ const Index = (props) => {
 
     items.push(
       {
-        key: "delete",
-        label: (
-          <Flex alignItems="center">
-            <DeleteOutlined />
-            <span className="ml-2">{t("delete")}</span>
-          </Flex>
-        ),
-        onClick: () => deleteRow(row)
-      },
-      {
         key: "edit",
         label: (
           <Flex alignItems="center">
@@ -622,6 +620,16 @@ const Index = (props) => {
           </Flex>
         ),
         onClick: () => editRegisterFour(row)
+      },
+      {
+        key: "delete",
+        label: (
+          <Flex alignItems="center">
+            <DeleteOutlined />
+            <span className="ml-2">{t("delete")}</span>
+          </Flex>
+        ),
+        onClick: () => deleteRow(row)
       }
     );
 
@@ -712,8 +720,16 @@ const Index = (props) => {
       sorter: { multiple: 5 },
       sortDirections: ["ascend", "descend"],
       sortOrder: sortOrderMap.status || null,
-      render: (status) => (
-        <Tag color={statusMap[status]}>
+      render: (status, record) => (
+        <Tag
+          color={statusMap[status]}
+          style={{ cursor: "pointer" }}
+          onClick={() => {
+            setStatusModalRecord(record);
+            setStatusModalValue(status);
+            setStatusModalVisible(true);
+          }}
+        >
           {select_options.find((option) => option.value === status)?.label}
         </Tag>
       ),
@@ -902,12 +918,25 @@ const Index = (props) => {
     {
       title: t("number_found"),
       dataIndex: "number_found",
-      render: (_, elm) => (
-        <div className="text-center">
-          {(elm?.registrationSimilarity?.length || 0) +
-            (elm?.registration_four_similarity?.length || 0)}
-        </div>
-      ),
+      render: (_, elm) => {
+        const count =
+          (elm?.registrationSimilarity?.length || 0) +
+          (elm?.registration_four_similarity?.length || 0);
+        return (
+          <div className="text-center">
+            <a
+              onClick={() =>
+                navigate(
+                  `/app/apps/registration_four/find-match/${elm.id}`
+                )
+              }
+              style={{ cursor: "pointer" }}
+            >
+              {count}
+            </a>
+          </div>
+        );
+      },
     },
     {
       title: t("migration"),
@@ -1283,6 +1312,22 @@ const Index = (props) => {
       }
     } catch (error) {
       console.log("error", error);
+    }
+  };
+
+  const handleStatusChange = async () => {
+    if (!statusModalRecord || !statusModalValue) return;
+    setStatusModalLoading(true);
+    try {
+      await RegistrationFourService.update(statusModalRecord.id, { status: statusModalValue });
+      message.success(t("status_updated_successfully"));
+      setStatusModalVisible(false);
+      setStatusModalRecord(null);
+      fetchData();
+    } catch (error) {
+      message.error(t("error_updating_status"));
+    } finally {
+      setStatusModalLoading(false);
     }
   };
 
@@ -1883,6 +1928,30 @@ const Index = (props) => {
           </Button>,
         ]}
       ></Modal>
+      <Modal
+        title={t("change_status")}
+        open={statusModalVisible}
+        onCancel={() => {
+          setStatusModalVisible(false);
+          setStatusModalRecord(null);
+        }}
+        onOk={handleStatusChange}
+        confirmLoading={statusModalLoading}
+        okText={t("save")}
+        cancelText={t("cancel")}
+      >
+        <p>{statusModalRecord?.fullName}</p>
+        <Select
+          style={{ width: "100%" }}
+          value={statusModalValue}
+          onChange={(value) => setStatusModalValue(value)}
+          options={[
+            { value: "accepted", label: t("access_granted") },
+            { value: "not_accepted", label: t("not_access") },
+            { value: "not_checked", label: t("checking") },
+          ]}
+        />
+      </Modal>
       <Modal
         title={t("add_manual")}
         open={manualModalVisible}

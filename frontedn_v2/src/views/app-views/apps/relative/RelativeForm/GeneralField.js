@@ -65,6 +65,14 @@ const GeneralField = (props) => {
   const [formType, setFormType] = useState(
     props.form?.getFieldValue("formType") || "month_year"
   );
+
+  useEffect(() => {
+    const value = props.form?.getFieldValue("formType");
+    if (value) {
+      setFormType(value);
+    }
+  }, [props.form?.getFieldValue("formType")]);
+
   const [dateInput, setDateInput] = useState(null);
   const relationDegreeRef = React.useRef();
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -475,7 +483,6 @@ const GeneralField = (props) => {
               <Form.Item
                 name="workplace"
                 label={t("workplace")}
-                rules={rules.errorMsg}
               >
                 <AutoComplete
                   className="w-100"
