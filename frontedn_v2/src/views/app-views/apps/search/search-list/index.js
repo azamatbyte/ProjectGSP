@@ -637,15 +637,17 @@ const GlobalSearch = (props) => {
               : form_reg_log;
 
           return (
-            <span
-              style={{
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {truncated}
-            </span>
+            <Tooltip title={form_reg_log}>
+              <span
+                style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {truncated}
+              </span>
+            </Tooltip>
           );
         },
       },

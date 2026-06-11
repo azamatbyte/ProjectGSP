@@ -24,6 +24,7 @@ import {
   DeploymentUnitOutlined,
   DeleteOutlined,
   UnorderedListOutlined,
+  CopyOutlined,
 } from "@ant-design/icons";
 import EllipsisDropdown from "components/shared-components/EllipsisDropdown";
 import Flex from "components/shared-components/Flex";
@@ -519,6 +520,25 @@ const Index = (props) => {
     }
   }, [search, pageNumber, pageSize, sortedColumns]);
 
+  const copyNotes = useCallback(
+    (text) => {
+      if (!text) return;
+      const onDone = () => message.success(t("copied"));
+      if (navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(onDone).catch(() => {});
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        onDone();
+      }
+    },
+    [t]
+  );
+
   const handleTableChange = useCallback((pagination, filters, sorter) => {
     const sorters = Array.isArray(sorter) ? sorter : [sorter];
     const newSorted = sorters
@@ -739,19 +759,52 @@ const Index = (props) => {
       dataIndex: "registration",
       width: "2%",
       // sorter: (a, b) => utils.antdTableSorter(a, b, "registration"),
-      render: (registration) => {
+      render: (registration, record) => {
         return registration ? (
-          <Button
-            onClick={() => {
-              navigate(
-                `/app/apps/register/info-register/${registration}?redirect=/app/registrationFour-list&&search=${JSON.stringify(
-                  search
-                )}`
-              );
-            }}
+          <Tooltip
+            overlayStyle={{ maxWidth: 320 }}
+            title={
+              record?.registration_data?.notes ? (
+                <div>
+                  <div style={{ textAlign: "right", marginBottom: 4 }}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<CopyOutlined />}
+                      title={t("copy")}
+                      style={{ color: "#fff" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyNotes(record.registration_data.notes);
+                      }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      maxHeight: 200,
+                      overflowY: "auto",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {record.registration_data.notes}
+                  </div>
+                </div>
+              ) : null
+            }
           >
-            {t("open")}
-          </Button>
+            <Button
+              onClick={() => {
+                navigate(
+                  `/app/apps/register/info-register/${registration}?redirect=/app/registrationFour-list&&search=${JSON.stringify(
+                    search
+                  )}`
+                );
+              }}
+            >
+              {t("open")}
+            </Button>
+          </Tooltip>
         ) : (
           <p></p>
         );
@@ -823,19 +876,52 @@ const Index = (props) => {
       dataIndex: "registration_four",
       width: "2%",
       // sorter: (a, b) => utils.antdTableSorter(a, b, "registration_four"),
-      render: (registration4) => {
+      render: (registration4, record) => {
         return registration4 ? (
-          <Button
-            onClick={() => {
-              navigate(
-                `/app/apps/register/info-register/${registration4}?redirect=/app/registrationFour-list&&search=${JSON.stringify(
-                  search
-                )}`
-              );
-            }}
+          <Tooltip
+            overlayStyle={{ maxWidth: 320 }}
+            title={
+              record?.registration_four_data?.notes ? (
+                <div>
+                  <div style={{ textAlign: "right", marginBottom: 4 }}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<CopyOutlined />}
+                      title={t("copy")}
+                      style={{ color: "#fff" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyNotes(record.registration_four_data.notes);
+                      }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      maxHeight: 200,
+                      overflowY: "auto",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {record.registration_four_data.notes}
+                  </div>
+                </div>
+              ) : null
+            }
           >
-            {t("open")}
-          </Button>
+            <Button
+              onClick={() => {
+                navigate(
+                  `/app/apps/register/info-register/${registration4}?redirect=/app/registrationFour-list&&search=${JSON.stringify(
+                    search
+                  )}`
+                );
+              }}
+            >
+              {t("open")}
+            </Button>
+          </Tooltip>
         ) : (
           <p></p>
         );

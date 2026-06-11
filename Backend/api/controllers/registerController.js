@@ -738,6 +738,7 @@ exports.getRegistrationByIdProverka = async (req, res) => {
         regEndDate: true,
         expired: true,
         accessStatus: true,
+        notes: true,
       },
     });
 
@@ -753,6 +754,7 @@ exports.getRegistrationByIdProverka = async (req, res) => {
               regEndDate: true,
               expired: true,
               accessStatus: true,
+              notes: true,
             },
           },
         },
@@ -767,6 +769,7 @@ exports.getRegistrationByIdProverka = async (req, res) => {
           regEndDate: relative.registration?.regEndDate,
           expired: relative.registration?.expired,
           accessStatus: relative.registration?.accessStatus,
+          notes: relative.registration?.notes,
         };
 
         return res.status(200).json({

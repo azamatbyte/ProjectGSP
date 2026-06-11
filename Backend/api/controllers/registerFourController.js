@@ -1003,6 +1003,16 @@ exports.uploadExcel = async (req, res) => {
           data.status = "not_checked";
         }
 
+        //22th check
+
+        const registration_4_repeat = Boolean(
+          registration4 &&
+          (registration4?.accessStatus === "ПОВТОРНАЯ СП"));
+
+        if (!registration && registration_4_repeat) {
+          data.status = "not_checked";
+        }
+
         delete data.form_reg_log;
         delete data.expiredDate;
         data.recordNumber = recordNumber;

@@ -32,6 +32,8 @@
 	"last_name": "Last Name",
 	"father_name": "Father Name",
 	"notes": "Notes",
+	"copy": "Copy",
+	"copied": "Copied",
 	"editable_word": "Editable text",
 	"general": "General",
 	"basic_info": "Basic Info",
