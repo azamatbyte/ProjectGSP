@@ -728,6 +728,17 @@ const Index = (props) => {
       ),
     },
     {
+      title: t("reg_number"),
+      dataIndex: "regNumber",
+      width: "2%",
+      sorter: { multiple: 4 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.regNumber || null,
+      render: (regNumber) => (
+        <p style={{ textAlign: "center" }}>{regNumber ? regNumber : <></>}</p>
+      ),
+    },
+    {
       title: t("status"),
       dataIndex: "status",
       sorter: { multiple: 5 },
