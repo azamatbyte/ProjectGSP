@@ -717,13 +717,6 @@ const Index = (props) => {
       ),
     },
     {
-      title: t("birth_place"),
-      dataIndex: "birthPlace",
-      sorter: { multiple: 3 },
-      sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap.birthPlace || null,
-    },
-    {
       title: t("reg_number"),
       dataIndex: "regNumber",
       width: "2%",

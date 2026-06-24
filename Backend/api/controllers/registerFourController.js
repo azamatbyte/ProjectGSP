@@ -1897,48 +1897,44 @@ exports.exportTemporaryDataToExcel = async (req, res) => {
 
     // Map data into sheet rows
     const rows = temporaryDataList.map((data, index) => ({
-      "№": index + 1,
-      "reg№": data?.regNumber || data?.reg_number || "",
-      Фам: data?.last_name || data?.lastName || "",
-      Имя: data?.first_name || data?.firstName || "",
-      Отч: data?.fatherName || "",
-      "г.р.": data.birthDate
+      t_raqam: index + 1,
+      qayd_raqam: data?.regNumber || data?.reg_number || "",
+      familiya: data?.last_name || data?.lastName || "",
+      ism: data?.first_name || data?.firstName || "",
+      sharif: data?.fatherName || "",
+      t_sana: data.birthDate
         ? new Date(data.birthDate).getFullYear()
         : data.birthYear || "",
-      "м.р.": data.birthPlace || "",
+      t_joy: data.birthPlace || "",
     }));
 
-    // Create worksheet and apply styles
-    const worksheet = xlsx.utils.json_to_sheet(rows);
-    const headers = ["№", "reg№", "Фам", "Имя", "Отч", "г.р.", "м.р."];
+    // Create workbook and worksheet
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Temporary Data");
 
-    headers.forEach((_, colIndex) => {
-      const cellRef = xlsx.utils.encode_cell({ r: 0, c: colIndex });
-      if (worksheet[cellRef]) {
-        worksheet[cellRef].s = {
-          fill: { patternType: "solid", fgColor: { rgb: "FFA500" } },
-          font: { color: { rgb: "FFFFFF" }, bold: true },
-        };
-      }
-    });
-
-    worksheet["!cols"] = [
-      { wch: 5 },
-      { wch: 10 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 10 },
-      { wch: 50 },
+    sheet.columns = [
+      { header: "t_raqam", key: "t_raqam", width: 10 },
+      { header: "qayd_raqam", key: "qayd_raqam", width: 12 },
+      { header: "familiya", key: "familiya", width: 20 },
+      { header: "ism", key: "ism", width: 20 },
+      { header: "sharif", key: "sharif", width: 20 },
+      { header: "t_sana", key: "t_sana", width: 10 },
+      { header: "t_joy", key: "t_joy", width: 50 },
     ];
 
-    // Create workbook and write file
-    const workbook = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(workbook, worksheet, "Temporary Data");
+    sheet.addRows(rows);
+
+    sheet.getRow(1).eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFFCE4D6" },
+      };
+    });
 
     const fileName = `${uuidv4()}.xlsx`;
     const filePath = `./uploads/${fileName}`;
-    xlsx.writeFile(workbook, filePath);
+    await workbook.xlsx.writeFile(filePath);
 
     return res.status(200).json({
       code: 200,
@@ -3221,6 +3217,10 @@ exports.save = async (req, res) => {
  *       500:
  *         description: Internal server error
  */
+// Per-write-unit transactions are short; this is only a safety net so a single
+// slow row cannot hang on the default 5s Prisma interactive-transaction timeout.
+const DEPLOY_TRANSACTION_TIMEOUT_MS = 30000;
+
 exports.deploy = async (req, res) => {
   const { id, type, form_reg } = req.body;
   const adminId = req.userId;
@@ -3236,8 +3236,23 @@ exports.deploy = async (req, res) => {
       }
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const temporaryData_not_found = await tx.temporaryData.findMany({
+      // Preload admin/initiator lookups once so per-field name resolution
+      // does not issue extra DB round-trips inside the write transactions.
+      const [admins, initiators] = await Promise.all([
+        prisma.admin.findMany({
+          select: { id: true, first_name: true, last_name: true },
+        }),
+        prisma.initiator.findMany({
+          select: { id: true, first_name: true, last_name: true },
+        }),
+      ]);
+      const adminMap = new Map(admins.map((a) => [a.id, a]));
+      const initiatorMap = new Map(initiators.map((i) => [i.id, i]));
+      const resolveFullName = (user) =>
+        user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : "";
+
+      // Reads are pulled out of the transaction; only writes are transactional.
+      const temporaryData_not_found = await prisma.temporaryData.findMany({
         where: {
           OR: [
             {
@@ -3254,7 +3269,7 @@ exports.deploy = async (req, res) => {
         },
       });
 
-      const temporaryData_found_four = await tx.temporaryData.findMany({
+      const temporaryData_found_four = await prisma.temporaryData.findMany({
         where: {
           executorId: id,
           found_status: true,
@@ -3270,7 +3285,7 @@ exports.deploy = async (req, res) => {
       for (const item of temporaryData_found_four) {
         try {
           // 1️⃣ Get the old registration data
-          const oldRegistration = await tx.registration.findUnique({
+          const oldRegistration = await prisma.registration.findUnique({
             where: { id: item.registration_four },
           });
 
@@ -3305,6 +3320,8 @@ exports.deploy = async (req, res) => {
             or_tab: item?.initiatorId ? item?.initiatorId : oldRegistration?.or_tab,
           };
 
+          const logRows = [];
+
           // 3️⃣ Compare fields and write logs
           for (const key of Object.keys(updatedData)) {
             let oldValue = oldRegistration[key] ?? "";
@@ -3312,49 +3329,19 @@ exports.deploy = async (req, res) => {
 
             // Special handling for executorId and or_tab to store full names in logs
             if (key === "executorId" && newValue !== null) {
-              // Get full name for old value
               if (oldValue) {
-                const oldUser = await tx.admin.findUnique({
-                  where: { id: oldValue },
-                });
-                oldValue = oldUser
-                  ? `${oldUser.first_name || ""} ${oldUser.last_name || ""
-                    }`.trim()
-                  : oldValue;
+                oldValue = resolveFullName(adminMap.get(oldValue)) || oldValue;
               }
-
-              // Get full name for new value
               if (newValue) {
-                const newUser = await tx.admin.findUnique({
-                  where: { id: newValue },
-                });
-                newValue = newUser
-                  ? `${newUser.first_name || ""} ${newUser.last_name || ""
-                    }`.trim()
-                  : newValue;
+                newValue = resolveFullName(adminMap.get(newValue)) || newValue;
               }
             }
             if (key === "or_tab" && newValue !== null) {
-              // Get full name for old value
               if (oldValue) {
-                const oldUser = await tx.initiator.findUnique({
-                  where: { id: oldValue },
-                });
-                oldValue = oldUser
-                  ? `${oldUser.first_name || ""} ${oldUser.last_name || ""
-                    }`.trim()
-                  : oldValue;
+                oldValue = resolveFullName(initiatorMap.get(oldValue)) || oldValue;
               }
-
-              // Get full name for new value
               if (newValue) {
-                const newUser = await tx.initiator.findUnique({
-                  where: { id: newValue },
-                });
-                newValue = newUser
-                  ? `${newUser.first_name || ""} ${newUser.last_name || ""
-                    }`.trim()
-                  : newValue;
+                newValue = resolveFullName(initiatorMap.get(newValue)) || newValue;
               }
             }
 
@@ -3383,30 +3370,36 @@ exports.deploy = async (req, res) => {
             }
 
             if (normalizedOldValue !== normalizedNewValue) {
-              await tx.registrationLog.create({
-                data: {
-                  registrationId: item.registration_four,
-                  fieldName: key,
-                  oldValue: normalizedOldValue,
-                  newValue: normalizedNewValue,
-                  executorId: req.userId,
-                },
+              logRows.push({
+                registrationId: item.registration_four,
+                fieldName: key,
+                oldValue: normalizedOldValue,
+                newValue: normalizedNewValue,
+                executorId: req.userId,
               });
             }
           }
 
-          // 4️⃣ Update registration
-          await tx.registration.update({
-            where: { id: item.registration_four },
-            data: updatedData,
-          });
+          // 4️⃣ + 5️⃣ Persist the change logs, registration update and
+          //          temporaryData removal atomically in one short transaction.
+          const shouldRemoveTemp = !allIds.includes(item.registration_four);
+          await prisma.$transaction(
+            [
+              ...(logRows.length
+                ? [prisma.registrationLog.createMany({ data: logRows })]
+                : []),
+              prisma.registration.update({
+                where: { id: item.registration_four },
+                data: updatedData,
+              }),
+              ...(shouldRemoveTemp
+                ? [prisma.temporaryData.delete({ where: { id: item.id } })]
+                : []),
+            ],
+            { maxWait: 10000, timeout: DEPLOY_TRANSACTION_TIMEOUT_MS }
+          );
 
-          // 5️⃣ Delete from temporaryData
-          if (!allIds.includes(item.registration_four))
-            await tx.temporaryData.delete({ where: { id: item.id } });
-
-          if (!allIds.includes(item.registration_four))
-            allIds.push(item.registration_four);
+          if (shouldRemoveTemp) allIds.push(item.registration_four);
           count++;
         } catch (error) {
           console.error("Error updating registration_four:", error);
@@ -3418,7 +3411,7 @@ exports.deploy = async (req, res) => {
       for (const item of temporaryData_not_found) {
         try {
           // 1️⃣ Check if record with same firstName, lastName, birthYear exists
-          const existing = await tx.registration.findFirst({
+          const existing = await prisma.registration.findFirst({
             where: {
               firstName: item?.firstName || "",
               lastName: item?.lastName || "",
@@ -3438,7 +3431,7 @@ exports.deploy = async (req, res) => {
             continue;
           }
 
-          const getFormReg = await tx.form.findFirst({
+          const getFormReg = await prisma.form.findFirst({
             where: { name: item?.form_reg },
           });
 
@@ -3480,10 +3473,15 @@ exports.deploy = async (req, res) => {
             or_tab: item?.initiatorId || "",
           };
 
-          const registration = await tx.registration.create({ data });
-
-          // Remove from TemporaryData after success
-          await tx.temporaryData.delete({ where: { id: item.id } });
+          // Create the registration and remove its temporaryData row
+          // atomically in one short transaction.
+          const [registration] = await prisma.$transaction(
+            [
+              prisma.registration.create({ data }),
+              prisma.temporaryData.delete({ where: { id: item.id } }),
+            ],
+            { maxWait: 10000, timeout: DEPLOY_TRANSACTION_TIMEOUT_MS }
+          );
 
           allIds.push(registration.id);
           count++;
@@ -3493,7 +3491,7 @@ exports.deploy = async (req, res) => {
         }
       }
 
-      const temporaryData_found_model_reg = await tx.temporaryData.findMany({
+      const temporaryData_found_model_reg = await prisma.temporaryData.findMany({
         where: {
           executorId: id,
           found_status: true,
@@ -3507,7 +3505,7 @@ exports.deploy = async (req, res) => {
         try {
           allIds.push(item.registration);
           // Remove from TemporaryData after success
-          await tx.temporaryData.delete({ where: { id: item.id } });
+          await prisma.temporaryData.delete({ where: { id: item.id } });
 
           count++;
         } catch (error) {
@@ -3519,7 +3517,7 @@ exports.deploy = async (req, res) => {
       // --- Create sessions if needed ---
       let sessionsResult = null;
       if (type && allIds.length > 0) {
-        const existingSessions = await tx.session.findMany({
+        const existingSessions = await prisma.session.findMany({
           where: { adminId, type },
           select: { registrationId: true },
         });
@@ -3528,7 +3526,7 @@ exports.deploy = async (req, res) => {
           existingSessions.map((session) => session.registrationId)
         );
 
-        const lastSession = await tx.session.findFirst({
+        const lastSession = await prisma.session.findFirst({
           where: { adminId, type },
           orderBy: { order: "desc" },
         });
@@ -3544,7 +3542,7 @@ exports.deploy = async (req, res) => {
             continue; // Skip if session already exists
           }
 
-          const registration = await tx.registration.findUnique({
+          const registration = await prisma.registration.findUnique({
             where: { id: registrationId },
           });
 
@@ -3571,7 +3569,7 @@ exports.deploy = async (req, res) => {
               order: nextOrder++,
             };
 
-            const newSession = await tx.session.create({ data: sessionData });
+            const newSession = await prisma.session.create({ data: sessionData });
             createdSessions.push(newSession);
           }
         }
@@ -3582,18 +3580,15 @@ exports.deploy = async (req, res) => {
         };
       }
 
-      return { count, ids: allIds, sessionsResult };
-    });
-
     return res.status(200).json({
       code: 200,
       message: "Temporary data processed successfully",
-      total: result.count,
-      ids: result.ids,
-      ...(result.sessionsResult && {
-        sessionsAdded: result.sessionsResult.createdSessions.length,
-        skippedDuplicates: result.sessionsResult.skippedDuplicates,
-        sessions: result.sessionsResult.createdSessions,
+      total: count,
+      ids: allIds,
+      ...(sessionsResult && {
+        sessionsAdded: sessionsResult.createdSessions.length,
+        skippedDuplicates: sessionsResult.skippedDuplicates,
+        sessions: sessionsResult.createdSessions,
       }),
     });
   } catch (error) {
