@@ -24,13 +24,20 @@ const Index = (props) => {
   const userInformation = useCallback(async (id) => {
     try {
       const response = await RegistrationFourService.getById(id);
-      if(response?.data?.data?.registration_four_similarity){
-        setData((prevData) => [...(prevData || []), ...response.data.data.registration_four_similarity]);
-      }
-      if(response?.data?.data?.registrationSimilarity){
-        setData((prevData) => [...(prevData || []), ...response.data.data.registrationSimilarity]);
-      }
-      
+      const merged = [
+        ...(response?.data?.data?.registration_four_similarity || []),
+        ...(response?.data?.data?.registrationSimilarity || []),
+      ];
+      const seen = new Set();
+      setData(
+        merged.filter((item) => {
+          const key = `${item?.model}-${item?.id}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+      );
+
       if(response?.data?.data){
         form.setFieldsValue({
           firstName: response?.data?.data?.firstName,
@@ -178,7 +185,7 @@ const Index = (props) => {
               justifyContent="space-between"
               alignItems="center"
             >
-              <h2 className="mb-3">{t("find_matched")} </h2>
+              <h2 className="mb-3">{t("found_matches")} </h2>
               <div className="mb-3">
                 <Button className="mr-2" onClick={() => backHandle()}>
                   <LeftCircleOutlined /> {t("back")}

@@ -674,6 +674,15 @@ const Index = (props) => {
       ),
     },
     {
+      title: t("reg_number_short"),
+      dataIndex: "regNumber",
+      width: "2%",
+      sorter: { multiple: 4 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap.regNumber || null,
+      render: (regNumber) => (regNumber ? regNumber : ""),
+    },
+    {
       title: t("full_name"),
       dataIndex: "fullName",
       width: "10%",
@@ -714,17 +723,6 @@ const Index = (props) => {
               ? elm?.birthYear
               : ""}
         </>
-      ),
-    },
-    {
-      title: t("reg_number"),
-      dataIndex: "regNumber",
-      width: "2%",
-      sorter: { multiple: 4 },
-      sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap.regNumber || null,
-      render: (regNumber) => (
-        <p style={{ textAlign: "center" }}>{regNumber ? regNumber : <></>}</p>
       ),
     },
     {
@@ -1058,13 +1056,8 @@ const Index = (props) => {
       sorter: { multiple: 8 },
       sortDirections: ["ascend", "descend"],
       sortOrder: sortOrderMap.residence || null,
-      render: (residence) => (
-        <p>
-          {residence?.length > 100
-            ? residence.slice(0, 100) + "..."
-            : residence}
-        </p>
-      ),
+      render: (residence) =>
+        residence?.length > 100 ? residence.slice(0, 100) + "..." : residence,
     },
     {
       title: t("initiator"),

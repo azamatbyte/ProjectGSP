@@ -93,45 +93,12 @@ const GeneralField = (props) => {
 
   const tableColumns = [
     {
-      title: t("registration_number"),
-      dataIndex: "regNumber",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "regNumber"),
-      render: (regNumber) => (
-        <Tooltip title={regNumber}>
-          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {regNumber?.length > 10
-              ? "..." + regNumber.slice(regNumber.length - 10)
-              : regNumber}
-          </span>
-        </Tooltip>
-      ),
-    },
-    {
       title: t("similarity_percentage"),
       dataIndex: "similarity_percentage",
       sorter: (a, b) => utils.antdTableSorter(a, b, "similarity_percentage"),
       render: (similarity_percentage) => (
         <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {similarity_percentage}%
-        </span>
-      ),
-    },
-    {
-      title: t("model"),
-      dataIndex: "model",
-      columnWidth: "150px",
-      sorter: (a, b) => utils.antdTableSorter(a, b, "model"),
-      render: (model) => (
-        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {model === "registration"
-            ? t("registration")
-            : model === "relative"
-              ? t("relative")
-              : model === "registration4"
-                ? t("registration4")
-                : model === "relativeWithoutAnalysis"
-                  ? t("relativeWithoutAnalysis")
-                  : model}
         </span>
       ),
     },
@@ -144,6 +111,13 @@ const GeneralField = (props) => {
         <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {fullName}
         </span>
+      ),
+    },
+    {
+      title: t("birth_date"),
+      dataIndex: "birthDate",
+      render: (birthDate, elm) => (
+        <>{birthDate ? getDateDayString(birthDate) : elm?.birthYear}</>
       ),
     },
     {
@@ -205,10 +179,36 @@ const GeneralField = (props) => {
       ),
     },
     {
-      title: t("birth_date"),
-      dataIndex: "birthDate",
-      render: (birthDate, elm) => (
-        <>{birthDate ? getDateDayString(birthDate) : elm?.birthYear}</>
+      title: t("table_name"),
+      dataIndex: "model",
+      columnWidth: "150px",
+      sorter: (a, b) => utils.antdTableSorter(a, b, "model"),
+      render: (model) => (
+        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {model === "registration"
+            ? t("registration")
+            : model === "relative"
+              ? t("relative")
+              : model === "registration4"
+                ? t("registration4")
+                : model === "relativeWithoutAnalysis"
+                  ? t("relativeWithoutAnalysis")
+                  : model}
+        </span>
+      ),
+    },
+    {
+      title: t("registration_number"),
+      dataIndex: "regNumber",
+      sorter: (a, b) => utils.antdTableSorter(a, b, "regNumber"),
+      render: (regNumber) => (
+        <Tooltip title={regNumber}>
+          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {regNumber?.length > 10
+              ? "..." + regNumber.slice(regNumber.length - 10)
+              : regNumber}
+          </span>
+        </Tooltip>
       ),
     },
     {
@@ -277,7 +277,7 @@ const GeneralField = (props) => {
       )
     },
     {
-      title: t("match"),
+      title: t("view_details"),
       dataIndex: "actions",
       render: (_, elm) => (
         <div className="text-right">
@@ -329,11 +329,9 @@ const GeneralField = (props) => {
       </div>
       <div className="table-responsive">
         <Table
-          tableProps={{
-            footer: true
-          }}
           columns={tableColumns}
           dataSource={list}
+          rowKey={(record) => `${record?.model}-${record?.id}`}
           pagination={false}
         />
         <Row
@@ -344,7 +342,7 @@ const GeneralField = (props) => {
           }}
         >
           <Col>
-            <span style={{ fontWeight: "bold" }} onClick={() => console.log("list", list)}>
+            <span style={{ fontWeight: "bold" }}>
               {t("total_number_of_entries")}: {total}
             </span>
           </Col>

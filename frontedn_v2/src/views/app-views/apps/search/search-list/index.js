@@ -684,13 +684,16 @@ const GlobalSearch = (props) => {
         sorter: { multiple: 5 },
         sortDirections: ['ascend', 'descend'],
         sortOrder: sortOrderMap['full_name'] || null,
-        render: (full_name) => (
+        render: (full_name, elm) => (
           <Tooltip title={full_name}>
-            <span style={{
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
+            <span
+              onClick={() => viewDetails(elm)}
+              style={{
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                cursor: "pointer",
+              }}
             >
               {full_name ? (
                 full_name?.length > 50 ? (
@@ -1113,7 +1116,7 @@ const GlobalSearch = (props) => {
         ),
       },
     ],
-    [t, rowNumber, dropdownMenu, sortOrderMap]
+    [t, rowNumber, dropdownMenu, sortOrderMap, viewDetails]
   );
 
   // FIX 9: Ensure pagination handlers don't cause loops
