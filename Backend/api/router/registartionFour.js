@@ -3,6 +3,7 @@ const {
   uploadExcel,
   getTemporaryDataList,
   updateTemporaryDataStatus,
+  updateKompromat,
   getTemporaryDataById,
   exportTemporaryDataToExcel,
   migrate,
@@ -36,6 +37,7 @@ router.get("/migrate/:id", verifyToken, permissionCheck("admin"), migrate);
 router.get("/save/:id", verifyToken, permissionCheck("admin"), save);
 router.post("/deploy", verifyToken, permissionCheck("admin"), deploy);
 router.post("/update/:id", verifyToken, permissionCheck("admin"), updateTemporaryDataStatus);
+router.post("/updateKompromat", verifyToken, permissionCheck("admin"), updateKompromat);
 router.get("/get/:id", verifyToken, permissionCheck("admin"), getTemporaryDataById);
 router.post("/actionFast/:id", verifyToken, permissionCheck("admin"), actionFast);
 router.delete("/delete", verifyToken, permissionCheck("admin"), deleteTemporaryData);

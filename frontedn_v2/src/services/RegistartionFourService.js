@@ -42,6 +42,10 @@ RegistrationFourService.update = function (id, data) {
 	return Request.postRequest(`registerFour/update/${id}`, data);
 };
 
+RegistrationFourService.updateKompromat = function (data) {
+	return Request.postRequest("registerFour/updateKompromat", data);
+};
+
 RegistrationFourService.exportData = function (data) {
 	return Request.postRequest("registerFour/export", data);
 };

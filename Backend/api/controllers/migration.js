@@ -8,8 +8,21 @@ const { spawn } = require("child_process");
 const { createInterface } = require("readline");
 const { Client, Pool } = require("pg");
 const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcryptjs");
 const fs = require("fs");
 const path = require("path");
+
+// Every seeded account gets this fixed password so an operator can sign in after
+// a migration without reading it out of the log. Kept in sync with the same
+// default in scripts/seed.js. This makes it a KNOWN credential on every
+// installation — it must be changed at first sign-in.
+const SEED_PASSWORD = "5018989";
+
+async function buildCredentials(username) {
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(SEED_PASSWORD, salt);
+    return { username, password: SEED_PASSWORD, data: { password: hashed, salt } };
+}
 const { getEnv } = require("../../config/env");
 
 const prisma = new PrismaClient();
@@ -828,15 +841,17 @@ async function createDefaultAdminsAndServices() {
                 code: 4,
             },
         });
+        const superAdminCreds = await buildCredentials("superadmin");
+        const adminCreds = await buildCredentials("admin01");
+        const adminSimpleCreds = await buildCredentials("admin02");
+
         const superAdmin = await prisma.admin.create({
             data: {
                 first_name: "Super",
                 last_name: "Admin",
                 username: "superadmin",
                 status: "active",
-                password:
-                    "$2a$10$VlxkGYp1/vjOX4TGkppFPeBwUcByuCNp5GhMOPGWC116Vr9sN/9oO", // Replace with actual hashed password
-                salt: "$2a$10$Q4b2cf/QMoJMr.NFxnyBZu",
+                ...superAdminCreds.data,
                 role: "superAdmin", // Assign multiple roles
             },
         });
@@ -846,9 +861,7 @@ async function createDefaultAdminsAndServices() {
                 last_name: "Super",
                 username: "admin01",
                 status: "active",
-                password:
-                    "$2a$10$VlxkGYp1/vjOX4TGkppFPeBwUcByuCNp5GhMOPGWC116Vr9sN/9oO", // Replace with actual hashed password
-                salt: "$2a$10$Q4b2cf/QMoJMr.NFxnyBZu",
+                ...adminCreds.data,
                 role: "superAdmin", // Assign multiple roles
             },
         });
@@ -858,12 +871,21 @@ async function createDefaultAdminsAndServices() {
                 last_name: "Admin",
                 username: "admin02",
                 status: "active",
-                password:
-                    "$2a$10$VlxkGYp1/vjOX4TGkppFPeBwUcByuCNp5GhMOPGWC116Vr9sN/9oO", // Replace with actual hashed password
-                salt: "$2a$10$Q4b2cf/QMoJMr.NFxnyBZu",
+                ...adminSimpleCreds.data,
                 role: "admin", // Assign multiple roles
             },
         });
+
+        console.log("");
+        console.log("=".repeat(64));
+        console.log("  SEEDED ADMIN PASSWORDS — same fixed default on every install");
+        console.log("=".repeat(64));
+        [superAdminCreds, adminCreds, adminSimpleCreds].forEach(({ username, password }) => {
+            console.log(`  ${username.padEnd(12)} ${password}  (default — CHANGE IT)`);
+        });
+        console.log("=".repeat(64));
+        console.log("  Change them after first sign-in.");
+        console.log("");
         await prisma.adminServiceAccess.create({
             data: {
                 adminId: admin.id,

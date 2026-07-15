@@ -151,6 +151,18 @@ const GeneralField = (props) => {
 				message: t("please_enter_first_name"),
 			},
 		],
+		// Mirrors the backend PasswordSchema (min 4) so the user gets the error
+		// before the request is made.
+		password: [
+			{
+				required: true,
+				message: t("please_enter_password"),
+			},
+			{
+				min: 4,
+				message: t("password_min_4"),
+			},
+		],
 		birthDate: [
 			{
 				required: true,
@@ -336,17 +348,22 @@ const GeneralField = (props) => {
 									}} />
 								</Form.Item>
 							</Col>							
-							<Col xs={24} sm={24} md={12}>
-								<Form.Item name="password" label={t("password")} required>
-									<Input.Password tabIndex={11} autoComplete="new-password" maxLength={255} onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											e.preventDefault();
-											const nextInput = document.querySelector("[tabindex=\"12\"]");
-											if (nextInput) nextInput.focus();
-										}
-									}} />
-								</Form.Item>
-							</Col>
+							{/* Only set on creation. Editing a password here would let any admin
+							    overwrite another account's password; changes now go through
+							    "Change password" (self) or a superAdmin reset. */}
+							{mode === "ADD" && (
+								<Col xs={24} sm={24} md={12}>
+									<Form.Item name="password" label={t("password")} required rules={rules.password}>
+										<Input.Password tabIndex={11} autoComplete="new-password" maxLength={255} onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												e.preventDefault();
+												const nextInput = document.querySelector("[tabindex=\"12\"]");
+												if (nextInput) nextInput.focus();
+											}
+										}} />
+									</Form.Item>
+								</Col>
+							)}
 						</Row>
 					</Card>
 				</Col>

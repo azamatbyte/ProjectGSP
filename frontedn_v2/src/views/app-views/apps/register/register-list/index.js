@@ -337,7 +337,7 @@ const RegisterList = () => {
       ),
     },
     {
-      title: t("reg_number"),
+      title: t("registration_number"),
       dataIndex: "regNumber",
       width: "5%",
       sorter: { multiple: 1 },
@@ -409,21 +409,53 @@ const RegisterList = () => {
       },
     },
     {
-      title: t("register_date"),
-      dataIndex: "regDate",
-      sorter: { multiple: 4 },
+      title: t("full_name"),
+      dataIndex: "fullName",
+      width: "15%",
+      sorter: { multiple: 10 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap["regDate"] || null,
+      sortOrder: sortOrderMap["fullName"] || null,
+      render: (full_name) => (
+        <Tooltip title={full_name}>
+          <span style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+          >
+            {full_name ? (
+              full_name?.length > 50 ? (
+                full_name?.slice(0, 50) + "..."
+              ) : (
+                full_name
+              )
+            ) : (
+              <></>
+            )}
+          </span>
+        </Tooltip>
+      ),
     },
     {
-      title: t("register_end_date"),
-      dataIndex: "regEndDate",
-      sorter: { multiple: 5 },
+      title: t("birth_date"),
+      dataIndex: "birthDate",
+      sorter: { multiple: 13 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap["regEndDate"] || null,
+      sortOrder: sortOrderMap["birthDate"] || null,
+      render: (_, elm) => (
+        <>
+          {elm?.birthDate === null ||
+            elm?.birthDate === "Неизвестно" ||
+            elm?.birthDate === ""
+            ? elm?.birthYear
+              ? elm?.birthYear
+              : ""
+            : getDateDayString(elm?.birthDate) || ""}
+        </>
+      ),
     },
     {
-      title: t("completion_status"),
+      title: t("complete_status"),
       dataIndex: "completeStatus",
       sorter: { multiple: 6 },
       sortDirections: ["ascend", "descend"],
@@ -505,6 +537,20 @@ const RegisterList = () => {
       ),
     },
     {
+      title: t("register_date"),
+      dataIndex: "regDate",
+      sorter: { multiple: 4 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap["regDate"] || null,
+    },
+    {
+      title: t("register_end_date"),
+      dataIndex: "regEndDate",
+      sorter: { multiple: 5 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap["regEndDate"] || null,
+    },
+    {
       title: t("expired"),
       dataIndex: "expired",
       width: "5%",
@@ -534,29 +580,74 @@ const RegisterList = () => {
       ),
     },
     {
-      title: t("full_name"),
-      dataIndex: "fullName",
-      width: "15%",
-      sorter: { multiple: 10 },
+      title: t("work_place"),
+      dataIndex: "workplace",
+      sorter: { multiple: 15 },
       sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap["fullName"] || null,
-      render: (full_name) => (
-        <Tooltip title={full_name}>
-          <span style={{
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
+      sortOrder: sortOrderMap["workplace"] || null,
+      render: (workplace, elm) => {
+        const text = `${workplace || ""} ${elm?.positionv1 || ""}`.trim();
+        return text.length > 7 ? (
+          <Tooltip title={text}>
+            <span>{text.slice(0, 7) + "..."}</span>
+          </Tooltip>
+        ) : (
+          <span
+            style={{
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "inline-block",
+              maxWidth: "200px",
+            }}
           >
-            {full_name ? (
-              full_name?.length > 50 ? (
-                full_name?.slice(0, 50) + "..."
-              ) : (
-                full_name
-              )
-            ) : (
-              <></>
-            )}
+            {text}
+          </span>
+        );
+      },
+    },
+    {
+      title: t("birth_place"),
+      dataIndex: "birthPlace",
+      sorter: { multiple: 14 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap["birthPlace"] || null,
+      render: (birthPlace) => {
+        const text = birthPlace || "";
+        // If the text is longer than 10 characters, truncate it.
+        const truncated = text.length > 10 ? text.slice(0, 10) + "..." : text;
+
+        return (
+          <Tooltip title={text}>
+            <span
+              style={{
+                display: "inline-block",
+                maxWidth: "200px", // Adjust as needed
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {truncated}
+            </span>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      title: t("residence"),
+      dataIndex: "residence",
+      sorter: { multiple: 16 },
+      sortDirections: ["ascend", "descend"],
+      sortOrder: sortOrderMap["residence"] || null,
+      render: (residence) => (
+        <Tooltip title={residence}>
+          <span>
+            {residence
+              ? residence?.length > 10
+                ? residence?.slice(0, 10) + "..."
+                : residence
+              : t("unknown")}
           </span>
         </Tooltip>
       ),
@@ -589,97 +680,6 @@ const RegisterList = () => {
         <Tooltip title={passport}>
           <span>
             {passport?.length > 10 ? passport?.slice(0, 10) + "..." : passport}
-          </span>
-        </Tooltip>
-      ),
-    },
-    {
-      title: t("birth_date"),
-      dataIndex: "birthDate",
-      sorter: { multiple: 13 },
-      sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap["birthDate"] || null,
-      render: (_, elm) => (
-        <>
-          {elm?.birthDate === null ||
-            elm?.birthDate === "Неизвестно" ||
-            elm?.birthDate === ""
-            ? elm?.birthYear
-              ? elm?.birthYear
-              : ""
-            : getDateDayString(elm?.birthDate) || ""}
-        </>
-      ),
-    },
-    {
-      title: t("birth_place"),
-      dataIndex: "birthPlace",
-      sorter: { multiple: 14 },
-      sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap["birthPlace"] || null,
-      render: (birthPlace) => {
-        const text = birthPlace || "";
-        // If the text is longer than 10 characters, truncate it.
-        const truncated = text.length > 10 ? text.slice(0, 10) + "..." : text;
-
-        return (
-          <Tooltip title={text}>
-            <span
-              style={{
-                display: "inline-block",
-                maxWidth: "200px", // Adjust as needed
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {truncated}
-            </span>
-          </Tooltip>
-        );
-      },
-    },
-    {
-      title: t("work_place"),
-      dataIndex: "workplace",
-      sorter: { multiple: 15 },
-      sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap["workplace"] || null,
-      render: (workplace, elm) => {
-        const text = `${workplace || ""} ${elm?.positionv1 || ""}`.trim();
-        return text.length > 7 ? (
-          <Tooltip title={text}>
-            <span>{text.slice(0, 7) + "..."}</span>
-          </Tooltip>
-        ) : (
-          <span
-            style={{
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              display: "inline-block",
-              maxWidth: "200px",
-            }}
-          >
-            {text}
-          </span>
-        );
-      },
-    },
-    {
-      title: t("residence"),
-      dataIndex: "residence",
-      sorter: { multiple: 16 },
-      sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap["residence"] || null,
-      render: (residence) => (
-        <Tooltip title={residence}>
-          <span>
-            {residence
-              ? residence?.length > 10
-                ? residence?.slice(0, 10) + "..."
-                : residence
-              : t("unknown")}
           </span>
         </Tooltip>
       ),

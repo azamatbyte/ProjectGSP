@@ -40,6 +40,10 @@ const malumotnomaRaports = [
   { key: "type11", label: i18n.t("good_malumotnoma") },
 ];
 
-export const categoriesOfRaports = [...raports, ...malumotnomaRaports];
+const sverkaRaports = [
+  { key: "sverka", label: i18n.t("sverka") },
+];
+
+export const categoriesOfRaports = [...raports, ...malumotnomaRaports, ...sverkaRaports];
 
 export default createSession;

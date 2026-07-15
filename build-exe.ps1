@@ -119,7 +119,14 @@ try {
     Pop-Location
 }
 
-# Write a production .env into dist-backend
+# Write a production .env into dist-backend.
+# This .env is only a fallback — setup_env.ps1 writes the real per-machine one to
+# %ProgramData%\GSPApp\.env at install time, and Electron prefers that. Still mint
+# a fresh secret per build rather than baking a shared one into every copy.
+$buf = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($buf)
+$JwtSecret = (-join ($buf | ForEach-Object { $_.ToString('x2') }))
+
 $prodEnv = @"
 PORT=$Port
 HOST=0.0.0.0
@@ -131,7 +138,7 @@ DB_PASSWORD=$DbPassword
 DB_NAME=$DbName
 DB_PORT=$DbPort
 
-JWT_SECRET_KEY=2315465461319846574984631531
+JWT_SECRET=$JwtSecret
 ADMIN_ID_KEY=6630b47f8ca26c59ba6ba200
 
 SERVER_URL=http://localhost:$Port

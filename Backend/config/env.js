@@ -34,7 +34,18 @@ function normalizeOrigin(value) {
 function parseOrigins(value) {
   return String(value ?? '')
     .split(',')
-    .map((item) => normalizeOrigin(item))
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => {
+      const normalized = normalizeOrigin(item);
+      if (!normalized) {
+        console.warn(
+          `[env] Ignoring CORS_ALLOWED_ORIGINS entry "${item}" — not a valid origin URL ` +
+            '(wildcards are not supported; local-network origins are always allowed and need no entry).'
+        );
+      }
+      return normalized;
+    })
     .filter(Boolean);
 }
 
@@ -66,6 +77,9 @@ function getEnv() {
     BATCH_SIZE: asInt(raw.BATCH_SIZE, 2000),
     DATABASE_URL: raw.DATABASE_URL || '',
     CORS_ALLOWED_ORIGINS: parseOrigins(raw.CORS_ALLOWED_ORIGINS),
+    // JWT_SECRET_KEY is the name older installers wrote. Keep reading it so an
+    // existing installation still boots after upgrading the app files alone.
+    JWT_SECRET: raw.JWT_SECRET || raw.JWT_SECRET_KEY || '',
   });
 
   return cachedEnv;

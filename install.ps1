@@ -43,6 +43,12 @@ function Write-Step  { param([string]$msg) Write-Host "`n=======================
 function Write-Ok    { param([string]$msg) Write-Host "  [OK] $msg" -ForegroundColor Green }
 function Write-Warn  { param([string]$msg) Write-Host "  [WARN] $msg" -ForegroundColor Yellow }
 function Write-Fail  { param([string]$msg) Write-Host "  [FAIL] $msg" -ForegroundColor Red }
+function New-Secret {
+    param([int]$Bytes = 32)
+    $buf = New-Object byte[] $Bytes
+    [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($buf)
+    return (-join ($buf | ForEach-Object { $_.ToString('x2') }))
+}
 
 function Test-Command {
     param([string]$Name)
@@ -144,7 +150,24 @@ if (Test-Path $BackendEnv) {
     Write-Ok "Backed up existing .env to .env.bak"
 }
 
-# Read existing .env and preserve non-overridden keys
+# Carry the signing secret over from a previous .env so issued tokens stay valid.
+# A fresh install mints its own — sharing one secret across installations would
+# let anyone forge a token for any account, including superAdmin.
+$JwtSecret  = $null
+$AdminIdKey = $null
+if (Test-Path "$BackendEnv.bak") {
+    $existingEnv = Get-Content "$BackendEnv.bak" -Raw
+    $jwtMatch = [regex]::Match($existingEnv, '(?m)^\s*JWT_SECRET(?:_KEY)?\s*=\s*(\S+)\s*$')
+    if ($jwtMatch.Success) { $JwtSecret = $jwtMatch.Groups[1].Value }
+    $adminMatch = [regex]::Match($existingEnv, '(?m)^\s*ADMIN_ID_KEY\s*=\s*(\S+)\s*$')
+    if ($adminMatch.Success) { $AdminIdKey = $adminMatch.Groups[1].Value }
+}
+if (-not $JwtSecret -or $JwtSecret -eq '2315465461319846574984631531') {
+    $JwtSecret = New-Secret
+    Write-Ok "Generated a new JWT_SECRET for this installation."
+}
+if (-not $AdminIdKey) { $AdminIdKey = New-Secret -Bytes 12 }
+
 $envContent = @"
 PORT=$Port
 HOST=0.0.0.0
@@ -159,27 +182,12 @@ DB_PASSWORD=$DbPassword
 DB_NAME=$DbName
 DB_PORT=$DbPort
 
-JWT_SECRET_KEY=2315465461319846574984631531
-ADMIN_ID_KEY=6630b47f8ca26c59ba6ba200
+JWT_SECRET=$JwtSecret
+ADMIN_ID_KEY=$AdminIdKey
 
 SERVER_URL=$ServerUrl
 DATABASE_URL="$DatabaseUrl"
 "@
-
-# Preserve JWT_SECRET_KEY from existing .env if it exists
-if (Test-Path "$BackendEnv.bak") {
-    $existingEnv = Get-Content "$BackendEnv.bak" -Raw
-    $jwtMatch = [regex]::Match($existingEnv, 'JWT_SECRET_KEY=(.+)')
-    if ($jwtMatch.Success) {
-        $existingJwt = $jwtMatch.Groups[1].Value.Trim()
-        $envContent = $envContent -replace 'JWT_SECRET_KEY=.+', "JWT_SECRET_KEY=$existingJwt"
-    }
-    $adminMatch = [regex]::Match($existingEnv, 'ADMIN_ID_KEY=(.+)')
-    if ($adminMatch.Success) {
-        $existingAdmin = $adminMatch.Groups[1].Value.Trim()
-        $envContent = $envContent -replace 'ADMIN_ID_KEY=.+', "ADMIN_ID_KEY=$existingAdmin"
-    }
-}
 
 Set-Content -Path $BackendEnv -Value $envContent -Encoding UTF8 -NoNewline
 Write-Ok "Backend .env configured (PORT=$Port, DB=$DbName)"

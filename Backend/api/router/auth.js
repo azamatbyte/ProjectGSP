@@ -7,7 +7,8 @@ const {
   deleteById,
   getByToken,
   getList,
-  passwordReset,
+  changePassword,
+  resetPassword,
   update,
   getAdminSessions,
   getAdminServices,
@@ -18,13 +19,18 @@ const {
   checkUsernameUpdate,
 } = require("../controllers/authController");
 const { verifyToken, permissionCheck } = require("../middleware/auth");
+const {
+  loginLimiter,
+  passwordLimiter,
+  refreshLimiter,
+} = require("../middleware/request_limitter");
 const { exportData, importData, restoreFromZip, uploadZipFile, exportPgDump, restorePgDump, uploadSqlFile } = require("../controllers/registerController");
 
 router.post("/signup", verifyToken, permissionCheck("superAdmin"), signup);
 
 router.get("/get", verifyToken, permissionCheck("admin"), getById);
 
-router.post("/signin", signin);
+router.post("/signin", loginLimiter, signin);
 
 router.get("/getByToken", verifyToken, permissionCheck("admin"), getByToken);
 
@@ -32,7 +38,12 @@ router.get("/getById", verifyToken, permissionCheck("admin"), getById);
 
 router.delete("/deleteById", verifyToken, permissionCheck("admin"), deleteById);
 
-router.post("/passwordReset", passwordReset);
+// Self-service: the caller changes their OWN password and must prove the old one.
+// verifyToken runs first so the limiter can key on the account, not just the IP.
+router.post("/changePassword", verifyToken, passwordLimiter, changePassword);
+
+// Recovery: a superAdmin resets someone else's password without the old one.
+router.post("/resetPassword", verifyToken, permissionCheck("superAdmin"), resetPassword);
 
 router.put("/changeStatus", verifyToken, permissionCheck("admin"), changeStatus);
 
@@ -44,7 +55,7 @@ router.put("/update", verifyToken, permissionCheck("admin"), update);
 
 router.get("/list", verifyToken, permissionCheck("admin"), getList);
 
-router.post("/refreshToken", refreshToken);
+router.post("/refreshToken", refreshLimiter, refreshToken);
 router.post("/logout", logout);
 
 router.post("/me", verifyToken, permissionCheck("admin"), getByToken);

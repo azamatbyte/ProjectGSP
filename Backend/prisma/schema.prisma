@@ -433,6 +433,8 @@ model TemporaryData {
 
   migration_status Boolean? @default(false)
 
+  kompromat_status Boolean? @default(false)
+
   status String?
 
   createdAt DateTime @default(now())

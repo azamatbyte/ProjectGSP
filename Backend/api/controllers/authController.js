@@ -2,13 +2,34 @@ const config = require("../../config/auth.config");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { userLogger } = require("../helpers/logger");
-const { AdminSchema } = require("../helpers/validator");
+const { AdminSchema, PasswordSchema } = require("../helpers/validator");
 const { PrismaClient } = require("@prisma/client");
 const safeString = require("../helpers/safeString");
 const buildPrismaSortOrder = require("../helpers/buildPrismaSortOrder");
 
 // Initialize Prisma Client
 const prisma = require('../../db/database');
+
+// Every Admin row handed back to a client must go through this select.
+// Omitting it returns `password` (the bcrypt hash) and `salt` to the browser.
+const ADMIN_PUBLIC_SELECT = {
+  id: true,
+  username: true,
+  first_name: true,
+  last_name: true,
+  father_name: true,
+  nationality: true,
+  rank: true,
+  gender: true,
+  workplace: true,
+  phone: true,
+  photo: true,
+  role: true,
+  status: true,
+  birthDate: true,
+  createdAt: true,
+  updatedAt: true,
+};
 
 
 /**
@@ -163,7 +184,6 @@ exports.signup = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: error.message,
     });
   }
   // Our register logic ends here
@@ -291,7 +311,6 @@ exports.signin = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: 403,
     });
   } finally {
     // Disconnect the Prisma client to free up resources
@@ -370,7 +389,6 @@ exports.getById = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: err.message,
     });
   } finally {
     // Disconnect Prisma client
@@ -445,7 +463,6 @@ exports.deleteById = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: err.message,
     });
   } finally {
     // Disconnect Prisma client
@@ -477,6 +494,7 @@ exports.getByToken = async (req, res) => {
     // Validate if user exists in our database
     const user = await prisma.admin.findFirst({
       where: { id, status: "active" },
+      select: ADMIN_PUBLIC_SELECT,
       orderBy: {
         updatedAt: "desc",
       },
@@ -496,7 +514,6 @@ exports.getByToken = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: err.message,
     });
   }
   // Our register logic ends here
@@ -726,24 +743,44 @@ exports.getList = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: err.message,
     });
   }
 };
 
 /**
+ * Write the new password and an audit row in one transaction.
+ * The Log row records only that the password changed — never the hash itself.
+ */
+const writeNewPassword = async (adminId, newPassword, executorId) => {
+  const newSalt = await bcrypt.genSalt(10);
+  const hashedNewPassword = await bcrypt.hash(newPassword, newSalt);
+
+  await prisma.$transaction([
+    prisma.admin.update({
+      where: { id: adminId },
+      data: { password: hashedNewPassword, salt: newSalt },
+    }),
+    prisma.log.create({
+      data: {
+        recordId: adminId,
+        tableName: "Admin",
+        fieldName: "password",
+        oldValue: "<hashed_value>",
+        newValue: "<hashed_value>",
+        executorId,
+      },
+    }),
+    // Any session issued before the password changed must die with it.
+    prisma.refreshToken.deleteMany({ where: { adminId } }),
+  ]);
+};
+
+/**
  * @swagger
- * /api/v1/auth/passwordReset:
+ * /api/v1/auth/changePassword:
  *   post:
- *     summary: "Parolni yangilash"
+ *     summary: "O'z parolini yangilash"
  *     tags: [Auth]
- *     parameters:
- *       - in: query
- *         name: adminId
- *         schema:
- *           type: string
- *         required: true
- *         description: "Admin IDsi"
  *     requestBody:
  *       required: true
  *       content:
@@ -762,85 +799,135 @@ exports.getList = async (req, res) => {
  *       200:
  *         description: "Parol muvaffaqiyatli yangilandi"
  *       400:
- *         description: "Xato: Barcha kiritishlar talab qilinadi yoki noto'g'ri ma'lumotlar"
- *       404:
- *         description: "Admin topilmadi"
+ *         description: "Eski parol noto'g'ri yoki yangi parol yaroqsiz"
  *       500:
  *         description: "Ichki server xatosi"
  */
-exports.passwordReset = async (req, res) => {
+exports.changePassword = async (req, res) => {
   try {
-    // Foydalanuvchi kiritgan ma'lumotlarni olish
-    const { adminId } = req.query;
     const { oldPassword, newPassword } = req.body;
 
-    // Kiritilgan ma'lumotlarni tekshirish
-    if (!(adminId && oldPassword && newPassword)) {
+    // The target is always the caller. It is NOT taken from the request, so no
+    // one can point this at another account.
+    const adminId = req.userId;
+
+    if (!(oldPassword && newPassword)) {
       return res
         .status(400)
         .json({ code: 400, message: "All input is required" });
     }
 
-    // Adminni bazadan topish
+    const validation = PasswordSchema.safeParse(newPassword);
+    if (!validation.success) {
+      return res.status(400).json({
+        code: 400,
+        message: validation.error.errors[0]?.message || "Invalid password",
+      });
+    }
+
     const admin = await prisma.admin.findFirst({
       where: { id: adminId, status: "active" },
     });
 
-    // Agar admin topilmasa
-    if (!admin) {
+    if (!admin || !admin.password) {
       return res.status(404).json({ code: 404, message: "Admin not found" });
     }
 
-    // Eski parolni tekshirish
-    const isOldPasswordValid = await bcrypt.compare(
-      oldPassword,
-      admin.password
-    );
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, admin.password);
     if (!isOldPasswordValid) {
       return res
         .status(400)
         .json({ code: 400, message: "Old password is incorrect" });
     }
 
-    // Yangi parolni shifrlash
-    const newSalt = await bcrypt.genSalt(10);
-    const hashedNewPassword = await bcrypt.hash(newPassword, newSalt);
+    if (oldPassword === newPassword) {
+      return res.status(400).json({
+        code: 400,
+        message: "New password must differ from the current one",
+      });
+    }
 
-    // Tranzaksiya qo'shish
-    await prisma.$transaction([
-      prisma.admin.update({
-        where: { id: adminId },
-        data: {
-          password: hashedNewPassword,
-          salt: newSalt,
-        },
-      }),
-      prisma.log.create({
-        data: {
-          recordId: adminId,
-          tableName: "Admin",
-          fieldName: "password",
-          oldValue: admin.password, // Eski parolni logga yozish
-          newValue: hashedNewPassword, // Yangi parolni logga yozish
-          executorId: req.userId, // Foydalanuvchi IDsi, agar mavjud bo'lsa
-        },
-      }),
-    ]);
+    await writeNewPassword(adminId, newPassword, adminId);
 
-    // Muvaffaqiyatli javob qaytarish
     return res
       .status(200)
       .json({ code: 200, message: "Password updated successfully" });
   } catch (error) {
-    console.error("Error during password reset:", error);
-    return res.status(500).json({
-      code: 500,
-      message: "Internal server error",
-      error: error.message,
-    });
-  } finally {
-    // Prisma clientni uzish
+    console.error("Error during password change:", error);
+    userLogger.error(error);
+    return res
+      .status(500)
+      .json({ code: 500, message: "Internal server error" });
+  }
+};
 
+/**
+ * @swagger
+ * /api/v1/auth/resetPassword:
+ *   post:
+ *     summary: "Boshqa adminning parolini tiklash (faqat superAdmin)"
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               adminId:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: "Parol muvaffaqiyatli tiklandi"
+ *       400:
+ *         description: "Yaroqsiz ma'lumot"
+ *       404:
+ *         description: "Admin topilmadi"
+ *       500:
+ *         description: "Ichki server xatosi"
+ */
+exports.resetPassword = async (req, res) => {
+  try {
+    // superAdmin-only recovery path — the route is gated by
+    // permissionCheck("superAdmin"), so no old password is required here.
+    const { adminId, newPassword } = req.body;
+
+    if (!(adminId && newPassword)) {
+      return res
+        .status(400)
+        .json({ code: 400, message: "All input is required" });
+    }
+
+    const validation = PasswordSchema.safeParse(newPassword);
+    if (!validation.success) {
+      return res.status(400).json({
+        code: 400,
+        message: validation.error.errors[0]?.message || "Invalid password",
+      });
+    }
+
+    const admin = await prisma.admin.findUnique({
+      where: { id: adminId },
+      select: { id: true },
+    });
+
+    if (!admin) {
+      return res.status(404).json({ code: 404, message: "Admin not found" });
+    }
+
+    await writeNewPassword(adminId, newPassword, req.userId);
+
+    return res
+      .status(200)
+      .json({ code: 200, message: "Password reset successfully" });
+  } catch (error) {
+    console.error("Error during password reset:", error);
+    userLogger.error(error);
+    return res
+      .status(500)
+      .json({ code: 500, message: "Internal server error" });
   }
 };
 
@@ -910,7 +997,6 @@ exports.update = async (req, res) => {
       last_name,
       father_name,
       username,
-      password,
       role,
       birthDate,
       photo,
@@ -926,6 +1012,26 @@ exports.update = async (req, res) => {
       return res
         .status(400)
         .json({ code: 400, message: "Admin ID is required" });
+    }
+
+    // This endpoint updates profile fields only. Passwords are changed through
+    // /auth/changePassword (self, requires the old password) or /auth/resetPassword
+    // (superAdmin recovery) — never as a side effect of a profile edit.
+    if (req.body.password != null) {
+      return res.status(400).json({
+        code: 400,
+        message:
+          "Password cannot be changed here. Use /auth/changePassword or /auth/resetPassword.",
+      });
+    }
+
+    // An admin may only edit their own profile; a superAdmin may edit anyone.
+    const isSuperAdmin = req.user?.role === "superAdmin";
+    if (!isSuperAdmin && req.userId !== adminId) {
+      return res.status(403).json({
+        code: 403,
+        message: "You may only update your own profile.",
+      });
     }
 
     // Find the current admin data
@@ -1070,6 +1176,29 @@ exports.update = async (req, res) => {
     }
 
     if (role !== currentAdmin.role && role != null) {
+      // Only a superAdmin may change roles — otherwise any admin could promote
+      // themselves to superAdmin through a profile edit.
+      if (!isSuperAdmin) {
+        return res.status(403).json({
+          code: 403,
+          message: "Only a superAdmin may change a role.",
+        });
+      }
+
+      // Never let the last superAdmin be demoted — that would lock everyone out
+      // of the superAdmin-only recovery paths.
+      if (currentAdmin.role === "superAdmin" && role !== "superAdmin") {
+        const superAdminCount = await prisma.admin.count({
+          where: { role: "superAdmin", status: "active" },
+        });
+        if (superAdminCount <= 1) {
+          return res.status(400).json({
+            code: 400,
+            message: "Cannot demote the last remaining superAdmin.",
+          });
+        }
+      }
+
       data.role = role;
       logs.push({
         recordId: adminId,
@@ -1093,20 +1222,6 @@ exports.update = async (req, res) => {
       });
     }
 
-    if (password && password !== currentAdmin.password && password != null) {
-      const newSalt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, newSalt);
-      data.password = hashedPassword;
-      data.salt = newSalt;
-      logs.push({
-        recordId: adminId,
-        tableName: "Admin",
-        fieldName: "password",
-        oldValue: "<hashed_value>",
-        newValue: "<hashed_value>",
-        executorId: req.userId,
-      });
-    }
     // Perform the update and create logs in a transaction
     await prisma.$transaction([
       prisma.admin.update({
@@ -1125,7 +1240,6 @@ exports.update = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: error.message,
     });
   } finally {
 
@@ -1211,7 +1325,6 @@ exports.getAdminSessions = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: error.message,
     });
   } finally {
     // Prisma clientni uzish
@@ -1320,7 +1433,6 @@ exports.getAdminServices = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: error.message,
     });
   } finally {
     // Prisma clientni uzish
@@ -1394,7 +1506,6 @@ exports.changeStatus = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: error.message,
     });
   } finally {
     // Prisma clientni uzish
@@ -1504,7 +1615,6 @@ exports.refreshToken = async (req, res) => {
       .json({
         code: 500,
         message: "Internal server error",
-        error: err.message,
       });
   }
 };
@@ -1554,7 +1664,6 @@ exports.logout = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: err.message,
     });
   }
 };
@@ -1617,7 +1726,6 @@ exports.checkUsername = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: error.message,
     });
   } finally {
     // Prisma clientni uzish
@@ -1697,7 +1805,6 @@ exports.checkUsernameUpdate = async (req, res) => {
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
-      error: error.message,
     });
   } finally {
     // Prisma clientni uzish

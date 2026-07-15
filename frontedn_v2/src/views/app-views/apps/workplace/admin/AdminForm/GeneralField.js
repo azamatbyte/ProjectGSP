@@ -157,11 +157,22 @@ const GeneralField = (props) => {
                 />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={24} md={12}>
-              <Form.Item name="password" label="Password">
-                <Input.Password tabIndex={9} autoComplete="new-password" />
-              </Form.Item>
-            </Col>
+            {/* Only set on creation — see the admin AdminForm for why editing a
+                password here is no longer allowed. */}
+            {mode === "ADD" && (
+              <Col xs={24} sm={24} md={12}>
+                <Form.Item
+                  name="password"
+                  label="Password"
+                  rules={[
+                    { required: true, message: "Please enter password" },
+                    { min: 4, message: "Password must be at least 4 characters long" },
+                  ]}
+                >
+                  <Input.Password tabIndex={9} autoComplete="new-password" />
+                </Form.Item>
+              </Col>
+            )}
           </Row>
         </Card>
       </Col>

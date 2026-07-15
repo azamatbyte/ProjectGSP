@@ -737,54 +737,6 @@ const GlobalSearch = (props) => {
         ),
       },
       {
-        title: t("register_date"),
-        dataIndex: "reg_date",
-        align: "center",
-        width: "10%",
-        sorter: { multiple: 7 },
-        sortDirections: ['ascend', 'descend'],
-        sortOrder: sortOrderMap['reg_date'] || null,
-        render: (reg_date) => (
-          <Tooltip title={getDateDayString(reg_date)}>
-            <span>
-              {reg_date ? (
-                getDateDayString(reg_date)?.length > 10 ? (
-                  getDateDayString(reg_date)?.slice(0, 10) + "..."
-                ) : (
-                  getDateDayString(reg_date)
-                )
-              ) : (
-                <></>
-              )}
-            </span>
-          </Tooltip>
-        ),
-      },
-      {
-        title: t("register_end_date"),
-        dataIndex: "reg_end_date",
-        align: "center",
-        width: "10%",
-        sorter: { multiple: 8 },
-        sortDirections: ['ascend', 'descend'],
-        sortOrder: sortOrderMap['reg_end_date'] || null,
-        render: (reg_end_date) => (
-          <Tooltip title={getDateDayString(reg_end_date)}>
-            <span>
-              {reg_end_date ? (
-                getDateDayString(reg_end_date)?.length > 10 ? (
-                  getDateDayString(reg_end_date)?.slice(0, 10) + "..."
-                ) : (
-                  getDateDayString(reg_end_date)
-                )
-              ) : (
-                <></>
-              )}
-            </span>
-          </Tooltip>
-        ),
-      },
-      {
         title: t("complete_status"),
         dataIndex: "complete_status",
         align: "center",
@@ -870,6 +822,54 @@ const GlobalSearch = (props) => {
         ),
       },
       {
+        title: t("register_date"),
+        dataIndex: "reg_date",
+        align: "center",
+        width: "10%",
+        sorter: { multiple: 7 },
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortOrderMap['reg_date'] || null,
+        render: (reg_date) => (
+          <Tooltip title={getDateDayString(reg_date)}>
+            <span>
+              {reg_date ? (
+                getDateDayString(reg_date)?.length > 10 ? (
+                  getDateDayString(reg_date)?.slice(0, 10) + "..."
+                ) : (
+                  getDateDayString(reg_date)
+                )
+              ) : (
+                <></>
+              )}
+            </span>
+          </Tooltip>
+        ),
+      },
+      {
+        title: t("register_end_date"),
+        dataIndex: "reg_end_date",
+        align: "center",
+        width: "10%",
+        sorter: { multiple: 8 },
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortOrderMap['reg_end_date'] || null,
+        render: (reg_end_date) => (
+          <Tooltip title={getDateDayString(reg_end_date)}>
+            <span>
+              {reg_end_date ? (
+                getDateDayString(reg_end_date)?.length > 10 ? (
+                  getDateDayString(reg_end_date)?.slice(0, 10) + "..."
+                ) : (
+                  getDateDayString(reg_end_date)
+                )
+              ) : (
+                <></>
+              )}
+            </span>
+          </Tooltip>
+        ),
+      },
+      {
         title: t("expired"),
         dataIndex: "expired",
         width: "5%",
@@ -888,36 +888,33 @@ const GlobalSearch = (props) => {
         ),
       },
       {
-        title: t("pinfl"),
-        dataIndex: "pinfl",
-        width: "5%",
+        title: t("compr_info"),
+        dataIndex: "notes",
         align: "center",
-        sorter: { multiple: 12 },
+        sorter: { multiple: 16 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: sortOrderMap['pinfl'] || null,
-        render: (pinfl) => (
-          <Tooltip title={pinfl}>
-            <span>
-              {pinfl?.length > 10 ? pinfl?.slice(0, 10) + "..." : pinfl}
-            </span>
-          </Tooltip>
-        ),
-      },
-      {
-        title: t("passport"),
-        dataIndex: "passport",
-        width: "5%",
-        align: "center",
-        sorter: { multiple: 21 },
-        sortDirections: ['ascend', 'descend'],
-        sortOrder: sortOrderMap['passport'] || null,
-        render: (passport) => (
-          <Tooltip title={passport}>
-            <span>
-              {passport?.length > 10 ? passport?.slice(0, 10) + "..." : passport}
-            </span>
-          </Tooltip>
-        ),
+        sortOrder: sortOrderMap['notes'] || null,
+        render: (notes) => {
+          // Define the truncated version if notes length exceeds 10 characters
+          const truncated =
+            notes && notes.length > 10 ? notes.slice(0, 10) + "..." : notes;
+
+          return (
+            <Tooltip title={notes}>
+              <p
+                style={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: "200px",
+                  margin: 0,
+                }}
+              >
+                {truncated}
+              </p>
+            </Tooltip>
+          );
+        },
       },
       {
         title: t("conclusion_register_number"),
@@ -941,33 +938,6 @@ const GlobalSearch = (props) => {
             </span>
           </Tooltip>
         ),
-      },
-      {
-        title: t("birth_place"),
-        dataIndex: "birth_place",
-        align: "center",
-        sorter: { multiple: 14 },
-        sortDirections: ['ascend', 'descend'],
-        sortOrder: sortOrderMap['birth_place'] || null,
-        render: (birthPlace) => {
-          const text = birthPlace || "";
-          const truncated = text.length > 10 ? text.slice(0, 10) + "..." : text;
-          return (
-            <Tooltip title={text}>
-              <span
-                style={{
-                  display: "inline-block",
-                  maxWidth: "200px", // Adjust as needed
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {truncated}
-              </span>
-            </Tooltip>
-          );
-        },
       },
       {
         title: t("work_place"),
@@ -1002,32 +972,29 @@ const GlobalSearch = (props) => {
           );
         },
       },
-
       {
-        title: t("compr_info"),
-        dataIndex: "notes",
+        title: t("birth_place"),
+        dataIndex: "birth_place",
         align: "center",
-        sorter: { multiple: 16 },
+        sorter: { multiple: 14 },
         sortDirections: ['ascend', 'descend'],
-        sortOrder: sortOrderMap['notes'] || null,
-        render: (notes) => {
-          // Define the truncated version if notes length exceeds 10 characters
-          const truncated =
-            notes && notes.length > 10 ? notes.slice(0, 10) + "..." : notes;
-
+        sortOrder: sortOrderMap['birth_place'] || null,
+        render: (birthPlace) => {
+          const text = birthPlace || "";
+          const truncated = text.length > 10 ? text.slice(0, 10) + "..." : text;
           return (
-            <Tooltip title={notes}>
-              <p
+            <Tooltip title={text}>
+              <span
                 style={{
+                  display: "inline-block",
+                  maxWidth: "200px", // Adjust as needed
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
-                  maxWidth: "200px",
-                  margin: 0,
                 }}
               >
                 {truncated}
-              </p>
+              </span>
             </Tooltip>
           );
         },
@@ -1046,6 +1013,38 @@ const GlobalSearch = (props) => {
                 ? residence?.slice(0, 10) + "..."
                 : residence
               : t("unknown")}
+          </Tooltip>
+        ),
+      },
+      {
+        title: t("pinfl"),
+        dataIndex: "pinfl",
+        width: "5%",
+        align: "center",
+        sorter: { multiple: 12 },
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortOrderMap['pinfl'] || null,
+        render: (pinfl) => (
+          <Tooltip title={pinfl}>
+            <span>
+              {pinfl?.length > 10 ? pinfl?.slice(0, 10) + "..." : pinfl}
+            </span>
+          </Tooltip>
+        ),
+      },
+      {
+        title: t("passport"),
+        dataIndex: "passport",
+        width: "5%",
+        align: "center",
+        sorter: { multiple: 21 },
+        sortDirections: ['ascend', 'descend'],
+        sortOrder: sortOrderMap['passport'] || null,
+        render: (passport) => (
+          <Tooltip title={passport}>
+            <span>
+              {passport?.length > 10 ? passport?.slice(0, 10) + "..." : passport}
+            </span>
           </Tooltip>
         ),
       },

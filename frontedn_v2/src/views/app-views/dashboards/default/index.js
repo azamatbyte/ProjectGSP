@@ -234,7 +234,7 @@ export const DefaultDashboard = () => {
       if (axis === "MONTH") {
         const monthIndex = (item?.month || 1) - 1;
         const monthName = getShortMonth(monthIndex, locale, i18n.language);
-        return `${monthName} ${item?.year || ""}`;
+        return [monthName, String(item?.year || "")];
       }
       return String(item?.year || "");
     });
@@ -327,6 +327,18 @@ export const DefaultDashboard = () => {
       xaxis: {
         type: "category",
         categories: heroCategories,
+        // hideOverlappingLabels blanks a label when it collides with the previous one,
+        // which silently drops a month from the axis. Keep every month labelled and let
+        // ApexCharts rotate them instead when the chart gets too narrow.
+        labels: {
+          hideOverlappingLabels: false,
+          rotate: -45,
+          rotateAlways: false,
+          trim: false,
+          style: {
+            fontSize: "11px",
+          },
+        },
         crosshairs: {
           show: true,
           stroke: {
@@ -404,7 +416,7 @@ export const DefaultDashboard = () => {
       if (trendAxis === "MONTH") {
         const monthIndex = (bucket.month || 1) - 1;
         const monthName = getShortMonth(monthIndex, locale, i18n.language);
-        return `${monthName} ${bucket.year}`;
+        return [monthName, String(bucket.year)];
       }
       return String(bucket.year);
     });
@@ -431,6 +443,21 @@ export const DefaultDashboard = () => {
     legend: {
       show: false,
     },
+    // ChartWidget shallow-merges these options over its defaults, so this xaxis replaces
+    // the one it assigned the categories to — they have to be passed again here.
+    xaxis: {
+      type: "category",
+      categories: trendChartData.categories,
+      labels: {
+        hideOverlappingLabels: false,
+        rotate: -45,
+        rotateAlways: false,
+        trim: false,
+        style: {
+          fontSize: "11px",
+        },
+      },
+    },
     yaxis: {
       decimalsInFloat: 0,
       labels: {
@@ -442,7 +469,7 @@ export const DefaultDashboard = () => {
         formatter: (val) => `${Math.round(Number(val) || 0)}`,
       },
     },
-  }), []);
+  }), [trendChartData]);
 
   const latestTransactionOption = useMemo(() => ([
     {

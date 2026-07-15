@@ -1,5 +1,11 @@
 const { z } = require("zod");
 
+// Single source of truth for password strength. Used by AdminSchema (signup) and
+// by the changePassword / resetPassword handlers.
+const PasswordSchema = z
+  .string()
+  .min(4, { message: "Password must be at least 4 characters long" });
+
 // Define Zod schema for Admin model validation
 const AdminSchema = z.object({
   first_name: z.string().min(2, { message: "First name is required" }), // Required and must be a non-empty string
@@ -8,9 +14,7 @@ const AdminSchema = z.object({
   nationality: z.string().optional(), // Optional and must be a string if provided
   rank: z.string().optional(),
   username: z.string().min(1, { message: "Username is required" }), // Required and must be a non-empty string
-  password: z
-    .string()
-    .min(8, { message: "Password must be at least 8 characters long" }), // Required, with a minimum length of 8
+  password: PasswordSchema, // Required, with a minimum length of 4
   gender: z.string().optional(),
   salt: z.string().min(1, { message: "Salt is required" }), // Required and must be a non-empty string
   phone: z
@@ -149,6 +153,7 @@ const RaportTypeSchema = z.object({
 
 module.exports = {
   AdminSchema,
+  PasswordSchema,
   FormSchema,
   RelativeSchema,
   RegistrationSchema,

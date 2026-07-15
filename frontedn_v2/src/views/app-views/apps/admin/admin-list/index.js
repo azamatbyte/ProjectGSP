@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Card, Table, Input, Button, Switch, message, Col, Row, Pagination } from "antd";
-import { EyeOutlined, DeleteOutlined, SearchOutlined, PlusCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, LeftCircleOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { EyeOutlined, DeleteOutlined, SearchOutlined, PlusCircleOutlined, CheckOutlined, CloseOutlined, EditOutlined, LeftCircleOutlined, UnorderedListOutlined, LockOutlined } from "@ant-design/icons";
 import AvatarStatus from "components/shared-components/AvatarStatus";
 import EllipsisDropdown from "components/shared-components/EllipsisDropdown";
 import Flex from "components/shared-components/Flex";
+import ResetPasswordModal from "components/shared-components/ResetPasswordModal";
 import { UserOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 // ...existing code...
 import AuthService from "services/AuthService";
 import { getDateString } from "utils/aditionalFunctions";
@@ -16,6 +18,9 @@ const AdminList = () => {
 	const navigate = useNavigate();
 	const [list, setList] = useState([]);
 	const { t } = useTranslation();
+	const role = useSelector((state) => state.auth.role);
+	const isSuperAdmin = role === "superAdmin";
+	const [resetTarget, setResetTarget] = useState(null);
 	const [pageNumber, setPageNumber] = useState(1);
 	const [pageSize, setPageSize] = useState(10);
 	const [total, setTotal] = useState(0);
@@ -81,6 +86,19 @@ const AdminList = () => {
 				),
 				onClick: () => viewDetails(row)
 			},
+			// Resetting someone else's password is a superAdmin-only recovery path.
+			...(isSuperAdmin
+				? [{
+					key: "reset-password",
+					label: (
+						<Flex alignItems="center">
+							<LockOutlined />
+							<span className="ml-2">{t("reset_password")}</span>
+						</Flex>
+					),
+					onClick: () => setResetTarget(row)
+				}]
+				: []),
 			{
 				key: "delete",
 				label: (
@@ -340,6 +358,15 @@ const AdminList = () => {
 					</Col>
 				</Row>
 			</div>
+
+			{resetTarget && (
+				<ResetPasswordModal
+					open={Boolean(resetTarget)}
+					admin={resetTarget}
+					onCancel={() => setResetTarget(null)}
+					onSuccess={() => setResetTarget(null)}
+				/>
+			)}
 		</Card>
 	);
 };

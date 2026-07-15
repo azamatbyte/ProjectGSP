@@ -1537,11 +1537,18 @@ exports.getTemporaryDataList = async (req, res) => {
 
     const totalPages = Math.ceil(totalData / pageSize);
 
+    const kompromatCount = await prisma.temporaryData.count({
+      where: {
+        AND: [...filters.AND, { kompromat_status: { equals: true } }],
+      },
+    });
+
     return res.status(200).json({
       code: 200,
       message: "List of temporary data",
       total_pages: totalPages,
       total_data: totalData,
+      kompromat_count: kompromatCount,
       temporaryData,
     });
   } catch (error) {
@@ -1773,6 +1780,107 @@ exports.updateTemporaryDataStatus = async (req, res) => {
         .json({ code: 404, message: "Temporary data not found" });
     }
     console.error("Error updating temporary data status:", error);
+    return res.status(500).json({
+      code: 500,
+      message: "Internal server error",
+      error: error.message,
+    });
+  } finally {
+
+  }
+};
+
+/**
+ * @swagger
+ * /api/v1/registerFour/updateKompromat:
+ *   post:
+ *     summary: Set the kompromat (К/М) flag on one, many or all temporary data records
+ *     tags: [RegisterFour]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ids:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Explicit record ids to update
+ *               all:
+ *                 type: boolean
+ *                 description: Update every record matching the filter instead of explicit ids
+ *               id:
+ *                 type: string
+ *                 description: Executor id, used as a filter when "all" is set
+ *               status:
+ *                 type: string
+ *               found_status:
+ *                 type: string
+ *               kompromat_status:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Kompromat status updated successfully
+ *       400:
+ *         description: Bad request
+ *       500:
+ *         description: Internal server error
+ */
+exports.updateKompromat = async (req, res) => {
+  const { ids, all, id, status, found_status, kompromat_status } = req.body;
+
+  if (typeof kompromat_status !== "boolean") {
+    return res
+      .status(400)
+      .json({ code: 400, message: "kompromat_status must be a boolean" });
+  }
+
+  try {
+    let where;
+
+    if (Array.isArray(ids) && ids.length) {
+      where = { id: { in: ids } };
+    } else if (all) {
+      const filters = { AND: [] };
+
+      if (status) {
+        filters.AND.push({ status: { equals: status } });
+      }
+
+      if (id) {
+        filters.AND.push({ executorId: { equals: id } });
+      }
+
+      if (found_status && found_status === "found") {
+        filters.AND.push({ found_status: { equals: true } });
+      }
+
+      if (found_status && found_status === "not_found") {
+        filters.AND.push({ found_status: { equals: false } });
+      }
+
+      where = filters;
+    } else {
+      return res
+        .status(400)
+        .json({ code: 400, message: "ids or all is required" });
+    }
+
+    const result = await prisma.temporaryData.updateMany({
+      where,
+      data: { kompromat_status },
+    });
+
+    return res.status(200).json({
+      code: 200,
+      message: "Kompromat status updated successfully",
+      count: result.count,
+    });
+  } catch (error) {
+    console.error("Error updating kompromat status:", error);
     return res.status(500).json({
       code: 500,
       message: "Internal server error",
@@ -2364,9 +2472,11 @@ exports.exportSverkaMain = async (req, res) => {
  *         description: "Internal server error"
  */
 exports.exportSverka = async (req, res) => {
-  const { executorId } = req.body;
+  const { executorId, komprMaterials } = req.body;
   if (!executorId)
     return res.status(400).json({ code: 400, message: "Ids is required" });
+
+  const withKompr = komprMaterials === true;
 
   try {
     const temporaryDataList = await prisma.temporaryData.findMany({
@@ -2393,10 +2503,11 @@ exports.exportSverka = async (req, res) => {
       { width: 25 }, // F - Место работы
       { width: 35 }, // G - Р/О
       { width: 30 }, // H - У
+      ...(withKompr ? [{ width: 40 }] : []), // I - Компрматериалы
     ];
 
-    // 3) Title "Сверка" in row 1, merged across A1:H1
-    sheet.mergeCells("A1:H1");
+    // 3) Title "Сверка" in row 1, merged across A1:H1 (A1:I1 with Компрматериалы)
+    sheet.mergeCells(withKompr ? "A1:I1" : "A1:H1");
     sheet.getCell("A1").value = "Сверка";
     sheet.getCell("A1").font = { bold: true, size: 14 };
     sheet.getCell("A1").alignment = {
@@ -2588,6 +2699,24 @@ exports.exportSverka = async (req, res) => {
       right: { style: "thin" },
     };
 
+    // 14.1) Merge cells I3:I5 for "Компрматериалы"
+    if (withKompr) {
+      sheet.mergeCells("I3:I5");
+      sheet.getCell("I3").value = "Компрматериалы";
+      sheet.getCell("I3").font = { bold: true, size: 11 };
+      sheet.getCell("I3").alignment = {
+        horizontal: "center",
+        vertical: "middle",
+        wrapText: true,
+      };
+      sheet.getCell("I3").border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    }
+
     // 15) Populate data starting from row 6
     for (let i = 0; i < temporaryDataList.length; i++) {
       const data = temporaryDataList[i];
@@ -2616,6 +2745,9 @@ exports.exportSverka = async (req, res) => {
         "", // У - will be set below
       ];
 
+      // Компрматериалы (I) - notes of whichever registration was matched
+      const komprNotes = [];
+
       // Handle registration column (G)
       if (data.registration) {
         try {
@@ -2627,8 +2759,10 @@ exports.exportSverka = async (req, res) => {
               accessStatus: true,
               expired: true,
               regDate: true,
+              notes: true,
             },
           });
+          if (registrationData?.notes) komprNotes.push(registrationData.notes);
           const accessStatus = registrationData?.accessStatus;
           if (accessStatus) {
             if (
@@ -2681,8 +2815,12 @@ exports.exportSverka = async (req, res) => {
               accessStatus: true,
               expired: true,
               regDate: true,
+              notes: true,
             },
           });
+          if (registrationFourData?.notes) {
+            komprNotes.push(registrationFourData.notes);
+          }
           const accessStatus = registrationFourData?.accessStatus;
           if (accessStatus) {
             if (
@@ -2745,6 +2883,29 @@ exports.exportSverka = async (req, res) => {
           cell.alignment = { horizontal: "left", vertical: "middle" };
         }
       });
+
+      // Компрматериалы (I) - set after eachCell, which skips cells left empty
+      if (withKompr) {
+        const komprCell = row.getCell("I");
+        // Only flagged records expose their notes; both registration and
+        // registration_four feed the same column, de-duplicated.
+        komprCell.value = data.kompromat_status
+          ? [...new Set(komprNotes.map((n) => n.trim()).filter(Boolean))].join(
+            "; "
+          )
+          : "";
+        komprCell.alignment = {
+          horizontal: "left",
+          vertical: "middle",
+          wrapText: true,
+        };
+        komprCell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      }
     }
 
     // 16) Save to disk
@@ -2752,10 +2913,30 @@ exports.exportSverka = async (req, res) => {
     const filePath = `./uploads/${fileName}`;
     await workbook.xlsx.writeFile(filePath);
 
+    const sverkaLink = `${SERVER_URL}/api/v1/download/${fileName}`;
+
+    // 17) Persist the generated Сверка as a raport record so it shows up on the
+    // raport list page. listRaportsExecutor returns raportLinks where
+    // raport.executorId === current user (or everything for superAdmin), so we
+    // tie the record to the admin who generated it.
+    const sverkaRaport = await prisma.raport.create({
+      data: {
+        name: "sverka",
+        executorId: executorId,
+        link: sverkaLink,
+      },
+    });
+    await prisma.raportLink.create({
+      data: {
+        raportId: sverkaRaport.id,
+        display: true,
+      },
+    });
+
     return res.status(200).json({
       code: 200,
       message: "Excel file exported successfully",
-      link: `${SERVER_URL}/api/v1/download/${fileName}`,
+      link: sverkaLink,
     });
   } catch (err) {
     console.error(err);

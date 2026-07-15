@@ -1,10 +1,27 @@
-import { auth_signin, auth_logout, get_user } from "utils/api_urls";
+import {
+	auth_signin,
+	auth_logout,
+	auth_change_password,
+	auth_reset_password,
+	get_user,
+} from "utils/api_urls";
 import Request from "utils/request";
 
 const AuthService = {};
 
 AuthService.login = function (data) {
 	return Request.postRequest(auth_signin, data);
+};
+
+// Changes the CURRENT user's password. The backend takes the target from the
+// token, so this can only ever affect the logged-in account.
+AuthService.changePassword = function (oldPassword, newPassword) {
+	return Request.postRequest(auth_change_password, { oldPassword, newPassword });
+};
+
+// superAdmin-only recovery: set another admin's password without the old one.
+AuthService.resetPassword = function (adminId, newPassword) {
+	return Request.postRequest(auth_reset_password, { adminId, newPassword });
 };
 
 AuthService.logout = function (refreshToken) {

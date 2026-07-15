@@ -5,7 +5,7 @@
 .DESCRIPTION
     Creates or updates the shared .env file in %ProgramData%\GSPApp with:
     - Auto-generated secure PGPASSWORD
-    - Auto-generated JWT_SECRET_KEY
+    - Auto-generated JWT_SECRET
     - Properly formatted DATABASE_URL
     
 .PARAMETER AppRoot
@@ -25,6 +25,10 @@ function Log($m){ Write-Host "[setup_env] $m" -ForegroundColor Cyan }
 $ProgramDataRoot = Join-Path $env:ProgramData 'GSPApp'
 $EnvFile = Join-Path $ProgramDataRoot '.env'
 $TemplateFile = Join-Path (Split-Path $AppRoot -Parent) '.env.template'
+
+# Older install scripts shipped this same signing key to every machine. It is a
+# publicly known value, so it must never be carried forward as JWT_SECRET.
+$LegacySharedSecret = '2315465461319846574984631531'
 
 # Ensure directories exist
 New-Item -ItemType Directory -Force -Path $ProgramDataRoot | Out-Null
@@ -65,11 +69,18 @@ if ((Test-Path $EnvFile) -and -not $Force) {
         $needsUpdate = $true
     }
     
-    # Check for JWT_SECRET_KEY
-    if ($content -notmatch 'JWT_SECRET_KEY\s*=\s*\S+') {
-        $jwtKey = New-SecureString -Length 48
-        Add-Content -Path $EnvFile -Value "JWT_SECRET_KEY=$jwtKey"
-        Log "Generated JWT_SECRET_KEY"
+    # Check for JWT_SECRET. Installs made before the rename only have
+    # JWT_SECRET_KEY; reuse that value so issued tokens survive the upgrade.
+    if ($content -notmatch 'JWT_SECRET\s*=\s*\S+') {
+        $legacy = [regex]::Match($content, '(?m)^\s*JWT_SECRET_KEY\s*=\s*(\S+)\s*$')
+        if ($legacy.Success -and $legacy.Groups[1].Value -ne $LegacySharedSecret) {
+            $jwtKey = $legacy.Groups[1].Value
+            Log "Adopted existing JWT_SECRET_KEY as JWT_SECRET"
+        } else {
+            $jwtKey = New-SecureString -Length 48
+            Log "Generated JWT_SECRET"
+        }
+        Add-Content -Path $EnvFile -Value "JWT_SECRET=$jwtKey"
         $needsUpdate = $true
     }
     
@@ -176,7 +187,7 @@ $jwtKey = New-SecureString -Length 48
     '',
     '# Auto-generated secrets (do not share)',
     "PGPASSWORD=$pgPass",
-    "JWT_SECRET_KEY=$jwtKey",
+    "JWT_SECRET=$jwtKey",
     '',
     '# Database Connection',
     'PG_LOCALE_PROVIDER=icu',
@@ -190,4 +201,4 @@ $jwtKey = New-SecureString -Length 48
 ) | Add-Content -Path $EnvFile
 
 Log "Environment configuration complete: $EnvFile"
-Log "PGPASSWORD and JWT_SECRET_KEY have been auto-generated."
+Log "PGPASSWORD and JWT_SECRET have been auto-generated."

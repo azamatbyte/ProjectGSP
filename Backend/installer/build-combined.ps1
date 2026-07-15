@@ -368,7 +368,7 @@ DB_NAME=appdb
 # DATABASE_URL is auto-generated
 
 # Security (auto-generated on first run)
-# JWT_SECRET_KEY=<generated>
+# JWT_SECRET=<generated>
 
 # Frontend API Connection (development only; production uses runtime-config.js or same-origin)
 # REACT_APP_SITE_BACKEND=http://127.0.0.1:8080

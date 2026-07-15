@@ -150,7 +150,11 @@ const permissionCheck = (permissions) => {
       if (!user) {
         return res.status(401).send({ status: 401, message: "User not found" });
       }
-      
+
+      // Expose the authenticated actor so handlers can make ownership decisions
+      // without re-querying (see update/resetPassword in authController).
+      req.user = user;
+
       if (user.role === 'superAdmin') {
         return next();
       }

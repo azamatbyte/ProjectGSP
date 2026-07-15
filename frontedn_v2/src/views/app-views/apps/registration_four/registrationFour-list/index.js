@@ -13,6 +13,8 @@ import {
   Tag,
   Tooltip,
   Progress,
+  Checkbox,
+  Switch,
 } from "antd";
 import {
   UploadOutlined,
@@ -198,6 +200,11 @@ const Index = (props) => {
   const [statusModalRecord, setStatusModalRecord] = useState(null);
   const [statusModalValue, setStatusModalValue] = useState(null);
   const [statusModalLoading, setStatusModalLoading] = useState(false);
+  const [komprCount, setKomprCount] = useState(0);
+  const [komprLoading, setKomprLoading] = useState(false);
+  const [sverkaModalVisible, setSverkaModalVisible] = useState(false);
+  const [sverkaKompr, setSverkaKompr] = useState(false);
+  const [sverkaLoading, setSverkaLoading] = useState(false);
   const [birthPlaceSearchRef, setBirthPlaceSearchRef] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [uploadProgress, setUploadProgress] = useState(createInitialUploadProgressState);
@@ -404,21 +411,6 @@ const Index = (props) => {
     },
   ];
 
-  const found_status_options = [
-    {
-      value: "all",
-      label: t("all"),
-    },
-    {
-      value: "found",
-      label: t("found"),
-    },
-    {
-      value: "not_found",
-      label: t("not_found"),
-    },
-  ];
-
   const updateSearchParams = useCallback(() => {
     const params = new URLSearchParams(location.search);
     params.set("pageNumber", String(pageNumber));
@@ -512,9 +504,11 @@ const Index = (props) => {
       });
       setList(updatedData);
       setTotal(res?.data?.total_data);
+      setKomprCount(res?.data?.kompromat_count || 0);
     } catch (error) {
       setList([]);
       setTotal(0);
+      setKomprCount(0);
     } finally {
       setLoading(false);
     }
@@ -671,6 +665,27 @@ const Index = (props) => {
         <div className="text-right d-flex justify-content-end">
           <EllipsisDropdown menu={dropdownMenu(elm)} />
         </div>
+      ),
+    },
+    {
+      title: (
+        <Checkbox
+          checked={total > 0 && komprCount === total}
+          indeterminate={komprCount > 0 && komprCount < total}
+          disabled={komprLoading || total === 0}
+          onChange={(e) => handleKomprToggleAll(e.target.checked)}
+        >
+          {t("km_status")}
+        </Checkbox>
+      ),
+      dataIndex: "kompromat_status",
+      width: "2%",
+      render: (_, elm) => (
+        <Checkbox
+          checked={!!elm.kompromat_status}
+          disabled={komprLoading}
+          onChange={(e) => handleKomprToggleRow(elm.id, e.target.checked)}
+        />
       ),
     },
     {
@@ -980,16 +995,6 @@ const Index = (props) => {
             </>
           )}
         </>
-      ),
-    },
-    {
-      title: t("found_status"),
-      dataIndex: "found_status",
-      sorter: { multiple: 6 },
-      sortDirections: ["ascend", "descend"],
-      sortOrder: sortOrderMap.found_status || null,
-      render: (found_status) => (
-        <>{found_status ? t("found") : t("not_found")}</>
       ),
     },
     {
@@ -1363,10 +1368,12 @@ const Index = (props) => {
                 ? t("upload_failed")
                 : t("data_uploaded_successfully");
 
-  const exportExcel = async () => {
+  const handleSverkaExport = async () => {
+    setSverkaLoading(true);
     try {
       const response = await RegistrationFourService.exportSverka({
         executorId: user?.id,
+        komprMaterials: sverkaKompr,
         ...search,
       });
       if (response?.status === 200) {
@@ -1382,8 +1389,46 @@ const Index = (props) => {
         a.click();
         document.body.removeChild(a);
       }
+      setSverkaModalVisible(false);
     } catch (error) {
       console.log("error", error);
+      message.error(t("error"));
+    } finally {
+      setSverkaLoading(false);
+    }
+  };
+
+  const handleKomprToggleRow = async (id, checked) => {
+    try {
+      await RegistrationFourService.updateKompromat({
+        ids: [id],
+        kompromat_status: checked,
+      });
+      setList((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, kompromat_status: checked } : item
+        )
+      );
+      setKomprCount((prev) => Math.max(0, prev + (checked ? 1 : -1)));
+    } catch (error) {
+      message.error(t("error_updating_status"));
+    }
+  };
+
+  const handleKomprToggleAll = async (checked) => {
+    setKomprLoading(true);
+    try {
+      await RegistrationFourService.updateKompromat({
+        ...search,
+        all: true,
+        id: user?.id,
+        kompromat_status: checked,
+      });
+      await fetchData();
+    } catch (error) {
+      message.error(t("error_updating_status"));
+    } finally {
+      setKomprLoading(false);
     }
   };
 
@@ -1542,7 +1587,7 @@ const Index = (props) => {
         <div>
           <Button
             type="primary"
-            onClick={() => exportExcel()}
+            onClick={() => setSverkaModalVisible(true)}
             icon={<DownloadOutlined />}
             style={{ minWidth: "120px" }}
           >
@@ -1630,32 +1675,12 @@ const Index = (props) => {
               </Select>
             </Form.Item>
           </Col>
-          <Col xs={24} sm={24} md={8} lg={6}>
-            <Form.Item name="found_status" label={null}>
-              <Select
-                placeholder={t("found_status")}
-                allowClear
-                defaultValue={search?.found_status}
-                onChange={(value) => {
-                  value !== "all"
-                    ? setSearch({ ...search, found_status: value })
-                    : setSearch({ ...search, found_status: null });
-                }}
-              >
-                {found_status_options.map((option) => (
-                  <Option key={option.value} value={option.value}>
-                    {option.label}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={24} md={8} lg={6} className="clear-button-container">
+          <Col xs={24} sm={24} md={8} lg={12} className="clear-button-container">
             {/* <Form.Item name="clear" label={null}>
               <Button
                 type="primary"
                 onClick={() => {
-                  setSearch({ ...search, status: null, found_status: null });
+                  setSearch({ ...search, status: null });
                   form.resetFields();
                 }}
               >
@@ -2023,6 +2048,25 @@ const Index = (props) => {
             { value: "not_checked", label: t("checking") },
           ]}
         />
+      </Modal>
+      <Modal
+        title={t("sverka")}
+        open={sverkaModalVisible}
+        onCancel={() => setSverkaModalVisible(false)}
+        onOk={handleSverkaExport}
+        confirmLoading={sverkaLoading}
+        okText={t("export")}
+        cancelText={t("cancel")}
+      >
+        <div className="d-flex align-items-center justify-content-between">
+          <span>{t("add_kompr_materials_question")}</span>
+          <Switch
+            checked={sverkaKompr}
+            onChange={(checked) => setSverkaKompr(checked)}
+            checkedChildren={t("yes")}
+            unCheckedChildren={t("no")}
+          />
+        </div>
       </Modal>
       <Modal
         title={t("add_manual")}

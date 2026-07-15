@@ -22,7 +22,6 @@ import {
   DownloadOutlined,
   UploadOutlined,
   UnorderedListOutlined,
-  LinkOutlined,
 } from "@ant-design/icons";
 import EllipsisDropdown from "components/shared-components/EllipsisDropdown";
 import Flex from "components/shared-components/Flex";
@@ -240,6 +239,15 @@ const RaportList = (props) => {
     navigate(`/app/raports/edit-raport/${row.id}?redirect=/app/raport-list`);
   };
 
+  const openRegistration = (registrationId) => {
+    if (!registrationId) return;
+    navigate(
+      `/app/apps/register/info-register/${registrationId}?redirect=/app/raport-list&&search=${JSON.stringify(
+        search
+      )}`
+    );
+  };
+
   const backHandle = () => {
     navigate(-1);
   };
@@ -316,6 +324,9 @@ const RaportList = (props) => {
       dataIndex: "regNumber",
       // sorter: (a, b) => utils.antdTableSorter(a, b, "reg_number"),
       render: (_, elm) => {
+        if (elm?.raport?.name === "sverka") {
+          return <span>{t("sverka")}</span>;
+        }
         const text = (elm?.registrations || [])
           .map((r) => r.regNumber)
           .join(", ");
@@ -354,12 +365,15 @@ const RaportList = (props) => {
       dataIndex: "fullName",
       // sorter: (a, b) => utils.antdTableSorter(a, b, "full_name"),
       render: (_, elm) => {
-        const text = (elm?.registrations || [])
-          .map((r) => r.fullName)
-          .join(", ");
-
-        const displayText =
-          text.length > 10 ? text.substring(0, 10) + "..." : text;
+        if (elm?.raport?.name === "sverka") {
+          return <span>{t("sverka")}</span>;
+        }
+        const registrations = (elm?.registrations || []).length
+          ? elm.registrations
+          : elm?.registration
+            ? [elm.registration]
+            : [];
+        const text = registrations.map((r) => r?.fullName).join(", ");
 
         return (
           <Tooltip
@@ -372,7 +386,6 @@ const RaportList = (props) => {
           >
             <span
               style={{
-                cursor: "pointer",
                 display: "inline-block",
                 maxWidth: 200,
                 whiteSpace: "nowrap",
@@ -381,7 +394,17 @@ const RaportList = (props) => {
                 verticalAlign: "middle",
               }}
             >
-              {displayText}
+              {registrations.map((r, index) => (
+                <React.Fragment key={r?.id || index}>
+                  {index > 0 && ", "}
+                  <span
+                    onClick={() => openRegistration(r?.id)}
+                    style={{ cursor: r?.id ? "pointer" : "default" }}
+                  >
+                    {r?.fullName}
+                  </span>
+                </React.Fragment>
+              ))}
             </span>
           </Tooltip>
         );
@@ -500,51 +523,17 @@ const RaportList = (props) => {
     },
 
     {
-      title: t("link"),
-      dataIndex: "link",
-      width: "15%",
-      render: (_, elm) => {
-        // Get the first registration ID for navigation
-        const registrationId = elm?.registrations && elm.registrations.length > 0
-          ? elm.registrations[0].id
-          : elm?.registration?.id;
-
-        return registrationId ? (
-          <Button
-            onClick={() => {
-              navigate(
-                `/app/apps/register/info-register/${registrationId}?redirect=/app/raport-list&&search=${JSON.stringify(
-                  search
-                )}`
-              );
-            }}
-          >
-            <LinkOutlined /> {t("link")}
-          </Button>
-        ) : (
-          <span>-</span>
-        );
-      },
-    },
-    {
       title: t("executor"),
       dataIndex: "executor",
       render: (_, elm) => (
-        <p
-          style={{ cursor: "pointer" }}
-          onClick={() =>
-            navigate(
-              `/app/apps/admin/info-admin/${elm?.raport?.executor?.id}?redirect=/app/raport-list`
-            )
-          }
-        >
+        <span>
           {elm?.raport?.executor?.first_name
             ? elm?.raport?.executor?.first_name
             : ""}{" "}
           {elm?.raport?.executor?.last_name
             ? elm?.raport?.executor?.last_name
             : ""}
-        </p>
+        </span>
       ),
     },
     {

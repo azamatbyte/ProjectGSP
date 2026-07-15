@@ -70,10 +70,15 @@ export const getByToken = createAsyncThunk("auth/getByToken", async (data, { rej
       const user = response?.data?.user;
       return user;
     }
+    return rejectWithValue({ reason: "unauthorized" });
   } catch (err) {
-    return rejectWithValue(err?.message || "Error");
+    // No HTTP status means the server never answered (backend down, request
+    // blocked). That is not an auth verdict — don't destroy the session for it.
+    if (!err?.response?.status) {
+      return rejectWithValue({ reason: "network" });
+    }
+    return rejectWithValue({ reason: "unauthorized" });
   }
-
 });
 
 export const updateUser = createAsyncThunk("auth/updateUser", async (data, { rejectWithValue }) => {
@@ -183,9 +188,14 @@ export const authSlice = createSlice({
         state.role = action.payload?.role;
       })
       .addCase(getByToken.rejected, (state, action) => {
-        state.user = action.user;
         state.showMessage = false;
         state.loading = false;
+        // Keep the session on transient network failures — only a real
+        // rejection from the server invalidates the stored token.
+        if (action.payload?.reason === "network") {
+          return;
+        }
+        state.user = null;
         state.isAuth = false;
         state.token = null;
         state.redirect = "/";

@@ -14,6 +14,7 @@ import {
   FileExcelOutlined,
   FilePdfOutlined,
   CalendarOutlined,
+  DiffOutlined,
 } from "@ant-design/icons";
 import { APP_PREFIX_PATH } from "configs/AppConfig";
 
@@ -59,7 +60,7 @@ const extraNavTree = [
     key: "apps-registrationFour-registrationFourList",
     path: `${APP_PREFIX_PATH}/registrationFour-list`,
     title: "sidenav.dashboard.registrationFour",
-    icon: UsergroupAddOutlined,
+    icon: DiffOutlined,
     breadcrumb: true,
     submenu: [],
     role: ["admin", "superAdmin"],
