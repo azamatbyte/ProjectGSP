@@ -26,6 +26,7 @@ import {
 import EllipsisDropdown from "components/shared-components/EllipsisDropdown";
 import Flex from "components/shared-components/Flex";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 // ...existing code...
 import { getDateDayString, getDateString } from "utils/aditionalFunctions";
 import ProviderComponent from "providerComponent";
@@ -63,6 +64,9 @@ const RaportList = (props) => {
   const [executorOptions, setExecutorOptions] = useState([]);
   const { setUploadedFile, setRaportId } = props;
   const [search, setSearch] = useState({ adminCheck: "all", operator: "all", discuss: "all", fullName: "", name: "", executor: "", registration4: "", });
+  const { role } = useSelector((state) => state.auth);
+  const isSuperAdmin = role === "superAdmin";
+  const [types, setTypes] = useState(["Заключение", "sverka"]);
 
   // 🔹 Modal holati uchun
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -185,6 +189,7 @@ const RaportList = (props) => {
 
 
   const fetchData = useCallback(async () => {
+    if (!role) return;
     try {
       setLoading(true);
       const res = await RaportService.listExecutor(
@@ -192,7 +197,7 @@ const RaportList = (props) => {
         pageSize,
         "",
         "",
-        search,
+        isSuperAdmin ? { ...search, types } : search,
       );
       // console.log("res?.data?.raports", res?.data?.raports);
       setList(res?.data?.raports);
@@ -206,7 +211,7 @@ const RaportList = (props) => {
     } finally {
       setLoading(false);
     }
-  }, [pageNumber, pageSize, search, t]);
+  }, [pageNumber, pageSize, search, types, role, isSuperAdmin, t]);
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -590,6 +595,32 @@ const RaportList = (props) => {
                 options={categoriesOfRaports.map((it) => ({ value: it.key, label: it.label }))}
                 style={{ flex: '1 1 180px', minWidth: 150 }}
               />
+              {isSuperAdmin && (
+                <Select
+                  mode="multiple"
+                  allowClear
+                  placeholder={t("raport_types")}
+                  value={types}
+                  onChange={(vals) => setTypes(vals || [])}
+                  options={categoriesOfRaports.map((it) => ({ value: it.key, label: it.label }))}
+                  optionFilterProp="label"
+                  maxTagCount="responsive"
+                  style={{ flex: '1 1 220px', minWidth: 200 }}
+                  dropdownRender={(menu) => (
+                    <>
+                      <Button
+                        type="link"
+                        size="small"
+                        style={{ margin: 4 }}
+                        onClick={() => setTypes(categoriesOfRaports.map((it) => it.key))}
+                      >
+                        {t("select_all_types")}
+                      </Button>
+                      {menu}
+                    </>
+                  )}
+                />
+              )}
               <Select
                 showSearch
                 allowClear

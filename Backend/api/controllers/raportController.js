@@ -1435,6 +1435,7 @@ exports.listRaportsExecutor = async (req, res) => {
       discuss = "all",
       registration4 = "",
       operator = "all",
+      types,
     } = req.body;
 
     // Kiritilgan ma'lumotlarni tekshirish
@@ -1465,6 +1466,9 @@ exports.listRaportsExecutor = async (req, res) => {
           ? { registrations: { some: { fullName: { contains: fullName } } } }
           : {},
         name ? { raport: { name: { contains: name } } } : {},
+        Array.isArray(types) && types.length > 0
+          ? { raport: { name: { in: types } } }
+          : {},
         registration4 !== "" ? { regNumber: { equals: registration4 } } : {},
         adminCheck !== "all"
           ? { adminCheck: { equals: adminCheck === "yes" ? true : false } }

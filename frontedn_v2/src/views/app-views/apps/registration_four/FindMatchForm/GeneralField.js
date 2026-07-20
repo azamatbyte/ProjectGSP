@@ -11,11 +11,6 @@ import {
   Tooltip,
   message,
 } from "antd";
-import {
-  EyeOutlined,
-} from "@ant-design/icons";
-import EllipsisDropdown from "components/shared-components/EllipsisDropdown";
-import Flex from "components/shared-components/Flex";
 import { useNavigate } from "react-router-dom";
 import utils from "utils";
 import { useTranslation } from "react-i18next";
@@ -45,21 +40,6 @@ const GeneralField = (props) => {
       setTotal(userInfo.length);
     }
   }, [userInfo]);
-
-  const dropdownMenu = (row) => ({
-    items: [
-      {
-        key: "view-details",
-        label: (
-          <Flex alignItems="center">
-            <EyeOutlined />
-            <span className="ml-2">{t("view_details")}</span>
-          </Flex>
-        ),
-        onClick: () => viewDetails(row)
-      }
-    ]
-   });
 
   const viewDetails = (row) => {
     if (
@@ -107,8 +87,11 @@ const GeneralField = (props) => {
       dataIndex: "fullName",
       width: "15%",
       sorter: (a, b) => utils.antdTableSorter(a, b, "fullName"),
-      render: (fullName) => (
-        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      render: (fullName, elm) => (
+        <span
+          onClick={() => viewDetails(elm)}
+          style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+        >
           {fullName}
         </span>
       ),
@@ -275,15 +258,6 @@ const GeneralField = (props) => {
           {t("save")}
         </Button>
       )
-    },
-    {
-      title: t("view_details"),
-      dataIndex: "actions",
-      render: (_, elm) => (
-        <div className="text-right">
-          <EllipsisDropdown menu={dropdownMenu(elm)} />
-        </div>
-      ),
     },
   ];
 

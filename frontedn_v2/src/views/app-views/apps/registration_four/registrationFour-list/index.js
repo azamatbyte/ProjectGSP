@@ -675,7 +675,7 @@ const Index = (props) => {
           disabled={komprLoading || total === 0}
           onChange={(e) => handleKomprToggleAll(e.target.checked)}
         >
-          {t("km_status")}
+          <span style={{ whiteSpace: "nowrap" }}>{t("km_status")}</span>
         </Checkbox>
       ),
       dataIndex: "kompromat_status",
