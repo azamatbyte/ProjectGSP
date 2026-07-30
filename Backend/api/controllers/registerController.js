@@ -927,7 +927,6 @@ exports.getRegistrationList = async (req, res) => {
     const data = body.data || {};
     let {
       regNumber,
-      exactRegNumber,
       fullName,
       firstName,
       lastName,
@@ -969,25 +968,14 @@ exports.getRegistrationList = async (req, res) => {
     // Qidiruv shartlarini dinamik ravishda va xavfsiz yarating
     const andConditions = [];
 
+    // regNumber is always an exact match (case-insensitive), never a substring search
     if (regNumber) {
-      if (exactRegNumber) {
-        andConditions.push({
-          regNumber: {
-            equals: String(regNumber).trim(),
-            mode: "insensitive",
-          },
-        });
-      } else {
-        andConditions.push({
-          regNumber: {
-            contains: String(regNumber)
-              .replace(/%/g, "")
-              .replace(/\*/g, "%")
-              .trim(),
-            mode: "insensitive",
-          },
-        });
-      }
+      andConditions.push({
+        regNumber: {
+          equals: String(regNumber).trim(),
+          mode: "insensitive",
+        },
+      });
     }
 
     if (fullName) {

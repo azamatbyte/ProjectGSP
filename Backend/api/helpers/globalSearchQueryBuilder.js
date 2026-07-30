@@ -51,6 +51,30 @@ function buildTextFilter(column, value, excludeStatus = false, exactMatch = fals
 }
 
 /**
+ * Builds an exact-match filter for code-like fields (regNumber and similar).
+ * Compares using lower(trim(...)) so case and edge spaces are ignored,
+ * but no partial/substring matching is done.
+ * @param {string} column - The column name (with table alias)
+ * @param {string} value - The search value
+ * @param {boolean} excludeStatus - If true, exclude matches; if false, include matches
+ * @returns {string|null} - The SQL condition
+ */
+function buildExactValueFilter(column, value, excludeStatus = false) {
+    if (value === null || value === undefined) return null;
+
+    const raw = String(value).trim();
+    if (!raw) return null;
+
+    const sanitized = sanitizeValue(raw);
+    const condition = `lower(trim(coalesce(${column}, ''))) = lower(trim('${sanitized}'))`;
+
+    if (excludeStatus) {
+        return `NOT (${condition})`;
+    }
+    return condition;
+}
+
+/**
  * Builds a normalized text filter for person-name fields.
  * Compares using lower(trim(...)) so case and edge spaces are ignored,
  * while internal spaces stay significant.
@@ -181,7 +205,6 @@ function buildWhereConditions(params, tableAlias = "r", regAlias = null) {
         { column: `${tableAlias}."position"`, value: params.position, status: params.positionStatus },
         { column: `${tableAlias}."pinfl"`, value: params.pinfl, status: params.pinflStatus },
         { column: `${reg}."passport"`, value: params.passport, status: params.passportStatus },
-        { column: `${reg}."regNumber"`, value: params.regNumber, status: params.regNumberStatus },
         { column: `${reg}."form_reg"`, value: params.form_reg, status: params.form_regStatus },
         { column: `${tableAlias}."id"::text`, value: params.id, status: params.idStatus },
         { column: `${reg}."completeStatus"::text`, value: params.completeStatus, status: params.completeStatusStatus },
@@ -192,6 +215,16 @@ function buildWhereConditions(params, tableAlias = "r", regAlias = null) {
         { column: `${tableAlias}."residence"`, value: params.residence, status: params.residenceStatus },
         { column: `${reg}."conclusionRegNum"`, value: params.conclusionRegNum, status: params.conclusionRegNumStatus },
     ];
+
+    // regNumber uses exact match (no substring search)
+    if (params.regNumber) {
+        const regNumberFilter = buildExactValueFilter(
+            `${reg}."regNumber"`,
+            params.regNumber,
+            params.regNumberStatus
+        );
+        if (regNumberFilter) conditions.push(regNumberFilter);
+    }
 
     // Model uses exact match
     if (params.model) {

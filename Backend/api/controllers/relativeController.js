@@ -426,13 +426,11 @@ exports.searchRelatives = async (req, res) => {
     // console.log(JSON.parse(query));
 
     const andConditions = [
+      // regNumber is always an exact match (case-insensitive), never a substring search
       regNumber
         ? {
           regNumber: {
-            contains: regNumber
-              .replace(/%/g, "")
-              .replace(/\*/g, "%")
-              .trim(),
+            equals: String(regNumber).trim(),
             mode: "insensitive",
           },
         }
