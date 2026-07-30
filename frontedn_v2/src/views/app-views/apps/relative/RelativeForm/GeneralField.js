@@ -22,7 +22,7 @@ const { Option } = Select;
 
 const fetchRelationDegree = async (searchText) => {
   try {
-    const response = await RelationService.getRelationList(1, 5, searchText);
+    const response = await RelationService.getRelationList(1, 200, searchText);
     return response?.data?.relationDegrees;
   } catch (error) {
     console.error("Xatolik:", error);
@@ -62,6 +62,8 @@ const GeneralField = (props) => {
   const [initiatorFetching, setInitiatorFetching] = useState(false);
   const [relationDegreeOptions, setRelationDegreeOptions] = useState([]);
   const [relationDegreeFetching, setRelationDegreeFetching] = useState(false);
+  // Qidiruvsiz to'liq ro'yxat, ro'yxat ochilganda qayta ko'rsatish uchun
+  const allRelationDegreeOptions = React.useRef([]);
   const [formType, setFormType] = useState(
     props.form?.getFieldValue("formType") || "month_year"
   );
@@ -163,12 +165,11 @@ const GeneralField = (props) => {
           id: item?.id,
         }))
       );
-      setRelationDegreeOptions(
-        relationDegrees.map((item) => ({
-          value: item?.name,
-          label: item?.name,
-        }))
-      );
+      allRelationDegreeOptions.current = relationDegrees.map((item) => ({
+        value: item?.name,
+        label: item?.name,
+      }));
+      setRelationDegreeOptions(allRelationDegreeOptions.current);
       setWorkplaceOptions(
         workplaces.map((item) => ({
           value: item?.name,
@@ -225,18 +226,19 @@ const GeneralField = (props) => {
                   }}
                   onSearch={(searchText) => {
                     if (searchText.length === 0) {
-                      fetchRelationDegree("").then((data) => {
-                        setRelationDegreeOptions(
-                          data.map((item) => ({
-                            value: item.name,
-                            label: item.name,
-                          }))
-                        );
-                      });
+                      // Qidiruv tozalanganda to'liq ro'yxatni qaytarish
+                      debouncedFetchRelationDegree.cancel();
+                      setRelationDegreeOptions(allRelationDegreeOptions.current);
                     } else {
                       debouncedFetchRelationDegree(searchText);
                     }
                   }}
+                  onDropdownVisibleChange={(open) => {
+                    if (open && allRelationDegreeOptions.current.length) {
+                      setRelationDegreeOptions(allRelationDegreeOptions.current);
+                    }
+                  }}
+                  listHeight={400}
                   loading={relationDegreeFetching}
                   filterOption={false}
                   options={relationDegreeOptions}
