@@ -21,7 +21,10 @@ const GeneralField = (props) => {
         console.log("End");
         setRegistrationData({
           ...response?.data?.data,
-          editable_word: response?.data?.data?.data?.editableWord || "",
+          editable_word:
+            response?.data?.data?.editable_word ??
+            response?.data?.data?.data?.editableWord ??
+            "",
         });
         if (response.status !== 200) throw new Error("Failed to fetch data");
       } catch (error) {

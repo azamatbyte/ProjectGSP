@@ -388,6 +388,7 @@ model RaportTypes {
   signed_position        String? @default("")
   link                   String? @default("")
   notes                  String? @default("")
+  editable_word          String? @default("")
   executorId             String?
   data                   Json?
 

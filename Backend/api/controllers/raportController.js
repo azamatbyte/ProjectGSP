@@ -38,6 +38,46 @@ const createPageBreakSection = () => ({
   children: [new Paragraph({ children: [new TextRun({ break: 2 })] })],
 });
 
+// Russian month in the genitive case ("августа", not "август"), as required by
+// the "«__» августа 2025 года" date line. Formatting with a day and dropping it
+// gives the genitive form; `{ month: "long" }` alone yields the nominative.
+const getMonthRuGenitive = (date = new Date()) =>
+  date
+    .toLocaleDateString("ru-RU", { day: "numeric", month: "long" })
+    .replace(/^\d+\s*/, "");
+
+// Date line shown in the top-right corner of the generated reports.
+// The day is always left blank so it can be filled in by hand.
+const buildBlankDayMonthLabel = (date = new Date()) =>
+  `«__» ${getMonthRuGenitive(date)}`;
+
+// Some address records are stored with an "м/ж:" ("место жительства") prefix,
+// which is redundant in the report — the sentence already reads
+// "прописан и проживает по адресу:".
+const stripResidenceLabel = (residence) =>
+  String(residence || "").replace(/^\s*[мm]\s*[/.]?\s*ж\s*[:.\-–]?\s*/i, "");
+
+// Birth date for the "... г.р." line: full dd.mm.yyyy whenever an exact date is
+// known, otherwise the bare year. Formatted from UTC parts because birth dates
+// are stored at UTC midnight and would shift a day in a negative-offset zone.
+const formatFullBirthDate = (birthDate, birthYear) => {
+  const date =
+    birthDate instanceof Date
+      ? birthDate
+      : birthDate
+        ? new Date(birthDate)
+        : null;
+
+  if (date && !Number.isNaN(date.getTime())) {
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+
+    return `${day}.${month}.${date.getUTCFullYear()}`;
+  }
+
+  return birthYear ? String(birthYear) : "";
+};
+
 const RAPORT_TYPE_SELECT = Prisma.sql`
   rt."id",
   rt."name",
@@ -51,6 +91,7 @@ const RAPORT_TYPE_SELECT = Prisma.sql`
   rt."signed_position",
   rt."link",
   rt."notes",
+  rt."editable_word",
   rt."executorId",
   rt."data",
   rt."createdAt",
@@ -258,6 +299,16 @@ const buildQueryRecipientData = (signer, raportType) => {
     .join(" ")
     .trim();
 
+  // Rank and name are also returned apart from `fullName` so the addressee
+  // block can put them on separate lines.
+  const hasSigner = Boolean(signerName || signer?.rank);
+  const rank = hasSigner
+    ? String(signer?.rank || "").trim()
+    : String(raportType?.rank || "").trim();
+  const name = hasSigner
+    ? signerName
+    : String(raportType?.signed_fio || "").trim();
+
   return {
     approverTitle:
       String(signer?.workplace || "").trim()
@@ -268,6 +319,8 @@ const buildQueryRecipientData = (signer, raportType) => {
       || raportType?.signed_position
       || "звание",
     fullName: signerNameWithRank || fallbackName || "Ф.И.О.",
+    rank,
+    name: name || "Ф.И.О.",
   };
 };
 
@@ -472,6 +525,8 @@ const buildMalumotnomaQueryDoc = async ({
     raportType?.notes ||
     "бу ерда узгартириш имкони булган маълумотлар киритилади";
   const queryEditableText =
+    raportType?.editable_word ||
+    // rows saved before editable_word became a column
     raportType?.data?.editableWord ||
     "бу ерда узгартириш имкони булган маълумотлар киритилади";
 
@@ -504,8 +559,8 @@ const buildMalumotnomaQueryDoc = async ({
     queryExecutorName: getExecutorName || "Ф.И.О.",
     queryInitiatorName: formatQueryPersonDisplayName(data?.Initiator) || "Ф.И.О.",
     querySubjectBirthDate: formatQueryBirthDate(data?.birthDate, data?.birthYear),
-    queryRecipientRank: recipientData.position,
-    queryRecipientName: recipientData.fullName,
+    queryRecipientRank: recipientData.rank,
+    queryRecipientName: recipientData.name,
     querySourceText: persons?.[0]?.noteLabel || "",
     queryEditableIntroText: queryEditableTextNotes,
     queryEditableRequirementsText: queryEditableText,
@@ -889,14 +944,13 @@ exports.generateReport = async (req, res) => {
             lastName: registrationCheck.lastName || "",
             fatherName: registrationCheck.fatherName || "",
             fullName: registrationCheck.fullName || "",
-            birthDate: registrationCheck.birthDate
-              ? registrationCheck.birthDate.getFullYear()
-              : registrationCheck.birthYear || "",
+            birthDate: registrationCheck.birthDate || null,
+            birthYear: registrationCheck.birthYear || "",
             model: registrationCheck.model || "",
             birthPlace: registrationCheck.birthPlace || "",
             workplace: registrationCheck.workplace || "",
             regNumber: registrationCheck.regNumber || "",
-            residence: registrationCheck.residence || "",
+            residence: stripResidenceLabel(registrationCheck.residence),
             recordNumber: registrationCheck.recordNumber || "",
           };
         })
@@ -948,11 +1002,7 @@ exports.generateReport = async (req, res) => {
       ? data_registration.map((item) => ({
         fullName: item.fullName,
         roleLabel: item.position || "",
-        dob: item.birthDate
-          ? item.birthDate instanceof Date
-            ? item.birthDate.toLocaleDateString("ru-RU")
-            : item.birthDate.toString()
-          : "",
+        dob: formatFullBirthDate(item.birthDate, item.birthYear),
         birthplace: item.birthPlace || "",
         noteLabel: item.notes || "",
         residence: item.residence || "",
@@ -981,9 +1031,7 @@ exports.generateReport = async (req, res) => {
           });
           let normalizeRelativeInfo = (relatives || []).map(
             (relative) =>
-              `${relative.relationDegree} - ${relative.fullName}, ${relative.birthDate
-                ? relative.birthDate.toLocaleDateString("ru-RU")
-                : (relative.birthYear || "")
+              `${relative.relationDegree} - ${relative.fullName}, ${formatFullBirthDate(relative.birthDate, relative.birthYear)
               }, уроженец ${relative.birthPlace || ""}, ${relative.notes || ""
               }`
           );
@@ -1005,11 +1053,7 @@ exports.generateReport = async (req, res) => {
           return {
             fullName: item.fullName,
             roleLabel: item.position || "",
-            dob: item.birthDate
-              ? item.birthDate instanceof Date
-                ? item.birthDate.toLocaleDateString("ru-RU")
-                : item.birthDate.toString()
-              : "",
+            dob: formatFullBirthDate(item.birthDate, item.birthYear),
             birthplace: item.birthPlace || "",
             ...(registrationCheck ? { noteLabel: `${registrationCheck.notes}, ${normalizeRelativeInfo.join("; ")}` } : { noteLabel: normalizeRelativeInfo.join("; ") }),
             residence: item.residence || "",
@@ -1034,8 +1078,8 @@ exports.generateReport = async (req, res) => {
       fio: conclusion?.to_who ?? "Ф.И.О.",
       operatorName: "А.Ахмадов",
       chiefName: "А.Ахмадов",
-      monthLabel: "«25» июля", // e.g., 'июля'
-      year: 2025,
+      monthLabel: buildBlankDayMonthLabel(), // e.g., '«__» июля'
+      year,
       heading: conclusion?.title_center ?? "Заключение",
       intro1: conclusion?.first_input ?? "Текст вводится самостоятельно:",
       person: persons,
@@ -1065,8 +1109,8 @@ exports.generateReport = async (req, res) => {
       fio: conclusion?.to_who ?? "Ф.И.О.",
       operatorName: "А.Ахмадов",
       chiefName: "А.Ахмадов",
-      monthLabel: "«25» июля", // e.g., 'июля'
-      year: 2025,
+      monthLabel: buildBlankDayMonthLabel(), // e.g., '«__» июля'
+      year,
       heading: conclusion?.title_center ?? "Заключение",
       intro1: conclusion?.first_input ?? "Текст вводится самостоятельно:",
       person: persons,
@@ -2189,8 +2233,8 @@ exports.generateSP = async (req, res) => {
           documents.push(
             generatePsychoRaport(
               raportTypes[i]?.organization,
-              data?.firstName,
               data?.lastName,
+              data?.firstName,
               data?.fatherName,
               formattedBirthDate,
               data?.birthPlace,
@@ -3848,8 +3892,8 @@ exports.generateRelativeList = async (req, res) => {
         documents.push(
           generatePsychoRaport(
             raportTypes[i]?.organization,
-            data?.firstName,
             data?.lastName,
+            data?.firstName,
             data?.fatherName,
             formattedBirthDate,
             data?.birthPlace,
@@ -4175,7 +4219,7 @@ function generateConclusionDocx(outputPath = "ф-4 заключение.docx", d
         t(person.birthplace),
         t(", прописан и проживает по адресу: "),
         t(person.residence),
-        t(`, (${person.workplace}), `),
+        t(`, (${person.workplace})`),
       ],
       { alignment: AlignmentType.JUSTIFIED, indent: { left: 2880 } }
     ),
@@ -4831,7 +4875,7 @@ function generateQueryDocxSgbDedicated(outputPath = "запрос.docx", data = 
     head = {},
     recordNumber = "",
     querySubjectBirthDate = "",
-    queryRecipientRank = "звание",
+    queryRecipientRank = "",
     queryRecipientName = "Ф.И.О.",
     querySourceText = "",
     agreedLabel = [],
@@ -4942,9 +4986,11 @@ function generateQueryDocxSgbDedicated(outputPath = "запрос.docx", data = 
   const recipientBlockLayout = {
     alignment: AlignmentType.LEFT,
     spacing: { after: 0 },
-    indent: { left: 5613 },
+    indent: { left: 4820 },
   };
 
+  // Addressee block: organization, position, rank and name each on their own
+  // line (the rank line is dropped when the signer has none).
   const recipientBlock = [
     p([t(recipientLine1, { bold: true })], {
       ...recipientBlockLayout,
@@ -4952,6 +4998,13 @@ function generateQueryDocxSgbDedicated(outputPath = "запрос.docx", data = 
     p([t(recipientLine2, { bold: true })], {
       ...recipientBlockLayout,
     }),
+    ...(queryRecipientRank
+      ? [
+        p([t(queryRecipientRank, { bold: true })], {
+          ...recipientBlockLayout,
+        }),
+      ]
+      : []),
     p([t(queryRecipientName || fio || "Ф.И.О.", { bold: true })], {
       ...recipientBlockLayout,
     }),
@@ -5111,7 +5164,7 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
     head = {},
     recordNumber = "",
     querySubjectBirthDate = "",
-    queryRecipientRank = "звание",
+    queryRecipientRank = "",
     queryRecipientName = "Ф.И.О.",
     querySourceText = "",
     agreedLabel = [],
@@ -5235,9 +5288,12 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
   const recipientBlockLayout = {
     alignment: AlignmentType.LEFT,
     spacing: { after: 0 },
-    indent: { left: 5613 },
+    indent: { left: 4820 },
   };
 
+  // Addressee block: organization, position, rank and name each on their own
+  // line (the rank line is dropped when the signer has none) — same layout as
+  // the СГБ query.
   const recipientBlock = [
     p([highlighted(recipientLine1, "yellow", { bold: true })], {
       ...recipientBlockLayout,
@@ -5245,6 +5301,13 @@ function generateQueryDocxGsbpDedicated(outputPath = "query-gsbp.docx", data = {
     p([highlighted(recipientLine2, "yellow", { bold: true })], {
       ...recipientBlockLayout,
     }),
+    ...(queryRecipientRank
+      ? [
+        p([highlighted(queryRecipientRank, "yellow", { bold: true })], {
+          ...recipientBlockLayout,
+        }),
+      ]
+      : []),
     p([highlighted(queryRecipientName || fio || "Ф.И.О.", "yellow", { bold: true })], {
       ...recipientBlockLayout,
     }),
@@ -11252,7 +11315,7 @@ function generatePsychoRaport(
                       new Paragraph({
                         children: [
                           new TextRun({
-                            text: `${firstName} ${lastName} ${fatherName}`,
+                            text: `${lastName} ${firstName} ${fatherName}`,
                             bold: false,
                             size: 24, // Large font size for title
                           }),
@@ -20671,6 +20734,7 @@ exports.updateRaportType = async (req, res) => {
       signed_position,
       link,
       notes,
+      editable_word,
       data: payloadData = {},
     } = req.body;
 
@@ -20694,6 +20758,7 @@ exports.updateRaportType = async (req, res) => {
         requested_organization,
         link,
         notes,
+        editable_word,
         signed_fio,
         signed_position,
         data: {
@@ -20874,6 +20939,7 @@ exports.createRaportType = async (req, res) => {
       signed_position,
       link,
       notes,
+      editable_word,
       data: payloadData = {},
     } = req.body;
 
@@ -20904,6 +20970,7 @@ exports.createRaportType = async (req, res) => {
       executorId: req.userId,
       link,
       notes,
+      editable_word: editable_word || "",
       data: {
         rank: rank || "",
         editableWord: payloadData?.editableWord || "",

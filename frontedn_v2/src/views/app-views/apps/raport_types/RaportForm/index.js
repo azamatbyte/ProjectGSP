@@ -58,7 +58,10 @@ const RaportForm = (props) => {
         requested_organization: response?.data?.data?.requested_organization,
         rank: response?.data?.data?.rank,
         notes: response?.data?.data?.notes,
-        editable_word: response?.data?.data?.data?.editableWord || "",
+        editable_word:
+          response?.data?.data?.editable_word ??
+          response?.data?.data?.data?.editableWord ??
+          "",
       });
     } catch (error) {
       console.log(error);
@@ -72,19 +75,10 @@ const RaportForm = (props) => {
   }, [mode, param, id, fetchRaportData]);
 
   const onFinish = async () => {
-    const buildPayload = (values) => {
-      const payload = {
-        ...values,
-        data: {
-          ...(values?.data && typeof values.data === "object" ? values.data : {}),
-          editableWord: values?.editable_word || "",
-        },
-      };
-
-      delete payload.editable_word;
-
-      return payload;
-    };
+    const buildPayload = (values) => ({
+      ...values,
+      editable_word: values?.editable_word || "",
+    });
 
     if (mode === ADD) {
       await form

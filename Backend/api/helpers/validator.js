@@ -147,6 +147,7 @@ const RaportTypeSchema = z.object({
   signed_position: z.string().optional(),
   link: z.string().optional(),
   notes: z.string().optional(),
+  editable_word: z.string().optional(),
   data: z.record(z.any()).optional(),
   executorId: z.string().optional(),
 });
