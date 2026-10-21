@@ -46,6 +46,11 @@ import { MODEL_TYPES, SESSION_TYPES } from "utils/sessions";
 import RelativeService from "services/RelativeService";
 import AccessStatusService from "services/AccessStatusService";
 
+// Tug'ilgan sana oralig'i: boshlanish inputi 65, tugash inputi 66
+// (oldingi maydon "otasining ismi" = 55, keyingi maydon "tug'ilgan joy" = 75)
+const BIRTH_DATE_TAB_INDEX = 65;
+const BIRTH_DATE_PICKER_CLASS = "birth-date-range-picker";
+
 const getFilenameFromDisposition = (disposition) => {
   if (!disposition) {
     return "";
@@ -109,6 +114,16 @@ const GlobalSearch = (props) => {
   const isUpdatingURL = useRef(false);
   // REF: track initial mount to avoid updating URL or fetching unnecessarily
   const isInitialMount = useRef(true);
+  // RangePicker tabIndex propini ichki inputlarga uzatmaydi, shuning uchun
+  // tug'ilgan sana maydonining tab tartibi qo'lda o'rnatiladi
+  useEffect(() => {
+    const inputs = document.querySelectorAll(
+      `.${BIRTH_DATE_PICKER_CLASS} input`
+    );
+    inputs.forEach((inputEl, index) => {
+      inputEl.tabIndex = BIRTH_DATE_TAB_INDEX + index;
+    });
+  }, []);
 
   // FIX 2: Memoize the updateSearchParams function and only update when necessary
   const updateSearchParams = useCallback(() => {
@@ -1205,7 +1220,7 @@ const GlobalSearch = (props) => {
               setPageNumber(1);
             }}
             allowClear
-            tabIndex={0}
+            tabIndex={5}
           />
           <div style={{ marginLeft: 12 }}>
             <Row gutter={[8, 8]} style={{ paddingTop: 24 }}>
@@ -1228,7 +1243,7 @@ const GlobalSearch = (props) => {
                   <Input
                     prefix={<SearchOutlined />}
                     autoFocus
-                    tabIndex={1}
+                    tabIndex={15}
                     placeholder={t("reg_number_search")}
                     type="text"
                     onChange={(e) => {
@@ -1244,7 +1259,7 @@ const GlobalSearch = (props) => {
         </Flex>
         <Flex className="mb-1">
           <div className="mr-md-3 mb-3 d-flex gap-2">
-            <Button className="ml-2" onClick={backHandle} tabIndex={22}>
+            <Button className="ml-2" onClick={backHandle} tabIndex={225}>
               <LeftCircleOutlined /> {t("back")}
             </Button>
           </div>
@@ -1277,7 +1292,7 @@ const GlobalSearch = (props) => {
                   <Input
                     prefix={<SearchOutlined />}
                     placeholder={t("form")}
-                    tabIndex={2}
+                    tabIndex={25}
                     type="text"
                     onChange={(e) => {
                       setSearch({ ...search, form_reg: e.target.value });
@@ -1310,7 +1325,7 @@ const GlobalSearch = (props) => {
                   <Input
                     prefix={<SearchOutlined />}
                     placeholder={t("last_name")}
-                    tabIndex={3}
+                    tabIndex={35}
                     type="text"
                     onChange={(e) => {
                       setSearch({ ...search, lastName: e.target.value });
@@ -1343,7 +1358,7 @@ const GlobalSearch = (props) => {
                   <Input
                     prefix={<SearchOutlined />}
                     placeholder={t("first_name")}
-                    tabIndex={4}
+                    tabIndex={45}
                     type="text"
                     onChange={(e) => {
                       setSearch({ ...search, firstName: e.target.value });
@@ -1376,7 +1391,7 @@ const GlobalSearch = (props) => {
                   <Input
                     prefix={<SearchOutlined />}
                     placeholder={t("father_name")}
-                    tabIndex={5}
+                    tabIndex={55}
                     type="text"
                     onChange={(e) => {
                       setSearch({ ...search, fatherName: e.target.value });
@@ -1407,7 +1422,7 @@ const GlobalSearch = (props) => {
               <Col span={20} xs={21}>
                 <Form.Item name="birthDate" label={null}>
                   <DatePicker.RangePicker
-                    tabIndex={6}
+                    className={BIRTH_DATE_PICKER_CLASS}
                     inputReadOnly={false}
                     picker="year"
                     onChange={(dates) => {
@@ -1467,7 +1482,7 @@ const GlobalSearch = (props) => {
                   <Input
                     prefix={<SearchOutlined />}
                     placeholder={t("birth_place")}
-                    tabIndex={7}
+                    tabIndex={75}
                     type="text"
                     onChange={(e) => {
                       setSearch({ ...search, birthPlace: e.target.value });
@@ -1551,7 +1566,7 @@ const GlobalSearch = (props) => {
                       <Input
                         prefix={<SearchOutlined />}
                         placeholder={t("work_place")}
-                        tabIndex={8}
+                        tabIndex={85}
                         type="text"
                         onChange={(e) => {
                           setSearch({ ...search, workPlace: e.target.value });
@@ -1584,7 +1599,7 @@ const GlobalSearch = (props) => {
                       <Input
                         prefix={<SearchOutlined />}
                         placeholder={t("position")}
-                        tabIndex={9}
+                        tabIndex={95}
                         type="text"
                         onChange={(e) => {
                           setSearch({ ...search, position: e.target.value });
@@ -1617,7 +1632,7 @@ const GlobalSearch = (props) => {
                       <Input
                         prefix={<SearchOutlined />}
                         placeholder={t("residence")}
-                        tabIndex={10}
+                        tabIndex={105}
                         type="text"
                         onChange={(e) => {
                           setSearch({ ...search, residence: e.target.value });
@@ -1659,7 +1674,7 @@ const GlobalSearch = (props) => {
                         utcMidnight
                         placeholder={[t("reg_date"), t("reg_date")]}
                         style={{ width: "100%" }}
-                        tabIndex={11}
+                        tabIndex={115}
                       />
                     </Form.Item>
                   </Col>
@@ -1708,7 +1723,7 @@ const GlobalSearch = (props) => {
                         format={DATE_FORMAT_DD_MM_YYYY_WITH_DOT}
                         placeholder={[t("register_end_date_start"), t("register_end_date_end")]}
                         style={{ width: "100%" }}
-                        tabIndex={12}
+                        tabIndex={125}
                       />
                     </Form.Item>
                   </Col>
@@ -1750,7 +1765,7 @@ const GlobalSearch = (props) => {
                       <Input
                         prefix={<SearchOutlined />}
                         placeholder={t("access_status")}
-                        tabIndex={13}
+                        tabIndex={135}
                         type="text"
                         onChange={(e) => {
                           setSearch({ ...search, accessStatus: e.target.value });
@@ -1856,7 +1871,7 @@ const GlobalSearch = (props) => {
                       <Input
                         prefix={<SearchOutlined />}
                         placeholder={t("compr_info")}
-                        tabIndex={14}
+                        tabIndex={145}
                         type="text"
                         onChange={(e) => {
                           setSearch({ ...search, notes: e.target.value });
@@ -1891,7 +1906,7 @@ const GlobalSearch = (props) => {
                       <Select
                         placeholder={t("completion_status")}
                         options={CompleteStatus}
-                        tabIndex={15}
+                        tabIndex={155}
                         onChange={(value) => {
                           setSearch({ ...search, completeStatus: value });
                           setPageNumber(1);
@@ -1935,7 +1950,7 @@ const GlobalSearch = (props) => {
                         loading={executorFetching}
                         filterOption={false}
                         options={filterOptions.executors}
-                        tabIndex={16}
+                        tabIndex={165}
                         allowClear
                       />
                     </Form.Item>
@@ -1976,7 +1991,7 @@ const GlobalSearch = (props) => {
                         filterOption={false}
                         options={filterOptions.initiators}
                         allowClear
-                        tabIndex={17}
+                        tabIndex={175}
                       />
                     </Form.Item>
                   </Col>
@@ -2005,7 +2020,7 @@ const GlobalSearch = (props) => {
                       <Input
                         prefix={<SearchOutlined />}
                         placeholder={t("record_number")}
-                        tabIndex={18}
+                        tabIndex={185}
                         type="text"
                         onChange={(e) => {
                           setSearch({ ...search, recordNumber: e.target.value });
@@ -2038,7 +2053,7 @@ const GlobalSearch = (props) => {
                       <Input
                         prefix={<SearchOutlined />}
                         placeholder={t("pinfl")}
-                        tabIndex={19}
+                        tabIndex={195}
                         type="text"
                         onChange={(e) => {
                           setSearch({ ...search, pinfl: e.target.value });
@@ -2071,7 +2086,7 @@ const GlobalSearch = (props) => {
                       <Input
                         prefix={<SearchOutlined />}
                         placeholder={t("passport")}
-                        tabIndex={20}
+                        tabIndex={205}
                         type="text"
                         onChange={(e) => {
                           setSearch({ ...search, passport: e.target.value });
@@ -2130,7 +2145,7 @@ const GlobalSearch = (props) => {
             </Button> */}
             <Button
               style={{ marginLeft: 8 }}
-              tabIndex={21}
+              tabIndex={210}
               onClick={() => {
                 setSearch({});
                 form.resetFields();
@@ -2143,7 +2158,7 @@ const GlobalSearch = (props) => {
             {role === "superAdmin" ? (
               <Button
                 style={{ marginLeft: 8 }}
-                tabIndex={22}
+                tabIndex={215}
                 onClick={handleExport}
                 loading={exportLoading}
                 disabled={total <= 0}
@@ -2155,7 +2170,7 @@ const GlobalSearch = (props) => {
               style={{ marginLeft: 8 }}
               // type="primary"
               // style={{ marginLeft: 8, fontSize: 12, padding: 0, height: "auto" }}
-              tabIndex={23}
+              tabIndex={220}
               onClick={() => setExpand(!expand)}
             >
               {expand ? <UpOutlined /> : <DownOutlined />} {t("more_search")}

@@ -5105,12 +5105,12 @@ function generateQueryDocxSgbDedicated(outputPath = "запрос.docx", data = 
       indent: { left: 2832 },
       spacing: { after: 160 },
     }),
-    p([t(`По данным (${sourceText}).`)], {
+    p([t(`По данным ${sourceText}.`)], {
       alignment: AlignmentType.JUSTIFIED,
       spacing: { after: 120 },
       indent: { firstLine: 567 },
     }),
-    p([t(`(${requirementsEditableText}).`)], {
+    p([t(`${requirementsEditableText}.`)], {
       alignment: AlignmentType.JUSTIFIED,
       spacing: { after: 360 },
       indent: { firstLine: 567 },
