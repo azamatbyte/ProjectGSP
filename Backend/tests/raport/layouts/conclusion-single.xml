@@ -1,0 +1,822 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document mc:Ignorable="w14 w15 wp14" xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk" xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:cx="http://schemas.microsoft.com/office/drawing/2014/chartex" xmlns:cx1="http://schemas.microsoft.com/office/drawing/2015/9/8/chartex" xmlns:cx2="http://schemas.microsoft.com/office/drawing/2015/10/21/chartex" xmlns:cx3="http://schemas.microsoft.com/office/drawing/2016/5/9/chartex" xmlns:cx4="http://schemas.microsoft.com/office/drawing/2016/5/10/chartex" xmlns:cx5="http://schemas.microsoft.com/office/drawing/2016/5/11/chartex" xmlns:cx6="http://schemas.microsoft.com/office/drawing/2016/5/12/chartex" xmlns:cx7="http://schemas.microsoft.com/office/drawing/2016/5/13/chartex" xmlns:cx8="http://schemas.microsoft.com/office/drawing/2016/5/14/chartex" xmlns:aink="http://schemas.microsoft.com/office/drawing/2016/ink" xmlns:am3d="http://schemas.microsoft.com/office/drawing/2017/model3d" xmlns:w16cex="http://schemas.microsoft.com/office/word/2018/wordml/cex" xmlns:w16cid="http://schemas.microsoft.com/office/word/2016/wordml/cid" xmlns:w16="http://schemas.microsoft.com/office/word/2018/wordml" xmlns:w16sdtdh="http://schemas.microsoft.com/office/word/2020/wordml/sdtdatahash" xmlns:w16se="http://schemas.microsoft.com/office/word/2015/wordml/symex">
+<w:body>
+<w:tbl>
+<w:tblPr>
+<w:tblW w:type="pct" w:w="100%"/>
+<w:tblBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideH w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideV w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tblBorders>
+</w:tblPr>
+<w:tblGrid>
+<w:gridCol w:w="100"/>
+<w:gridCol w:w="100"/>
+</w:tblGrid>
+<w:tr>
+<w:tc>
+<w:tcPr>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">бш-1</w:t>
+</w:r>
+</w:p>
+</w:tc>
+<w:tc>
+<w:tcPr>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:jc w:val="right"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Секретно</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:jc w:val="right"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Экз.№_</w:t>
+</w:r>
+</w:p>
+</w:tc>
+</w:tr>
+</w:tbl>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">
+</w:t>
+</w:r>
+</w:p>
+<w:tbl>
+<w:tblPr>
+<w:tblW w:type="pct" w:w="100%"/>
+<w:tblBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideH w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideV w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tblBorders>
+</w:tblPr>
+<w:tblGrid>
+<w:gridCol w:w="100"/>
+<w:gridCol w:w="100"/>
+</w:tblGrid>
+<w:tr>
+<w:tc>
+<w:tcPr>
+<w:tcW w:type="pct" w:w="40%"/>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">
+</w:t>
+</w:r>
+</w:p>
+</w:tc>
+<w:tc>
+<w:tcPr>
+<w:tcW w:type="pct" w:w="50%"/>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:jc w:val="center"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">«У Т В Е Р Ж Д А Ю»</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:jc w:val="both"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Министр МВД Республики Узбекистан</w:t>
+</w:r>
+</w:p>
+<w:tbl>
+<w:tblPr>
+<w:tblW w:type="pct" w:w="100%"/>
+<w:tblBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideH w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideV w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tblBorders>
+</w:tblPr>
+<w:tblGrid>
+<w:gridCol w:w="100"/>
+<w:gridCol w:w="100"/>
+</w:tblGrid>
+<w:tr>
+<w:tc>
+<w:tcPr>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">генерал</w:t>
+</w:r>
+</w:p>
+</w:tc>
+<w:tc>
+<w:tcPr>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:jc w:val="right"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Арипов О.А.</w:t>
+</w:r>
+</w:p>
+</w:tc>
+</w:tr>
+</w:tbl>
+<w:p>
+<w:pPr>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">«__» января</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve"> </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">2026 года</w:t>
+</w:r>
+</w:p>
+</w:tc>
+</w:tr>
+</w:tbl>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">
+</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:jc w:val="center"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Заключение</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:ind w:firstLine="720"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">По результатам проверки по форме (________):</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:ind w:left="2880"/>
+<w:jc w:val="both"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Абдуллаев Жасур Бахтиярович, </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">07.03.1985</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve"> г.р., уроженец </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">г. Ташкент</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">, прописан и проживает по адресу: </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">г. Ташкент, Юнусабадский р-н, кв. 4</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">, (АО «Узбекнефтегаз», инженер)</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:ind w:left="0"/>
+<w:jc w:val="both"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">получена информация: </w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:i w:val="false"/>
+<w:iCs w:val="false"/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">к/м, Отец - Абдуллаев Бахтияр Каримович, 1960, уроженец Самаркандская обл., судим в 1998 г.; Брат - Абдуллаев Шерзод Бахтиярович, 02.06.1990, уроженец г. Ташкент, выезжал в РФ</w:t>
+</w:r>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">.</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">
+</w:t>
+</w:r>
+</w:p>
+<w:tbl>
+<w:tblPr>
+<w:tblW w:type="pct" w:w="100%"/>
+<w:tblBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideH w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideV w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tblBorders>
+</w:tblPr>
+<w:tblGrid>
+<w:gridCol w:w="100"/>
+<w:gridCol w:w="100"/>
+</w:tblGrid>
+<w:tr>
+<w:tc>
+<w:tcPr>
+<w:tcW w:type="pct" w:w="50%"/>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">УАК МВД</w:t>
+</w:r>
+</w:p>
+<w:tbl>
+<w:tblPr>
+<w:tblW w:type="pct" w:w="100%"/>
+<w:tblBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideH w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideV w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tblBorders>
+</w:tblPr>
+<w:tblGrid>
+<w:gridCol w:w="100"/>
+<w:gridCol w:w="100"/>
+</w:tblGrid>
+<w:tr>
+<w:tc>
+<w:tcPr>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">майор</w:t>
+</w:r>
+</w:p>
+</w:tc>
+<w:tc>
+<w:tcPr>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:ind w:right="280"/>
+<w:jc w:val="right"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Шарипов Б.У.</w:t>
+</w:r>
+</w:p>
+</w:tc>
+</w:tr>
+</w:tbl>
+<w:p>
+<w:r>
+<w:rPr>
+<w:b w:val="false"/>
+<w:bCs w:val="false"/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">«____» январь 2026 года</w:t>
+</w:r>
+</w:p>
+</w:tc>
+<w:tc>
+<w:tcPr>
+<w:tcW w:type="pct" w:w="50%"/>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Начальник управления</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">УКЕ МВД</w:t>
+</w:r>
+</w:p>
+<w:tbl>
+<w:tblPr>
+<w:tblW w:type="pct" w:w="100%"/>
+<w:tblBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideH w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideV w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tblBorders>
+</w:tblPr>
+<w:tblGrid>
+<w:gridCol w:w="100"/>
+<w:gridCol w:w="100"/>
+</w:tblGrid>
+<w:tr>
+<w:tc>
+<w:tcPr>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:jc w:val="left"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">полковник</w:t>
+</w:r>
+</w:p>
+</w:tc>
+<w:tc>
+<w:tcPr>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:ind w:right="280"/>
+<w:jc w:val="right"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Каримов Р.А.</w:t>
+</w:r>
+</w:p>
+</w:tc>
+</w:tr>
+</w:tbl>
+<w:p>
+<w:r>
+<w:rPr>
+<w:b w:val="false"/>
+<w:bCs w:val="false"/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">«____» январь 2026 года</w:t>
+</w:r>
+</w:p>
+</w:tc>
+</w:tr>
+</w:tbl>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">
+</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:ind w:firstLine="720"/>
+<w:jc w:val="both"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">По итогам допуск или отказ!</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">
+</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:line="280" w:before="0" w:after="0"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">«СОГЛАСОВАНО»</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:line="280" w:before="0" w:after="0"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">Заместитель начальника</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:line="280" w:before="0" w:after="0"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">ГСБП</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:line="280" w:before="0" w:after="0"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:b/>
+<w:bCs/>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">подполковник     Юсупова Д.Б.</w:t>
+</w:r>
+</w:p>
+<w:p>
+<w:pPr>
+<w:spacing w:line="280" w:before="0" w:after="0"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="28"/>
+<w:szCs w:val="28"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">«____» январь 2026 года</w:t>
+</w:r>
+</w:p>
+<w:tbl>
+<w:tblPr>
+<w:tblW w:type="pct" w:w="100%"/>
+<w:tblBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideH w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:insideV w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tblBorders>
+</w:tblPr>
+<w:tblGrid>
+<w:gridCol w:w="100"/>
+</w:tblGrid>
+<w:tr>
+<w:tc>
+<w:tcPr>
+<w:tcBorders>
+<w:top w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:left w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:bottom w:val="none" w:color="FFFFFF" w:sz="0"/>
+<w:right w:val="none" w:color="FFFFFF" w:sz="0"/>
+</w:tcBorders>
+</w:tcPr>
+<w:p>
+<w:pPr>
+<w:jc w:val="right"/>
+</w:pPr>
+<w:r>
+<w:rPr>
+<w:sz w:val="20"/>
+<w:szCs w:val="20"/>
+<w:rFonts w:ascii="Times New Roman" w:cs="Times New Roman" w:eastAsia="Times New Roman" w:hAnsi="Times New Roman"/>
+</w:rPr>
+<w:t xml:space="preserve">(1708-19)</w:t>
+</w:r>
+</w:p>
+</w:tc>
+</w:tr>
+</w:tbl>
+<w:sectPr>
+<w:pgSz w:w="11906" w:h="16838" w:orient="portrait"/>
+<w:pgMar w:top="850" w:right="850" w:bottom="850" w:left="1701" w:header="708" w:footer="708" w:gutter="0"/>
+<w:pgNumType/>
+<w:docGrid w:linePitch="360"/>
+</w:sectPr>
+</w:body>
+</w:document>

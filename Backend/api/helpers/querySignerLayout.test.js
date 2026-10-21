@@ -70,7 +70,9 @@ test("buildQuerySignedListBlocks omits approval labels in none mode", () => {
   assert.equal(agreedBlocks[1].split("\n").length, 4);
 });
 
-test("buildQuerySignedListBlocks adds approval labels from the second agreed signer onward", () => {
+// Commit 170e981 removed approval labels from query blocks. Keep the current
+// document contract explicit; approvalLabelMode remains accepted for callers.
+test("buildQuerySignedListBlocks keeps query blocks label-free in afterFirst mode", () => {
   const agreedBlocks = buildQuerySignedListBlocks(
     [makeSigner(2), makeSigner(3), makeSigner(4)],
     "DATE",
@@ -79,8 +81,9 @@ test("buildQuerySignedListBlocks adds approval labels from the second agreed sig
 
   assert.equal(agreedBlocks.length, 3);
   assert.equal(agreedBlocks[0].split("\n").length, 4);
-  assert.equal(agreedBlocks[1].split("\n").length, 5);
-  assert.equal(agreedBlocks[2].split("\n").length, 5);
+  assert.equal(agreedBlocks[1].split("\n").length, 4);
+  assert.equal(agreedBlocks[2].split("\n").length, 4);
+  assert.doesNotMatch(agreedBlocks.join("\n"), /СОГЛАСОВАНО/);
   assert.match(agreedBlocks[0], /Last2 F\.F\./);
   assert.match(agreedBlocks[1], /Last3 F\.F\./);
   assert.match(agreedBlocks[2], /Last4 F\.F\./);

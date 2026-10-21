@@ -1,0 +1,1964 @@
+{
+  "sections": [
+    {
+      "page": {
+        "width": 11906,
+        "height": 16838,
+        "orientation": "portrait"
+      },
+      "margins": {
+        "top": 850,
+        "right": 850,
+        "bottom": 850,
+        "left": 1701,
+        "header": 708,
+        "footer": 708,
+        "gutter": 0
+      },
+      "headers": {},
+      "footers": {}
+    }
+  ],
+  "styles": {
+    "defaults": {
+      "run": {},
+      "paragraph": {}
+    },
+    "byId": {
+      "Title": {
+        "type": "paragraph",
+        "name": "Title",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 56,
+          "sizeCs": 56
+        },
+        "paragraph": {}
+      },
+      "Heading1": {
+        "type": "paragraph",
+        "name": "Heading 1",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 32,
+          "sizeCs": 32,
+          "color": "2E74B5"
+        },
+        "paragraph": {}
+      },
+      "Heading2": {
+        "type": "paragraph",
+        "name": "Heading 2",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 26,
+          "sizeCs": 26,
+          "color": "2E74B5"
+        },
+        "paragraph": {}
+      },
+      "Heading3": {
+        "type": "paragraph",
+        "name": "Heading 3",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 24,
+          "sizeCs": 24,
+          "color": "1F4D78"
+        },
+        "paragraph": {}
+      },
+      "Heading4": {
+        "type": "paragraph",
+        "name": "Heading 4",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "italic": true,
+          "color": "2E74B5"
+        },
+        "paragraph": {}
+      },
+      "Heading5": {
+        "type": "paragraph",
+        "name": "Heading 5",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "color": "2E74B5"
+        },
+        "paragraph": {}
+      },
+      "Heading6": {
+        "type": "paragraph",
+        "name": "Heading 6",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "color": "1F4D78"
+        },
+        "paragraph": {}
+      },
+      "Strong": {
+        "type": "paragraph",
+        "name": "Strong",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "bold": true
+        },
+        "paragraph": {}
+      },
+      "ListParagraph": {
+        "type": "paragraph",
+        "name": "List Paragraph",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {},
+        "paragraph": {}
+      },
+      "Hyperlink": {
+        "type": "character",
+        "name": "Hyperlink",
+        "basedOn": "DefaultParagraphFont",
+        "isDefault": false,
+        "run": {
+          "underline": "single",
+          "color": "0563C1"
+        },
+        "paragraph": {}
+      },
+      "FootnoteReference": {
+        "type": "character",
+        "name": "footnote reference",
+        "basedOn": "DefaultParagraphFont",
+        "isDefault": false,
+        "run": {
+          "vertAlign": "superscript"
+        },
+        "paragraph": {}
+      },
+      "FootnoteText": {
+        "type": "paragraph",
+        "name": "footnote text",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 20,
+          "sizeCs": 20
+        },
+        "paragraph": {
+          "spacing": {
+            "after": 0,
+            "line": 240,
+            "lineRule": "auto"
+          }
+        }
+      },
+      "FootnoteTextChar": {
+        "type": "character",
+        "name": "Footnote Text Char",
+        "basedOn": "DefaultParagraphFont",
+        "isDefault": false,
+        "run": {
+          "size": 20,
+          "sizeCs": 20
+        },
+        "paragraph": {}
+      }
+    }
+  },
+  "settings": {
+    "evenAndOddHeaders": false
+  },
+  "blocks": [
+    {
+      "type": "table",
+      "ref": {
+        "index": 0,
+        "sectionIndex": 0,
+        "nested": false,
+        "width": {
+          "size": "100%",
+          "type": "pct"
+        },
+        "borders": {
+          "top": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "left": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "bottom": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "right": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideH": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideV": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          }
+        },
+        "grid": [
+          100,
+          100
+        ],
+        "rows": [
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "gridSpan": 1,
+                "borders": {
+                  "top": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "left": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "bottom": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "right": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  }
+                },
+                "paragraphs": [
+                  {
+                    "index": 0,
+                    "text": "бш-1",
+                    "runs": [
+                      {
+                        "text": "бш-1",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "бш-1"
+              },
+              {
+                "gridSpan": 1,
+                "borders": {
+                  "top": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "left": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "bottom": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "right": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  }
+                },
+                "paragraphs": [
+                  {
+                    "index": 1,
+                    "text": "Секретно",
+                    "alignment": "right",
+                    "runs": [
+                      {
+                        "text": "Секретно",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 2,
+                    "text": "Экз.№_",
+                    "alignment": "right",
+                    "runs": [
+                      {
+                        "text": "Экз.№_",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Секретно\nЭкз.№_"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 3,
+        "text": "",
+        "runs": [
+          {
+            "text": "",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "table",
+      "ref": {
+        "index": 1,
+        "sectionIndex": 0,
+        "nested": false,
+        "width": {
+          "size": "100%",
+          "type": "pct"
+        },
+        "borders": {
+          "top": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "left": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "bottom": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "right": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideH": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideV": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          }
+        },
+        "grid": [
+          100,
+          100
+        ],
+        "rows": [
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "40%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "borders": {
+                  "top": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "left": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "bottom": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "right": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  }
+                },
+                "paragraphs": [
+                  {
+                    "index": 4,
+                    "text": "",
+                    "runs": [
+                      {
+                        "text": "",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": ""
+              },
+              {
+                "width": {
+                  "size": "50%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "borders": {
+                  "top": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "left": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "bottom": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "right": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  }
+                },
+                "paragraphs": [
+                  {
+                    "index": 5,
+                    "text": "«У Т В Е Р Ж Д А Ю»",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "«У Т В Е Р Ж Д А Ю»",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 6,
+                    "text": "Министр МВД Республики Узбекистан",
+                    "alignment": "both",
+                    "runs": [
+                      {
+                        "text": "Министр МВД Республики Узбекистан",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 9,
+                    "text": "«__» января 2026 года",
+                    "alignment": "left",
+                    "runs": [
+                      {
+                        "text": "«__» января",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      },
+                      {
+                        "text": " ",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      },
+                      {
+                        "text": "2026 года",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [
+                  {
+                    "index": 2,
+                    "sectionIndex": 0,
+                    "nested": true,
+                    "width": {
+                      "size": "100%",
+                      "type": "pct"
+                    },
+                    "borders": {
+                      "top": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "left": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "bottom": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "right": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "insideH": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "insideV": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      }
+                    },
+                    "grid": [
+                      100,
+                      100
+                    ],
+                    "rows": [
+                      {
+                        "isHeader": false,
+                        "cantSplit": false,
+                        "cells": [
+                          {
+                            "gridSpan": 1,
+                            "borders": {
+                              "top": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "left": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "bottom": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "right": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              }
+                            },
+                            "paragraphs": [
+                              {
+                                "index": 7,
+                                "text": "генерал",
+                                "alignment": "left",
+                                "runs": [
+                                  {
+                                    "text": "генерал",
+                                    "font": {
+                                      "ascii": "Times New Roman",
+                                      "hAnsi": "Times New Roman",
+                                      "cs": "Times New Roman",
+                                      "eastAsia": "Times New Roman"
+                                    },
+                                    "size": 28,
+                                    "sizeCs": 28,
+                                    "bold": true,
+                                    "breaks": [],
+                                    "tabs": 0
+                                  }
+                                ],
+                                "hasPageBreak": false,
+                                "inTable": true,
+                                "sectionIndex": 0
+                              }
+                            ],
+                            "tables": [],
+                            "text": "генерал"
+                          },
+                          {
+                            "gridSpan": 1,
+                            "borders": {
+                              "top": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "left": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "bottom": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "right": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              }
+                            },
+                            "paragraphs": [
+                              {
+                                "index": 8,
+                                "text": "Арипов О.А.",
+                                "alignment": "right",
+                                "runs": [
+                                  {
+                                    "text": "Арипов О.А.",
+                                    "font": {
+                                      "ascii": "Times New Roman",
+                                      "hAnsi": "Times New Roman",
+                                      "cs": "Times New Roman",
+                                      "eastAsia": "Times New Roman"
+                                    },
+                                    "size": 28,
+                                    "sizeCs": 28,
+                                    "bold": true,
+                                    "breaks": [],
+                                    "tabs": 0
+                                  }
+                                ],
+                                "hasPageBreak": false,
+                                "inTable": true,
+                                "sectionIndex": 0
+                              }
+                            ],
+                            "tables": [],
+                            "text": "Арипов О.А."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "text": "«У Т В Е Р Ж Д А Ю»\nМинистр МВД Республики Узбекистан\n«__» января 2026 года"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 10,
+        "text": "",
+        "runs": [
+          {
+            "text": "",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 11,
+        "text": "Заключение",
+        "alignment": "center",
+        "runs": [
+          {
+            "text": "Заключение",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "bold": true,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 12,
+        "text": "По результатам проверки по форме (________):",
+        "indent": {
+          "firstLine": 720
+        },
+        "runs": [
+          {
+            "text": "По результатам проверки по форме (________):",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 13,
+        "text": "Абдуллаев Жасур Бахтиярович, 07.03.1985 г.р., уроженец г. Ташкент, прописан и проживает по адресу: г. Ташкент, Юнусабадский р-н, кв. 4, (АО «Узбекнефтегаз», инженер)",
+        "alignment": "both",
+        "indent": {
+          "left": 2880
+        },
+        "runs": [
+          {
+            "text": "Абдуллаев Жасур Бахтиярович, ",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "bold": true,
+            "breaks": [],
+            "tabs": 0
+          },
+          {
+            "text": "07.03.1985",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          },
+          {
+            "text": " г.р., уроженец ",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          },
+          {
+            "text": "г. Ташкент",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          },
+          {
+            "text": ", прописан и проживает по адресу: ",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          },
+          {
+            "text": "г. Ташкент, Юнусабадский р-н, кв. 4",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          },
+          {
+            "text": ", (АО «Узбекнефтегаз», инженер)",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 14,
+        "text": "получена информация: к/м, Отец - Абдуллаев Бахтияр Каримович, 1960, уроженец Самаркандская обл., судим в 1998 г.; Брат - Абдуллаев Шерзод Бахтиярович, 02.06.1990, уроженец г. Ташкент, выезжал в РФ.",
+        "alignment": "both",
+        "indent": {
+          "left": 0
+        },
+        "runs": [
+          {
+            "text": "получена информация: ",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          },
+          {
+            "text": "к/м, Отец - Абдуллаев Бахтияр Каримович, 1960, уроженец Самаркандская обл., судим в 1998 г.; Брат - Абдуллаев Шерзод Бахтиярович, 02.06.1990, уроженец г. Ташкент, выезжал в РФ",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "italic": false,
+            "breaks": [],
+            "tabs": 0
+          },
+          {
+            "text": ".",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 15,
+        "text": "",
+        "runs": [
+          {
+            "text": "",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "table",
+      "ref": {
+        "index": 3,
+        "sectionIndex": 0,
+        "nested": false,
+        "width": {
+          "size": "100%",
+          "type": "pct"
+        },
+        "borders": {
+          "top": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "left": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "bottom": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "right": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideH": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideV": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          }
+        },
+        "grid": [
+          100,
+          100
+        ],
+        "rows": [
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "50%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "borders": {
+                  "top": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "left": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "bottom": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "right": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  }
+                },
+                "paragraphs": [
+                  {
+                    "index": 16,
+                    "text": "УАК МВД",
+                    "runs": [
+                      {
+                        "text": "УАК МВД",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 19,
+                    "text": "«____» январь 2026 года",
+                    "runs": [
+                      {
+                        "text": "«____» январь 2026 года",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [
+                  {
+                    "index": 4,
+                    "sectionIndex": 0,
+                    "nested": true,
+                    "width": {
+                      "size": "100%",
+                      "type": "pct"
+                    },
+                    "borders": {
+                      "top": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "left": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "bottom": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "right": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "insideH": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "insideV": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      }
+                    },
+                    "grid": [
+                      100,
+                      100
+                    ],
+                    "rows": [
+                      {
+                        "isHeader": false,
+                        "cantSplit": false,
+                        "cells": [
+                          {
+                            "gridSpan": 1,
+                            "borders": {
+                              "top": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "left": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "bottom": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "right": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              }
+                            },
+                            "paragraphs": [
+                              {
+                                "index": 17,
+                                "text": "майор",
+                                "alignment": "left",
+                                "runs": [
+                                  {
+                                    "text": "майор",
+                                    "font": {
+                                      "ascii": "Times New Roman",
+                                      "hAnsi": "Times New Roman",
+                                      "cs": "Times New Roman",
+                                      "eastAsia": "Times New Roman"
+                                    },
+                                    "size": 28,
+                                    "sizeCs": 28,
+                                    "bold": true,
+                                    "breaks": [],
+                                    "tabs": 0
+                                  }
+                                ],
+                                "hasPageBreak": false,
+                                "inTable": true,
+                                "sectionIndex": 0
+                              }
+                            ],
+                            "tables": [],
+                            "text": "майор"
+                          },
+                          {
+                            "gridSpan": 1,
+                            "borders": {
+                              "top": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "left": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "bottom": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "right": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              }
+                            },
+                            "paragraphs": [
+                              {
+                                "index": 18,
+                                "text": "Шарипов Б.У.",
+                                "alignment": "right",
+                                "indent": {
+                                  "right": 280
+                                },
+                                "runs": [
+                                  {
+                                    "text": "Шарипов Б.У.",
+                                    "font": {
+                                      "ascii": "Times New Roman",
+                                      "hAnsi": "Times New Roman",
+                                      "cs": "Times New Roman",
+                                      "eastAsia": "Times New Roman"
+                                    },
+                                    "size": 28,
+                                    "sizeCs": 28,
+                                    "bold": true,
+                                    "breaks": [],
+                                    "tabs": 0
+                                  }
+                                ],
+                                "hasPageBreak": false,
+                                "inTable": true,
+                                "sectionIndex": 0
+                              }
+                            ],
+                            "tables": [],
+                            "text": "Шарипов Б.У."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "text": "УАК МВД\n«____» январь 2026 года"
+              },
+              {
+                "width": {
+                  "size": "50%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "borders": {
+                  "top": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "left": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "bottom": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "right": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  }
+                },
+                "paragraphs": [
+                  {
+                    "index": 20,
+                    "text": "Начальник управления",
+                    "runs": [
+                      {
+                        "text": "Начальник управления",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 21,
+                    "text": "УКЕ МВД",
+                    "runs": [
+                      {
+                        "text": "УКЕ МВД",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 24,
+                    "text": "«____» январь 2026 года",
+                    "runs": [
+                      {
+                        "text": "«____» январь 2026 года",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 28,
+                        "sizeCs": 28,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [
+                  {
+                    "index": 5,
+                    "sectionIndex": 0,
+                    "nested": true,
+                    "width": {
+                      "size": "100%",
+                      "type": "pct"
+                    },
+                    "borders": {
+                      "top": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "left": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "bottom": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "right": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "insideH": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      },
+                      "insideV": {
+                        "val": "none",
+                        "size": 0,
+                        "color": "FFFFFF"
+                      }
+                    },
+                    "grid": [
+                      100,
+                      100
+                    ],
+                    "rows": [
+                      {
+                        "isHeader": false,
+                        "cantSplit": false,
+                        "cells": [
+                          {
+                            "gridSpan": 1,
+                            "borders": {
+                              "top": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "left": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "bottom": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "right": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              }
+                            },
+                            "paragraphs": [
+                              {
+                                "index": 22,
+                                "text": "полковник",
+                                "alignment": "left",
+                                "runs": [
+                                  {
+                                    "text": "полковник",
+                                    "font": {
+                                      "ascii": "Times New Roman",
+                                      "hAnsi": "Times New Roman",
+                                      "cs": "Times New Roman",
+                                      "eastAsia": "Times New Roman"
+                                    },
+                                    "size": 28,
+                                    "sizeCs": 28,
+                                    "bold": true,
+                                    "breaks": [],
+                                    "tabs": 0
+                                  }
+                                ],
+                                "hasPageBreak": false,
+                                "inTable": true,
+                                "sectionIndex": 0
+                              }
+                            ],
+                            "tables": [],
+                            "text": "полковник"
+                          },
+                          {
+                            "gridSpan": 1,
+                            "borders": {
+                              "top": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "left": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "bottom": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              },
+                              "right": {
+                                "val": "none",
+                                "size": 0,
+                                "color": "FFFFFF"
+                              }
+                            },
+                            "paragraphs": [
+                              {
+                                "index": 23,
+                                "text": "Каримов Р.А.",
+                                "alignment": "right",
+                                "indent": {
+                                  "right": 280
+                                },
+                                "runs": [
+                                  {
+                                    "text": "Каримов Р.А.",
+                                    "font": {
+                                      "ascii": "Times New Roman",
+                                      "hAnsi": "Times New Roman",
+                                      "cs": "Times New Roman",
+                                      "eastAsia": "Times New Roman"
+                                    },
+                                    "size": 28,
+                                    "sizeCs": 28,
+                                    "bold": true,
+                                    "breaks": [],
+                                    "tabs": 0
+                                  }
+                                ],
+                                "hasPageBreak": false,
+                                "inTable": true,
+                                "sectionIndex": 0
+                              }
+                            ],
+                            "tables": [],
+                            "text": "Каримов Р.А."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "text": "Начальник управления\nУКЕ МВД\n«____» январь 2026 года"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 25,
+        "text": "",
+        "runs": [
+          {
+            "text": "",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 26,
+        "text": "По итогам допуск или отказ!",
+        "alignment": "both",
+        "indent": {
+          "firstLine": 720
+        },
+        "runs": [
+          {
+            "text": "По итогам допуск или отказ!",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 27,
+        "text": "",
+        "runs": [
+          {
+            "text": "",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 28,
+        "text": "«СОГЛАСОВАНО»",
+        "spacing": {
+          "before": 0,
+          "after": 0,
+          "line": 280
+        },
+        "runs": [
+          {
+            "text": "«СОГЛАСОВАНО»",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "bold": true,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 29,
+        "text": "Заместитель начальника",
+        "spacing": {
+          "before": 0,
+          "after": 0,
+          "line": 280
+        },
+        "runs": [
+          {
+            "text": "Заместитель начальника",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "bold": true,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 30,
+        "text": "ГСБП",
+        "spacing": {
+          "before": 0,
+          "after": 0,
+          "line": 280
+        },
+        "runs": [
+          {
+            "text": "ГСБП",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "bold": true,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 31,
+        "text": "подполковник     Юсупова Д.Б.",
+        "spacing": {
+          "before": 0,
+          "after": 0,
+          "line": 280
+        },
+        "runs": [
+          {
+            "text": "подполковник     Юсупова Д.Б.",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "bold": true,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 32,
+        "text": "«____» январь 2026 года",
+        "spacing": {
+          "before": 0,
+          "after": 0,
+          "line": 280
+        },
+        "runs": [
+          {
+            "text": "«____» январь 2026 года",
+            "font": {
+              "ascii": "Times New Roman",
+              "hAnsi": "Times New Roman",
+              "cs": "Times New Roman",
+              "eastAsia": "Times New Roman"
+            },
+            "size": 28,
+            "sizeCs": 28,
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "table",
+      "ref": {
+        "index": 6,
+        "sectionIndex": 0,
+        "nested": false,
+        "width": {
+          "size": "100%",
+          "type": "pct"
+        },
+        "borders": {
+          "top": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "left": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "bottom": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "right": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideH": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideV": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          }
+        },
+        "grid": [
+          100
+        ],
+        "rows": [
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "gridSpan": 1,
+                "borders": {
+                  "top": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "left": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "bottom": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  },
+                  "right": {
+                    "val": "none",
+                    "size": 0,
+                    "color": "FFFFFF"
+                  }
+                },
+                "paragraphs": [
+                  {
+                    "index": 33,
+                    "text": "(1708-19)",
+                    "alignment": "right",
+                    "runs": [
+                      {
+                        "text": "(1708-19)",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 20,
+                        "sizeCs": 20,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "(1708-19)"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -7,7 +7,8 @@
     "node": "22.x"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node scripts/run-document-tests.js",
+    "test:documents": "node scripts/run-document-tests.js",
     "start": "node ./index.js",
     "dev": "node --watch ./index.js",
     "seed": "node ./scripts/seed.js",

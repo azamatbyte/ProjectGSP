@@ -1,0 +1,1938 @@
+{
+  "sections": [
+    {
+      "page": {
+        "width": 11906,
+        "height": 16838,
+        "orientation": "portrait"
+      },
+      "margins": {
+        "top": 1133,
+        "right": 850,
+        "bottom": 1133,
+        "left": 1417,
+        "header": 708,
+        "footer": 708,
+        "gutter": 0
+      },
+      "headers": {},
+      "footers": {}
+    }
+  ],
+  "styles": {
+    "defaults": {
+      "run": {},
+      "paragraph": {}
+    },
+    "byId": {
+      "Title": {
+        "type": "paragraph",
+        "name": "Title",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 56,
+          "sizeCs": 56
+        },
+        "paragraph": {}
+      },
+      "Heading1": {
+        "type": "paragraph",
+        "name": "Heading 1",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 32,
+          "sizeCs": 32,
+          "color": "2E74B5"
+        },
+        "paragraph": {}
+      },
+      "Heading2": {
+        "type": "paragraph",
+        "name": "Heading 2",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 26,
+          "sizeCs": 26,
+          "color": "2E74B5"
+        },
+        "paragraph": {}
+      },
+      "Heading3": {
+        "type": "paragraph",
+        "name": "Heading 3",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 24,
+          "sizeCs": 24,
+          "color": "1F4D78"
+        },
+        "paragraph": {}
+      },
+      "Heading4": {
+        "type": "paragraph",
+        "name": "Heading 4",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "italic": true,
+          "color": "2E74B5"
+        },
+        "paragraph": {}
+      },
+      "Heading5": {
+        "type": "paragraph",
+        "name": "Heading 5",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "color": "2E74B5"
+        },
+        "paragraph": {}
+      },
+      "Heading6": {
+        "type": "paragraph",
+        "name": "Heading 6",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "color": "1F4D78"
+        },
+        "paragraph": {}
+      },
+      "Strong": {
+        "type": "paragraph",
+        "name": "Strong",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "bold": true
+        },
+        "paragraph": {}
+      },
+      "ListParagraph": {
+        "type": "paragraph",
+        "name": "List Paragraph",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {},
+        "paragraph": {}
+      },
+      "Hyperlink": {
+        "type": "character",
+        "name": "Hyperlink",
+        "basedOn": "DefaultParagraphFont",
+        "isDefault": false,
+        "run": {
+          "underline": "single",
+          "color": "0563C1"
+        },
+        "paragraph": {}
+      },
+      "FootnoteReference": {
+        "type": "character",
+        "name": "footnote reference",
+        "basedOn": "DefaultParagraphFont",
+        "isDefault": false,
+        "run": {
+          "vertAlign": "superscript"
+        },
+        "paragraph": {}
+      },
+      "FootnoteText": {
+        "type": "paragraph",
+        "name": "footnote text",
+        "basedOn": "Normal",
+        "isDefault": false,
+        "run": {
+          "size": 20,
+          "sizeCs": 20
+        },
+        "paragraph": {
+          "spacing": {
+            "after": 0,
+            "line": 240,
+            "lineRule": "auto"
+          }
+        }
+      },
+      "FootnoteTextChar": {
+        "type": "character",
+        "name": "Footnote Text Char",
+        "basedOn": "DefaultParagraphFont",
+        "isDefault": false,
+        "run": {
+          "size": 20,
+          "sizeCs": 20
+        },
+        "paragraph": {}
+      }
+    }
+  },
+  "settings": {
+    "evenAndOddHeaders": false
+  },
+  "blocks": [
+    {
+      "type": "table",
+      "ref": {
+        "index": 0,
+        "sectionIndex": 0,
+        "nested": false,
+        "width": {
+          "size": "5000%",
+          "type": "pct"
+        },
+        "alignment": "center",
+        "borders": {
+          "top": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "left": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "bottom": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "right": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideH": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideV": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          }
+        },
+        "grid": [
+          100,
+          100
+        ],
+        "rows": [
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "3500%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 0,
+                    "text": "Рухсатнома берилгани туғрисида маълумотнома (справка о наличии допуска)",
+                    "alignment": "left",
+                    "runs": [
+                      {
+                        "text": "Рухсатнома берилгани туғрисида маълумотнома (справка о наличии допуска)",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Рухсатнома берилгани туғрисида маълумотнома (справка о наличии допуска)"
+              },
+              {
+                "width": {
+                  "size": "1500%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "paragraphs": [
+                  {
+                    "index": 2,
+                    "text": "",
+                    "runs": [],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [
+                  {
+                    "index": 1,
+                    "sectionIndex": 0,
+                    "nested": true,
+                    "width": {
+                      "size": 100,
+                      "type": "auto"
+                    },
+                    "alignment": "center",
+                    "borders": {
+                      "top": {
+                        "val": "single",
+                        "size": 4,
+                        "color": "auto"
+                      },
+                      "left": {
+                        "val": "single",
+                        "size": 4,
+                        "color": "auto"
+                      },
+                      "bottom": {
+                        "val": "single",
+                        "size": 4,
+                        "color": "auto"
+                      },
+                      "right": {
+                        "val": "single",
+                        "size": 4,
+                        "color": "auto"
+                      },
+                      "insideH": {
+                        "val": "single",
+                        "size": 4,
+                        "color": "auto"
+                      },
+                      "insideV": {
+                        "val": "single",
+                        "size": 4,
+                        "color": "auto"
+                      }
+                    },
+                    "grid": [
+                      100
+                    ],
+                    "rows": [
+                      {
+                        "isHeader": false,
+                        "cantSplit": false,
+                        "cells": [
+                          {
+                            "gridSpan": 1,
+                            "margins": {
+                              "top": 200,
+                              "left": 400,
+                              "bottom": 200,
+                              "right": 400
+                            },
+                            "paragraphs": [
+                              {
+                                "index": 1,
+                                "text": "ПДХХ ... (кимга):",
+                                "alignment": "center",
+                                "runs": [
+                                  {
+                                    "text": "ПДХХ ... (кимга):",
+                                    "size": 24,
+                                    "sizeCs": 24,
+                                    "breaks": [],
+                                    "tabs": 0
+                                  },
+                                  {
+                                    "text": "",
+                                    "size": 24,
+                                    "sizeCs": 24,
+                                    "breaks": [],
+                                    "tabs": 0
+                                  }
+                                ],
+                                "hasPageBreak": false,
+                                "inTable": true,
+                                "sectionIndex": 0
+                              }
+                            ],
+                            "tables": [],
+                            "text": "ПДХХ ... (кимга):"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ],
+                "text": ""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 3,
+        "text": "_________________________________________________________________________________________________________________________________________",
+        "spacing": {
+          "before": 0,
+          "after": 0
+        },
+        "runs": [
+          {
+            "text": "_________________________________________________________________________________________________________________________________________",
+            "size": 1,
+            "sizeCs": 1,
+            "bold": true,
+            "color": "ffffff",
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "table",
+      "ref": {
+        "index": 2,
+        "sectionIndex": 0,
+        "nested": false,
+        "width": {
+          "size": "5000%",
+          "type": "pct"
+        },
+        "alignment": "center",
+        "borders": {
+          "top": {
+            "val": "single",
+            "size": 4,
+            "color": "auto"
+          },
+          "left": {
+            "val": "single",
+            "size": 4,
+            "color": "auto"
+          },
+          "bottom": {
+            "val": "single",
+            "size": 4,
+            "color": "auto"
+          },
+          "right": {
+            "val": "single",
+            "size": 4,
+            "color": "auto"
+          },
+          "insideH": {
+            "val": "single",
+            "size": 4,
+            "color": "auto"
+          },
+          "insideV": {
+            "val": "single",
+            "size": 4,
+            "color": "auto"
+          }
+        },
+        "grid": [
+          100,
+          100,
+          100
+        ],
+        "rows": [
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "margins": {
+                  "top": 100,
+                  "left": 100,
+                  "bottom": 100,
+                  "right": 100
+                },
+                "paragraphs": [
+                  {
+                    "index": 4,
+                    "text": "Ф.И.О.",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Ф.И.О.",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Ф.И.О."
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "margins": {
+                  "top": 100,
+                  "left": 100,
+                  "bottom": 100,
+                  "right": 100
+                },
+                "paragraphs": [
+                  {
+                    "index": 5,
+                    "text": "Дата рождения",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Дата рождения",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Дата рождения"
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "margins": {
+                  "top": 100,
+                  "left": 100,
+                  "bottom": 100,
+                  "right": 100
+                },
+                "paragraphs": [
+                  {
+                    "index": 6,
+                    "text": "Место рождения",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Место рождения",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Место рождения"
+              }
+            ]
+          },
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "margins": {
+                  "top": 100,
+                  "left": 100,
+                  "bottom": 100,
+                  "right": 100
+                },
+                "paragraphs": [
+                  {
+                    "index": 7,
+                    "text": "Жасур Абдуллаев Бахтиярович",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Жасур Абдуллаев Бахтиярович",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Жасур Абдуллаев Бахтиярович"
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "margins": {
+                  "top": 100,
+                  "left": 100,
+                  "bottom": 100,
+                  "right": 100
+                },
+                "paragraphs": [
+                  {
+                    "index": 8,
+                    "text": "1985 г.",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "1985 г.",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "1985 г."
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "margins": {
+                  "top": 100,
+                  "left": 100,
+                  "bottom": 100,
+                  "right": 100
+                },
+                "paragraphs": [
+                  {
+                    "index": 9,
+                    "text": "г. Ташкент",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "г. Ташкент",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "г. Ташкент"
+              }
+            ]
+          },
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "margins": {
+                  "top": 100,
+                  "left": 100,
+                  "bottom": 100,
+                  "right": 100
+                },
+                "paragraphs": [
+                  {
+                    "index": 10,
+                    "text": "Бахтияр Абдуллаев Каримович",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Бахтияр Абдуллаев Каримович",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Бахтияр Абдуллаев Каримович"
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "margins": {
+                  "top": 100,
+                  "left": 100,
+                  "bottom": 100,
+                  "right": 100
+                },
+                "paragraphs": [
+                  {
+                    "index": 11,
+                    "text": "1960 г.",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "1960 г.",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "1960 г."
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "margins": {
+                  "top": 100,
+                  "left": 100,
+                  "bottom": 100,
+                  "right": 100
+                },
+                "paragraphs": [
+                  {
+                    "index": 12,
+                    "text": "Самаркандская обл.",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Самаркандская обл.",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Самаркандская обл."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 13,
+        "text": "_________________________________________________________________________________________________________________________________________",
+        "spacing": {
+          "before": 0,
+          "after": 0
+        },
+        "runs": [
+          {
+            "text": "_________________________________________________________________________________________________________________________________________",
+            "size": 1,
+            "sizeCs": 1,
+            "bold": true,
+            "color": "ffffff",
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 14,
+        "text": "\n\n",
+        "alignment": "left",
+        "spacing": {
+          "before": 276,
+          "after": 0
+        },
+        "runs": [
+          {
+            "text": "\n\n",
+            "size": 20,
+            "sizeCs": 20,
+            "bold": true,
+            "breaks": [
+              "textWrapping",
+              "textWrapping"
+            ],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 15,
+        "text": "_________________________________________________________________________________________________________________________________________",
+        "alignment": "left",
+        "spacing": {
+          "before": 276,
+          "after": 0
+        },
+        "runs": [
+          {
+            "text": "_________________________________________________________________________________________________________________________________________",
+            "size": 1,
+            "sizeCs": 1,
+            "bold": true,
+            "color": "ffffff",
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 16,
+        "text": "\n\n",
+        "runs": [
+          {
+            "text": "\n\n",
+            "size": 1,
+            "sizeCs": 1,
+            "bold": true,
+            "color": "ffffff",
+            "breaks": [
+              "textWrapping",
+              "textWrapping"
+            ],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "table",
+      "ref": {
+        "index": 3,
+        "sectionIndex": 0,
+        "nested": false,
+        "width": {
+          "size": "5000%",
+          "type": "pct"
+        },
+        "alignment": "center",
+        "borders": {
+          "top": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "left": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "bottom": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "right": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideH": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideV": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          }
+        },
+        "grid": [
+          100,
+          100,
+          100
+        ],
+        "rows": [
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "1750%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 17,
+                    "text": "Начальник управления\nЛавозими (Должность)",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Начальник управления",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "underline": "single",
+                        "breaks": [],
+                        "tabs": 0
+                      },
+                      {
+                        "text": "\nЛавозими (Должность)",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 24,
+                        "sizeCs": 24,
+                        "breaks": [
+                          "textWrapping"
+                        ],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Начальник управления\nЛавозими (Должность)"
+              },
+              {
+                "width": {
+                  "size": "1750%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 18,
+                    "text": "____________________\nИмзо (подпись)",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "____________________",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      },
+                      {
+                        "text": "\nИмзо (подпись)",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 24,
+                        "sizeCs": 24,
+                        "breaks": [
+                          "textWrapping"
+                        ],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "____________________\nИмзо (подпись)"
+              },
+              {
+                "width": {
+                  "size": "1500%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 19,
+                    "text": "Каримов Р.А.\nНасаби (Фамилия)",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Каримов Р.А.",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "underline": "single",
+                        "breaks": [],
+                        "tabs": 0
+                      },
+                      {
+                        "text": "\nНасаби (Фамилия)",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 24,
+                        "sizeCs": 24,
+                        "breaks": [
+                          "textWrapping"
+                        ],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Каримов Р.А.\nНасаби (Фамилия)"
+              }
+            ]
+          },
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "1750%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 20,
+                    "text": "Заместитель начальника\nЛавозими (Должность)",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Заместитель начальника",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "underline": "single",
+                        "breaks": [],
+                        "tabs": 0
+                      },
+                      {
+                        "text": "\nЛавозими (Должность)",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 24,
+                        "sizeCs": 24,
+                        "breaks": [
+                          "textWrapping"
+                        ],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Заместитель начальника\nЛавозими (Должность)"
+              },
+              {
+                "width": {
+                  "size": "1750%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 21,
+                    "text": "____________________\nИмзо (подпись)",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "____________________",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      },
+                      {
+                        "text": "\nИмзо (подпись)",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 24,
+                        "sizeCs": 24,
+                        "breaks": [
+                          "textWrapping"
+                        ],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "____________________\nИмзо (подпись)"
+              },
+              {
+                "width": {
+                  "size": "1500%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 22,
+                    "text": "Юсупова Д.Б.\nНасаби (Фамилия)",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Юсупова Д.Б.",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "underline": "single",
+                        "breaks": [],
+                        "tabs": 0
+                      },
+                      {
+                        "text": "\nНасаби (Фамилия)",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 24,
+                        "sizeCs": 24,
+                        "breaks": [
+                          "textWrapping"
+                        ],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Юсупова Д.Б.\nНасаби (Фамилия)"
+              }
+            ]
+          },
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "1750%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 23,
+                    "text": "\n15 января 2026 г",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 0,
+                      "after": 0
+                    },
+                    "runs": [
+                      {
+                        "text": "\n15 января 2026 г",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [
+                          "textWrapping"
+                        ],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 24,
+                    "text": "_______________________________",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 0,
+                      "after": 0
+                    },
+                    "borders": {
+                      "bottom": {
+                        "size": 40,
+                        "space": 1,
+                        "color": "000000"
+                      }
+                    },
+                    "runs": [
+                      {
+                        "text": "_______________________________",
+                        "size": 12,
+                        "sizeCs": 12,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "\n15 января 2026 г\n_______________________________"
+              },
+              {
+                "width": {
+                  "size": "3250%",
+                  "type": "pct"
+                },
+                "gridSpan": 2,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 25,
+                    "text": "",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": ""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 26,
+        "text": "_________________________________________________________________________________________________________________________________________",
+        "spacing": {
+          "before": 0,
+          "after": 0
+        },
+        "runs": [
+          {
+            "text": "_________________________________________________________________________________________________________________________________________",
+            "size": 1,
+            "sizeCs": 1,
+            "bold": true,
+            "color": "ffffff",
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 27,
+        "text": "\n\n",
+        "runs": [
+          {
+            "text": "\n\n",
+            "size": 1,
+            "sizeCs": 1,
+            "bold": true,
+            "color": "ffffff",
+            "breaks": [
+              "textWrapping",
+              "textWrapping"
+            ],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "table",
+      "ref": {
+        "index": 4,
+        "sectionIndex": 0,
+        "nested": false,
+        "width": {
+          "size": "5000%",
+          "type": "pct"
+        },
+        "alignment": "center",
+        "borders": {
+          "top": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "left": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "bottom": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "right": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideH": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideV": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          }
+        },
+        "grid": [
+          100,
+          100,
+          100,
+          100
+        ],
+        "rows": [
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 28,
+                    "text": "Бажарувчи\n(Исполнитель)",
+                    "alignment": "left",
+                    "runs": [
+                      {
+                        "text": "Бажарувчи",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      },
+                      {
+                        "text": "\n(Исполнитель)",
+                        "font": {
+                          "ascii": "Times New Roman",
+                          "hAnsi": "Times New Roman",
+                          "cs": "Times New Roman",
+                          "eastAsia": "Times New Roman"
+                        },
+                        "size": 24,
+                        "sizeCs": 24,
+                        "breaks": [
+                          "textWrapping"
+                        ],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Бажарувчи\n(Исполнитель)"
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "paragraphs": [
+                  {
+                    "index": 29,
+                    "text": "",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 276,
+                      "after": 0
+                    },
+                    "runs": [
+                      {
+                        "text": "",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 30,
+                    "text": "_____________________________________",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 0,
+                      "after": 0
+                    },
+                    "borders": {
+                      "bottom": {
+                        "size": 40,
+                        "space": 1,
+                        "color": "000000"
+                      }
+                    },
+                    "runs": [
+                      {
+                        "text": "_____________________________________",
+                        "size": 12,
+                        "sizeCs": 12,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "\n_____________________________________"
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 31,
+                    "text": "Телефон",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "Телефон",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Телефон"
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "paragraphs": [
+                  {
+                    "index": 32,
+                    "text": "",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 276,
+                      "after": 0
+                    },
+                    "runs": [
+                      {
+                        "text": "",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 33,
+                    "text": "____________________________________________",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 0,
+                      "after": 0
+                    },
+                    "borders": {
+                      "bottom": {
+                        "size": 40,
+                        "space": 1,
+                        "color": "000000"
+                      }
+                    },
+                    "runs": [
+                      {
+                        "text": "____________________________________________",
+                        "size": 12,
+                        "sizeCs": 12,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "\n____________________________________________"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 34,
+        "text": "_________________________________________________________________________________________________________________________________________",
+        "spacing": {
+          "before": 0,
+          "after": 0
+        },
+        "runs": [
+          {
+            "text": "_________________________________________________________________________________________________________________________________________",
+            "size": 1,
+            "sizeCs": 1,
+            "bold": true,
+            "color": "ffffff",
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    },
+    {
+      "type": "table",
+      "ref": {
+        "index": 5,
+        "sectionIndex": 0,
+        "nested": false,
+        "width": {
+          "size": "5000%",
+          "type": "pct"
+        },
+        "alignment": "center",
+        "borders": {
+          "top": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "left": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "bottom": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "right": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideH": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          },
+          "insideV": {
+            "val": "none",
+            "size": 0,
+            "color": "FFFFFF"
+          }
+        },
+        "grid": [
+          100,
+          100,
+          100,
+          100
+        ],
+        "rows": [
+          {
+            "isHeader": false,
+            "cantSplit": false,
+            "cells": [
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 35,
+                    "text": "Ответственный",
+                    "alignment": "left",
+                    "runs": [
+                      {
+                        "text": "Ответственный",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "Ответственный"
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "paragraphs": [
+                  {
+                    "index": 36,
+                    "text": "",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 276,
+                      "after": 0
+                    },
+                    "runs": [
+                      {
+                        "text": "",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 37,
+                    "text": "____________________________________________",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 0,
+                      "after": 0
+                    },
+                    "borders": {
+                      "bottom": {
+                        "size": 40,
+                        "space": 1,
+                        "color": "000000"
+                      }
+                    },
+                    "runs": [
+                      {
+                        "text": "____________________________________________",
+                        "size": 12,
+                        "sizeCs": 12,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "\n____________________________________________"
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "verticalAlign": "center",
+                "paragraphs": [
+                  {
+                    "index": 38,
+                    "text": "К делу №",
+                    "alignment": "center",
+                    "runs": [
+                      {
+                        "text": "К делу №",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": false,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "К делу №"
+              },
+              {
+                "width": {
+                  "size": "1250%",
+                  "type": "pct"
+                },
+                "gridSpan": 1,
+                "paragraphs": [
+                  {
+                    "index": 39,
+                    "text": "",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 276,
+                      "after": 0
+                    },
+                    "runs": [
+                      {
+                        "text": "",
+                        "size": 24,
+                        "sizeCs": 24,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  },
+                  {
+                    "index": 40,
+                    "text": "____________________________________________",
+                    "alignment": "center",
+                    "spacing": {
+                      "before": 0,
+                      "after": 0
+                    },
+                    "borders": {
+                      "bottom": {
+                        "size": 40,
+                        "space": 1,
+                        "color": "000000"
+                      }
+                    },
+                    "runs": [
+                      {
+                        "text": "____________________________________________",
+                        "size": 12,
+                        "sizeCs": 12,
+                        "bold": true,
+                        "breaks": [],
+                        "tabs": 0
+                      }
+                    ],
+                    "hasPageBreak": false,
+                    "inTable": true,
+                    "sectionIndex": 0
+                  }
+                ],
+                "tables": [],
+                "text": "\n____________________________________________"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "paragraph",
+      "ref": {
+        "index": 41,
+        "text": "_________________________________________________________________________________________________________________________________________",
+        "spacing": {
+          "before": 0,
+          "after": 0
+        },
+        "runs": [
+          {
+            "text": "_________________________________________________________________________________________________________________________________________",
+            "size": 1,
+            "sizeCs": 1,
+            "bold": true,
+            "color": "ffffff",
+            "breaks": [],
+            "tabs": 0
+          }
+        ],
+        "hasPageBreak": false,
+        "inTable": false,
+        "sectionIndex": 0
+      }
+    }
+  ]
+}
